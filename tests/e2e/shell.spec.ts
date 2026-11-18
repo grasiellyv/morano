@@ -51,11 +51,18 @@ test("no horizontal scroll at 320px", async ({ page }) => {
     const textBox = await text.boundingBox();
     expect(linkBox, label).not.toBeNull();
     expect(textBox, label).not.toBeNull();
-    expect(textBox!.x, label).toBeGreaterThanOrEqual(linkBox!.x - 0.5);
+    expect(textBox!.x, label).toBeGreaterThanOrEqual(linkBox!.x - 0.1);
     expect(textBox!.x + textBox!.width, label).toBeLessThanOrEqual(
-      linkBox!.x + linkBox!.width + 0.5,
+      linkBox!.x + linkBox!.width + 0.1,
     );
   }
+});
+
+test("desktop: sidebar marks the active link", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop");
+  await page.goto("/rotina");
+  const nav = page.getByRole("navigation", { name: "Navegação principal" });
+  await expect(nav.getByRole("link", { name: "Rotina" })).toHaveAttribute("aria-current", "page");
 });
 
 test("viewport meta has viewport-fit=cover", async ({ page }) => {
@@ -80,7 +87,7 @@ test("focus ring visible on nav link", async ({ page }) => {
     const s = getComputedStyle(el);
     return { boxShadow: s.boxShadow, outlineStyle: s.outlineStyle };
   });
-  expect(style.boxShadow !== "none" || style.outlineStyle !== "none").toBe(true);
+  expect(style.boxShadow).toMatch(/rgba?\((?!\s*0,\s*0,\s*0,\s*0\))/);
 });
 
 test("/estilo shows DEMONSTRAÇÃO badge in dev", async ({ page }) => {
