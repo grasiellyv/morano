@@ -36,8 +36,9 @@ test("novo usuário vai para /onboarding/residencia ao acessar /inicio", async (
   await ensureConfirmedUser(email, PASSWORD);
 
   await signIn(page, email, PASSWORD);
-  // O login de um usuário sem onboarding concluído redireciona para /onboarding,
+  // Navega para /inicio: o guard do app redireciona para /onboarding,
   // que por sua vez redireciona para /onboarding/residencia (step = 0).
+  await page.goto("/inicio");
   await expect(page).toHaveURL(/\/onboarding\/residencia$/);
 });
 
@@ -97,10 +98,11 @@ test("usuário com onboarding concluído não é redirecionado ao acessar /inici
 
   // Marca onboarding como concluído diretamente no banco
   const admin = createTestAdminClient();
-  await admin
+  const { error: updateError } = await admin
     .from("profiles")
     .update({ onboarding_completed: true })
     .eq("id", userId);
+  expect(updateError).toBeNull();
 
   await signIn(page, email, PASSWORD);
   // Deve ir direto para /inicio, sem passar por /onboarding
@@ -118,10 +120,11 @@ test("usuário no passo 2 retoma o wizard em /onboarding/rotina", async ({ page 
 
   // Avança para o passo 2 diretamente via banco
   const admin = createTestAdminClient();
-  await admin
+  const { error: updateError } = await admin
     .from("profiles")
     .update({ onboarding_step: 2 })
     .eq("id", userId);
+  expect(updateError).toBeNull();
 
   await signIn(page, email, PASSWORD);
   await page.goto("/onboarding");

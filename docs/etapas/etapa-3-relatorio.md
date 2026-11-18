@@ -37,20 +37,20 @@ Depois do onboarding, o usuário pode acessar o resumo da residência:
 
 Cerca de 30 arquivos neste ramo. Principais grupos:
 
-- **Onboarding (rotas e componentes):** `src/app/onboarding/{page,layout,residencia,comodos,rotina,revisao}/page.tsx`, `src/components/onboarding/timezone-detector.tsx`, `src/features/onboarding/components/{residencia-form,comodos-form,room-selector,rotina-form,task-review-list}.tsx`.
-- **Lógica do onboarding:** `src/features/onboarding/actions.ts` (5 Server Actions), `src/features/onboarding/catalog.ts` (catálogo de tarefas), `src/features/onboarding/schemas.ts`, `src/features/onboarding/room-defaults.ts`.
-- **Minha Casa:** `src/app/(app)/casa/{page,editar,comodos}/page.tsx`, `src/features/homes/{actions,queries,schemas}.ts`, `src/features/homes/components/{home-form,room-list}.tsx`.
-- **Layout do app:** `src/app/(app)/layout.tsx` — agora verifica se o onboarding foi concluído antes de renderizar qualquer tela do app.
-- **Testes de unidade:** `src/features/onboarding/{catalog,schemas}.test.ts`.
+- **Telas do assistente de onboarding:** 6 páginas (uma por passo, mais o layout visual do wizard) e 5 componentes de formulário (um por passo, mais o seletor de cômodos por chips).
+- **Lógica de salvamento do onboarding:** 5 ações que salvam os dados de cada passo (residência, cômodos, rotina, revisão/aprovação, fuso horário), o catálogo estático de tarefas sugeridas e as regras de validação de cada campo.
+- **Telas de Minha Casa:** 3 páginas (painel geral, lista de cômodos, editar dados da residência) e os componentes de formulário correspondentes.
+- **Verificação de onboarding em cada página protegida do app:** um arquivo central que, antes de exibir qualquer tela do app, checa se o usuário já completou o assistente — e o manda para lá se não completou.
+- **Testes de unidade:** 2 novos arquivos testando o catálogo de tarefas e as regras de validação do onboarding.
 - **Testes E2E:** `tests/e2e/onboarding.spec.ts` (6 cenários).
-- **Utilitários:** `src/lib/telemetry.ts`.
+- **Rastreamento de eventos:** um utilitário para registrar eventos de uso (passo iniciado, passo concluído, onboarding aprovado).
 
 ## 3. Dependências adicionadas
 
-Duas bibliotecas de datas, usadas para calcular intervalos de tarefas e fuso horário:
+Duas bibliotecas de manipulação de datas, necessárias para guardar o fuso horário da residência de forma correta:
 
-- **date-fns** 4.4.0
-- **@date-fns/tz** 1.5.0
+- **date-fns** 4.4.0 — operações com datas (calcular intervalos, formatar etc.)
+- **@date-fns/tz** 1.5.0 — converter horários para o fuso do usuário
 
 Nenhuma outra dependência foi adicionada.
 
@@ -65,14 +65,14 @@ Rodada final neste ramo:
 
 ## 5. Problemas encontrados e corrigidos
 
-1. **Redirecionamento seguro para usuários com erro de banco:** o guard do `(app)/layout.tsx` só redireciona para `/onboarding` quando tem certeza que o perfil existe e o onboarding não foi concluído. Erro de banco deixa o usuário onde está, em vez de jogá-lo no wizard.
-2. **Chip de cômodo vs. lista interna inconsistente:** desmarcar um chip de tipo removia todas as linhas daquele tipo da lista interna, mas o chip ficava marcado em alguns casos de borda. Corrigido unificando o estado interno.
-3. **Validação do passo de revisão com zero tarefas:** o botão "Aprovar rotina" ficava habilitado mesmo quando o usuário desmarcava tudo. Adicionada guarda visual e desabilitação do botão.
-4. **Título vazio na revisão:** ao editar o título de uma tarefa até ficar vazio e tentar aprovar, a validação do servidor rejeitava. A serialização agora usa o título original como fallback para tarefas incluídas com campo em branco.
-5. **`getHomeWithRooms` lançava exceção para usuário sem casa:** a consulta usava `.single()`, que lança erro quando não há linha. Trocado por `.maybeSingle()` para distinguir "ausente" (retorna `null`) de "erro de banco".
-6. **Idempotência das Server Actions:** `saveComodos` e `approveRoutine` podiam criar registros duplicados se o usuário clicasse duas vezes antes do redirecionamento. Ambas agora fazem upsert / purga + reinsert de forma idempotente.
-7. **`revalidatePath` faltando após mutações:** algumas actions não invalidavam o cache do Next, então a tela de cômodos mostrava dados antigos após adicionar ou remover um cômodo. Adicionado `revalidatePath` em todos os pontos de mutação.
-8. **Fuso horário detectado no cliente:** o campo `timezone` não pode vir do servidor (que não conhece o fuso do usuário). Um componente client-side detecta o fuso e injeta um input oculto antes do submit.
+1. **Redirecionamento seguro em caso de falha de banco:** a verificação de onboarding em cada página do app só envia o usuário para o wizard quando tem certeza que o perfil existe e está incompleto. Se houver algum problema de comunicação com o banco, o usuário fica onde estava — sem ser jogado para uma tela errada.
+2. **Botão de cômodo desincronizado com a lista:** em alguns casos de borda, clicar num chip para remover um tipo de cômodo deixava o chip visualmente marcado mesmo depois de removido. Corrigido.
+3. **Aprovar sem nenhuma tarefa:** o botão "Aprovar rotina" ficava clicável mesmo quando o usuário tinha desmarcado todas as tarefas da lista. Agora ele fica desabilitado e uma mensagem aparece orientando a selecionar ao menos uma.
+4. **Título de tarefa apagado na revisão:** se o usuário esvaziasse o campo de título de uma tarefa e tentasse aprovar, o app devolvia erro. Agora o nome original da tarefa é mantido automaticamente como valor padrão.
+5. **Erro ao carregar a tela de Minha Casa para usuário novo:** a consulta que busca os dados da casa retornava erro quando o usuário ainda não tinha casa cadastrada, em vez de retornar "sem casa". Corrigido para diferenciar os dois casos e redirecionar corretamente.
+6. **Clique duplo criava cômodos ou tarefas em duplicata:** se o usuário clicasse em "Continuar" ou "Aprovar rotina" mais de uma vez (antes do redirecionamento carregar), o app podia gravar os mesmos dados duas vezes. Corrigido para que a segunda gravação substitua a anterior, sem duplicatas.
+7. **Tela de cômodos não atualizava após adicionar ou remover:** depois de adicionar ou remover um cômodo, a lista continuava mostrando os dados antigos até o usuário recarregar a página manualmente. Corrigido.
+8. **Fuso horário do usuário:** o app não consegue saber o fuso do usuário pelo servidor. Um pequeno detector no navegador captura o fuso e envia junto com os dados da residência no momento do cadastro.
 
 ## 6. O que falta
 
@@ -82,7 +82,7 @@ Itens deferidos desta etapa:
 
 - **Convite de membros para a casa:** a estrutura do banco existe desde a Etapa 2, mas o fluxo de convite (envio de e-mail + aceitação) ficou para a Etapa 7 ou 8.
 - **Manutenções e equipamentos** aparecem na tela `/casa`, mas o conteúdo real chega nas Etapas 5 e 6.
-- **Plano Grátis com limite de cômodos:** o banco já tem o limite (plano grátis = número de cômodos ilimitado no MVP); a mensagem de bloqueio na interface foi deferida.
+- **Limite de cômodos no plano Grátis:** para o MVP, não há limite de cômodos — a estrutura para limitar no futuro (quando houver plano pago) já existe no banco, mas não está ativa.
 - **Foto da residência:** campo previsto no banco, interface chega na Etapa 5.
 - **E2E não executados em CI:** os 6 testes E2E foram escritos mas precisam de `npm run test:e2e` em ambiente com Next e Supabase rodando para validar.
 
