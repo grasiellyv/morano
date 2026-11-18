@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* O MVP não tem modo escuro (spec §5). A variante fica presa a uma classe que nunca é aplicada. */
+@custom-variant dark (&:is(.dark *));
+
+/* Paleta bruta: única fonte dos valores hex. Gera as utilities offwhite, sand, graphite, sage, caramel, sage-ink, alert-ink e stone. */
+@theme {
+  --color-offwhite: #f5f2ec;
+  --color-sand: #e7e0d5;
+  --color-graphite: #30332f;
+  --color-sage: #879080;
+  --color-caramel: #b69b79;
+  /* Versões AA para texto: Sálvia e Caramelo nunca são usados como cor de texto. */
+  --color-sage-ink: #5a6155;
+  --color-alert-ink: #8a5530;
+  /* Cinza quente para bordas de campos e anéis: >= 3:1 sobre off-white e branco (WCAG 1.4.11). */
+  --color-stone: #827b6f;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-manrope);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: var(--color-offwhite);
+  --foreground: var(--color-graphite);
+  --card: #ffffff;
+  --card-foreground: var(--color-graphite);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-graphite);
+  --primary: var(--color-graphite);
+  --primary-foreground: var(--color-offwhite);
+  --secondary: var(--color-sand);
+  --secondary-foreground: var(--color-graphite);
+  --muted: var(--color-sand);
+  --muted-foreground: var(--color-sage-ink);
+  --accent: var(--color-sand);
+  --accent-foreground: var(--color-graphite);
+  --destructive: var(--color-alert-ink);
+  --border: var(--color-sand);
+  --input: var(--color-stone);
+  --ring: var(--color-sage-ink);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
