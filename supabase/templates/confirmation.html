@@ -1,0 +1,8 @@
+<!-- Link de confirmação de cadastro. RedirectTo = emailRedirectTo do signUp (`<site>/auth/confirm`, sem query). -->
+<h2>Confirme seu e-mail</h2>
+<p>Olá! Para ativar sua conta no MORANO, toque no link abaixo.</p>
+<p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email">Confirmar meu e-mail</a></p>
+<p>
+  Abra o link no mesmo aparelho em que você se cadastrou. Se você não criou uma conta, ignore este
+  e-mail.
+</p>

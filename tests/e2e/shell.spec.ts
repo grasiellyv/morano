@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const LABELS = ["Início", "Rotina", "Casa", "Manutenção", "Compras"];
 const ROUTES = ["/inicio", "/rotina", "/casa", "/manutencao", "/compras", "/configuracoes"];
 
-test("root redirects to /inicio", async ({ page }) => {
+test("root redirects to /inicio when logged in", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/inicio$/);
 });
@@ -104,4 +104,10 @@ test("skip link is the first focusable element and jumps to main content", async
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#conteudo$/);
   await expect(page.locator("main#conteudo")).toBeFocused();
+});
+
+test("authenticated user is not bounced to /entrar", async ({ page }) => {
+  await page.goto("/inicio");
+  await expect(page).toHaveURL(/\/inicio$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Início" })).toBeVisible();
 });

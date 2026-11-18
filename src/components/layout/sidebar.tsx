@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { isNavItemActive } from "@/components/layout/nav-active";
 import { PRIMARY_NAV, SETTINGS_NAV } from "@/components/layout/nav-items";
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { cn } from "@/lib/utils";
 
 const rowClass =
@@ -44,18 +45,20 @@ export function Sidebar() {
             );
           })}
         </ul>
-        <Link
-          href={SETTINGS_NAV.href}
-          aria-current={settingsActive ? "page" : undefined}
-          className={cn(
-            rowClass,
-            "mt-auto",
-            settingsActive ? "bg-sand text-foreground" : "text-muted-foreground hover:bg-sand/60",
-          )}
-        >
-          <SettingsIcon aria-hidden className="size-5" />
-          {SETTINGS_NAV.label}
-        </Link>
+        <div className="mt-auto space-y-1">
+          <Link
+            href={SETTINGS_NAV.href}
+            aria-current={settingsActive ? "page" : undefined}
+            className={cn(
+              rowClass,
+              settingsActive ? "bg-sand text-foreground" : "text-muted-foreground hover:bg-sand/60",
+            )}
+          >
+            <SettingsIcon aria-hidden className="size-5" />
+            {SETTINGS_NAV.label}
+          </Link>
+          <SignOutButton />
+        </div>
       </nav>
     </div>
   );

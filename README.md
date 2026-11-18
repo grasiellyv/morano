@@ -5,7 +5,16 @@ Sua casa. Sob controle.
 ## Requisitos
 
 - Node.js >= 20.9
-- Docker Desktop (a partir da Etapa 2, para o Supabase local)
+- Docker Desktop em execução (obrigatório: o Supabase roda localmente em contêineres)
+
+## Supabase local
+
+1. Abra o Docker Desktop.
+2. `npm run db:start` — sobe Postgres, Auth, Storage e Mailpit (a primeira vez baixa as imagens e demora).
+3. `npm run db:status` — mostra as URLs e as chaves. Copie `.env.example` para `.env.local` e preencha:
+   `NEXT_PUBLIC_SUPABASE_URL` (API URL), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Publishable) e `SUPABASE_SECRET_KEY` (Secret).
+   O `.env.local` não vai para o Git.
+4. Os e-mails de confirmação e de redefinição de senha chegam ao Mailpit, no endereço `Mailpit` impresso pelo `db:status` (padrão http://127.0.0.1:54324).
 
 ## Scripts
 
@@ -19,6 +28,11 @@ Sua casa. Sob controle.
 - `npm test` — executa os testes unitários uma vez (Vitest).
 - `npm run test:watch` — executa os testes em modo observação.
 - `npm run test:e2e` — executa os testes de navegador (Playwright).
+- `npm run db:start` / `db:stop` — sobe e para o Supabase local.
+- `npm run db:status` — mostra URLs e chaves locais.
+- `npm run db:reset` — recria o banco a partir das migrations.
+- `npm run db:test` — executa os testes do banco (pgTAP).
+- `npm run db:types` — gera `src/types/database.ts` a partir do banco local.
 
 ## Documentação
 
