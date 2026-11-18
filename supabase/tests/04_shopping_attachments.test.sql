@@ -7,7 +7,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(94);
+select plan(104);
 
 -- -----------------------------------------------------------------------------
 -- Setup (postgres)
@@ -52,7 +52,7 @@ begin
   insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
   values (current_setting('t.att_b')::uuid, current_setting('t.home_b')::uuid,
           current_setting('t.app_b')::uuid, 'document',
-          current_setting('t.home_b') || '/obj/b.pdf', 'b.pdf', 'application/pdf', 1000);
+          current_setting('t.home_b') || '/' || current_setting('t.att_b') || '/b.pdf', 'b.pdf', 'application/pdf', 1000);
 end $$;
 
 -- -----------------------------------------------------------------------------
@@ -91,10 +91,12 @@ select is(
 );
 select is(
   (select count(*)::int from pg_catalog.pg_trigger
-   where tgname = 'set_updated_at' and tgrelid = 'public.shopping_items'::regclass),
-  1,
-  'updated_at trigger on shopping_items'
+   where tgname = 'set_updated_at'
+     and tgrelid in ('public.shopping_items'::regclass, 'public.attachments'::regclass)),
+  2,
+  'updated_at triggers on shopping_items and attachments'
 );
+select has_column('public', 'attachments', 'updated_at', 'attachments has updated_at');
 select is(
   (select count(*)::int from pg_catalog.pg_constraint
    where conrelid = 'public.attachments'::regclass and contype = 'f'
@@ -114,8 +116,10 @@ select ok(
   and has_column_privilege('authenticated', 'public.attachments', 'file_name', 'UPDATE')
   and not has_column_privilege('authenticated', 'public.attachments', 'file_path', 'UPDATE')
   and not has_column_privilege('authenticated', 'public.attachments', 'home_id', 'UPDATE')
+  and has_column_privilege('authenticated', 'public.attachments', 'id', 'INSERT')
+  and not has_column_privilege('authenticated', 'public.attachments', 'id', 'UPDATE')
   and not has_column_privilege('authenticated', 'public.attachments', 'uploaded_by', 'INSERT'),
-  'attachments: file_path/home_id/uploaded_by are not client-writable after insert'
+  'attachments: id insertable (client-generated); file_path/home_id/id/uploaded_by not updatable; uploaded_by not insertable'
 );
 select ok(
   not has_column_privilege('authenticated', 'public.shopping_items', 'purchased_by', 'INSERT')
@@ -169,6 +173,14 @@ select is(public.storage_home_id(current_setting('t.home_a') || '/./x.pdf'), nul
   'storage_home_id: dot segment -> null');
 select is(public.storage_home_id(current_setting('t.home_a') || '//x.pdf'), null,
   'storage_home_id: empty segment -> null');
+select is(public.storage_home_id(current_setting('t.home_a') || '/ /x.pdf'), null,
+  'storage_home_id: whitespace-only segment -> null');
+select is(public.storage_home_id(current_setting('t.home_a') || '/meu arquivo.pdf'), null,
+  'storage_home_id: segment with whitespace -> null');
+select is(public.storage_home_id(current_setting('t.home_a') || E'/x\ty.pdf'), null,
+  'storage_home_id: segment with tab -> null');
+select is(public.storage_home_id(current_setting('t.home_a') || E'/x\x01y.pdf'), null,
+  'storage_home_id: segment with control char -> null');
 select is(public.storage_home_id(current_setting('t.home_a') || E'/x\\..\\y.pdf'), null,
   'storage_home_id: backslash -> null');
 select is(public.storage_home_id('/' || current_setting('t.home_a') || '/x.pdf'), null,
@@ -305,24 +317,24 @@ reset role;
 select tests.authenticate_as(current_setting('t.a')::uuid);
 
 select lives_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'nota.jpg', 'image/jpeg', 2048) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f2', %L, %L, 'photo', %L, 'nota.jpg', 'image/jpeg', 2048) $$,
          current_setting('t.home_a'), current_setting('t.app_a'),
-         current_setting('t.home_a') || '/' || gen_random_uuid() || '/nota.jpg'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f2/nota.jpg'),
   'attachment on an appliance'
 );
 select lives_ok(
-  format($$ insert into public.attachments (home_id, maintenance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'document', %L, 'nf.pdf', 'application/pdf', 4096) $$,
+  format($$ insert into public.attachments (id, home_id, maintenance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f3', %L, %L, 'document', %L, 'nf.pdf', 'application/pdf', 4096) $$,
          current_setting('t.home_a'), current_setting('t.maint_a'),
-         current_setting('t.home_a') || '/' || gen_random_uuid() || '/nf.pdf'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f3/nf.pdf'),
   'attachment on a maintenance record'
 );
 select lives_ok(
-  format($$ insert into public.attachments (home_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'mofo.webp', 'image/webp', 4096) $$,
+  format($$ insert into public.attachments (id, home_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f4', %L, %L, 'photo', %L, 'mofo.webp', 'image/webp', 4096) $$,
          current_setting('t.home_a'), current_setting('t.issue_a'),
-         current_setting('t.home_a') || '/' || gen_random_uuid() || '/mofo.webp'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f4/mofo.webp'),
   'attachment on an issue'
 );
 select results_eq(
@@ -333,42 +345,42 @@ select results_eq(
 
 -- exatamente um pai
 select throws_ok(
-  format($$ insert into public.attachments (home_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_a'), current_setting('t.home_a') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   '23514', null, 'attachment requires exactly one parent (none)'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
          current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.issue_a'),
-         current_setting('t.home_a') || '/x/x.jpg'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   '23514', null, 'attachment requires exactly one parent (two)'
 );
 
 -- mesma casa
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_a'), current_setting('t.app_b'), current_setting('t.home_a') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_b'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   'P0001', 'cross_home_reference', 'attachment parent must be same home (foreign home appliance)'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_a'), current_setting('t.app_a2'), current_setting('t.home_a') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a2'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   'P0001', 'cross_home_reference', 'attachment parent must be same home (own other home appliance)'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_a'), current_setting('t.issue_b'), current_setting('t.home_a') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.issue_b'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   'P0001', 'cross_home_reference', 'attachment issue parent must be same home'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_b'), current_setting('t.app_b'), current_setting('t.home_b') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_b'), current_setting('t.app_b'), current_setting('t.home_b') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   'P0001', 'cross_home_reference', 'cannot attach into a foreign home (denied by the same-home trigger before RLS)'
 );
 select throws_ok(
@@ -389,48 +401,78 @@ select throws_ok(
 
 -- path
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
-         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_b') || '/x/x.jpg'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_b') || '/00000000-0000-4000-8000-0000000000f1/x.jpg'),
   'P0001', 'invalid_file_path', 'attachment path must start with home_id (foreign prefix)'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', 'x/x.jpg', 'x.jpg', 'image/jpeg', 10) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', 'x/x.jpg', 'x.jpg', 'image/jpeg', 10) $$,
          current_setting('t.home_a'), current_setting('t.app_a')),
   'P0001', 'invalid_file_path', 'attachment path must start with home_id (no prefix)'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
          current_setting('t.home_a'), current_setting('t.app_a'),
          current_setting('t.home_a') || '/../' || current_setting('t.home_b') || '/x.jpg'),
   'P0001', 'invalid_file_path', 'attachment path with traversal rejected'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
          current_setting('t.home_a'), current_setting('t.app_a'), upper(current_setting('t.home_a')) || '/x.jpg'),
   'P0001', 'invalid_file_path', 'attachment path with uppercase uuid rejected'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
          current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_a') || '/'),
   'P0001', 'invalid_file_path', 'attachment path must have a file after the prefix'
 );
 
+-- {home_id}/{attachment_id}/{nome}: 2o segmento = id da linha, 3 segmentos
+select throws_ok(
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000ee/x.jpg'),
+  'P0001', 'invalid_file_path', 'attachment path 2nd segment must equal the attachment id'
+);
+select throws_ok(
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'),
+         current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/sub/x.jpg'),
+  'P0001', 'invalid_file_path', 'attachment path must have exactly 3 segments (4)'
+);
+select throws_ok(
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'),
+         current_setting('t.home_a') || '/x.jpg'),
+  'P0001', 'invalid_file_path', 'attachment path must have exactly 3 segments (2)'
+);
+select throws_ok(
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values (%L, %L, %L, 'photo', %L, 'x.jpg', 'image/jpeg', 10) $$,
+         current_setting('t.att_b'), current_setting('t.home_a'), current_setting('t.app_a'),
+         current_setting('t.home_a') || '/' || current_setting('t.att_b') || '/x.jpg'),
+  '23505', null, 'client-chosen id colliding with another home attachment hits the PK'
+);
+
 -- mime / tamanho
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'document', %L, 'x.exe', 'application/x-msdownload', 10) $$,
-         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_a') || '/x/x.exe'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'document', %L, 'x.exe', 'application/x-msdownload', 10) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/x.exe'),
   '23514', null, 'bad mime rejected'
 );
 select throws_ok(
-  format($$ insert into public.attachments (home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
-            values (%L, %L, 'document', %L, 'big.pdf', 'application/pdf', 10485761) $$,
-         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_a') || '/x/big.pdf'),
+  format($$ insert into public.attachments (id, home_id, appliance_id, kind, file_path, file_name, mime_type, size_bytes)
+            values ('00000000-0000-4000-8000-0000000000f1', %L, %L, 'document', %L, 'big.pdf', 'application/pdf', 10485761) $$,
+         current_setting('t.home_a'), current_setting('t.app_a'), current_setting('t.home_a') || '/00000000-0000-4000-8000-0000000000f1/big.pdf'),
   '23514', null, 'size over 10 MiB rejected'
 );
 
@@ -525,6 +567,11 @@ select throws_ok(
          current_setting('t.home_b') || '/roubado.jpg',
          current_setting('t.home_a') || '/att1/foto.jpg'),
   '42501', null, 'storage: cannot move an object to a foreign home prefix'
+);
+select throws_ok(
+  format($$ update storage.objects set name = %L where name = %L $$,
+         'lixo/malformado.jpg', current_setting('t.home_a') || '/att1/foto.jpg'),
+  '42501', null, 'storage: renaming an own object to a malformed name fails WITH CHECK'
 );
 select is(
   tests.affected_rows(format($$ update storage.objects set name = %L where name = %L $$,

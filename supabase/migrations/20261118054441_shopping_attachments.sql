@@ -43,7 +43,7 @@ create table public.attachments (
   maintenance_id uuid references public.maintenance_records (id) on delete cascade,
   issue_id uuid references public.home_issues (id) on delete cascade,
   kind public.attachment_kind not null,
-  -- {home_id}/{attachment_id}/{nome-sanitizado}; o prefixo é validado por trigger.
+  -- {home_id}/{attachment_id}/{nome-sanitizado}; formato validado por trigger.
   file_path text not null check (char_length(file_path) <= 512),
   file_name text not null check (char_length(btrim(file_name)) between 1 and 255),
   mime_type text not null
@@ -51,6 +51,7 @@ create table public.attachments (
   size_bytes bigint not null check (size_bytes > 0 and size_bytes <= 10485760),
   uploaded_by uuid default auth.uid() references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   check (num_nonnulls(appliance_id, maintenance_id, issue_id) = 1)
 );
 
@@ -71,7 +72,8 @@ create unique index attachments_file_path_key on public.attachments (file_path);
 -- -----------------------------------------------------------------------------
 -- Casa dona de um objeto, a partir do primeiro segmento do caminho. Devolve null
 -- (nunca erro) para qualquer caminho fora do formato canônico:
---   <uuid minúsculo com hífens>/<segmentos não vazios, sem "." nem "..", sem "\">
+--   <uuid minúsculo com hífens>/<segmentos não vazios, sem "." nem "..", sem barra
+--    invertida, sem whitespace nem caracteres de controle>
 -- Rejeita maiúsculas, espaços, chaves, uuid sem hífens, barra inicial, segmentos
 -- vazios e traversal, para que a policy e o check de attachments.file_path
 -- concordem e não haja duas grafias da mesma casa. A policy faz
@@ -84,7 +86,7 @@ security definer
 set search_path = ''
 as $$
   select case
-    when p_name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/\\]+(/[^/\\]+)*$'
+    when p_name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/\\[:space:][:cntrl:]]+(/[^/\\[:space:][:cntrl:]]+)*$'
       and p_name !~ '(^|/)\.\.?(/|$)'
     then substr(p_name, 1, 36)::uuid
   end;
@@ -97,6 +99,8 @@ grant execute on function public.storage_home_id(text) to authenticated, service
 -- Triggers
 -- -----------------------------------------------------------------------------
 create trigger set_updated_at before update on public.shopping_items
+  for each row execute function public.set_updated_at();
+create trigger set_updated_at before update on public.attachments
   for each row execute function public.set_updated_at();
 
 create function public.shopping_items_check_same_home()
@@ -147,19 +151,22 @@ begin
   perform public.ensure_same_home(new.home_id, 'public.maintenance_records', new.maintenance_id);
   perform public.ensure_same_home(new.home_id, 'public.home_issues', new.issue_id);
 
-  -- storage_home_id exige o formato canônico (sem traversal, maiúsculas etc.) e
-  -- ao menos um segmento depois do prefixo.
-  if public.storage_home_id(new.file_path) is distinct from new.home_id then
+  -- Formato exato {home_id}/{attachment_id}/{nome}: storage_home_id exige o
+  -- prefixo canônico (sem traversal, maiúsculas, whitespace etc.); aqui o
+  -- segundo segmento tem que ser o id da linha e há exatamente 3 segmentos.
+  if public.storage_home_id(new.file_path) is distinct from new.home_id
+     or new.file_path !~ '^[^/]+/[^/]+/[^/]+$'
+     or split_part(new.file_path, '/', 2) <> new.id::text then
     raise exception using
       errcode = 'P0001',
       message = 'invalid_file_path',
-      detail = format('file_path must start with %s/', new.home_id);
+      detail = format('file_path must be %s/%s/<name>', new.home_id, new.id);
   end if;
   return new;
 end;
 $$;
 create trigger check_same_home
-  before insert or update of home_id, appliance_id, maintenance_id, issue_id, file_path on public.attachments
+  before insert or update of id, home_id, appliance_id, maintenance_id, issue_id, file_path on public.attachments
   for each row execute function public.attachments_check_same_home();
 
 revoke execute on function public.shopping_items_check_same_home() from public, anon, authenticated;
@@ -181,7 +188,8 @@ grant update (name, category, quantity, unit, is_purchased, issue_id)
 
 -- uploaded_by e file_path (fixo depois do insert) ficam fora do update. Trocar de
 -- pai dentro da mesma casa é permitido; o trigger barra casas diferentes.
-grant insert (home_id, appliance_id, maintenance_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
+-- id é inserível: o cliente gera o uuid antes do upload e o usa no caminho.
+grant insert (id, home_id, appliance_id, maintenance_id, issue_id, kind, file_path, file_name, mime_type, size_bytes)
   on public.attachments to authenticated;
 grant update (appliance_id, maintenance_id, issue_id, file_name)
   on public.attachments to authenticated;

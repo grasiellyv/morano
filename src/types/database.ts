@@ -51,14 +51,14 @@ isOneToOne: false
                   ]
                 },"attachments": {
                   Row: {
-                    "appliance_id": string | null,"created_at": string,"file_name": string,"file_path": string,"home_id": string,"id": string,"issue_id": string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id": string | null,"mime_type": string,"size_bytes": number,"uploaded_by": string | null
+                    "appliance_id": string | null,"created_at": string,"file_name": string,"file_path": string,"home_id": string,"id": string,"issue_id": string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id": string | null,"mime_type": string,"size_bytes": number,"updated_at": string,"uploaded_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "appliance_id"?: string | null,"created_at"?: string,"file_name": string,"file_path": string,"home_id": string,"id"?: string,"issue_id"?: string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type": string,"size_bytes": number,"uploaded_by"?: string | null
+                    "appliance_id"?: string | null,"created_at"?: string,"file_name": string,"file_path": string,"home_id": string,"id"?: string,"issue_id"?: string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type": string,"size_bytes": number,"updated_at"?: string,"uploaded_by"?: string | null
                   }
                   Update: {
-                    "appliance_id"?: string | null,"created_at"?: string,"file_name"?: string,"file_path"?: string,"home_id"?: string,"id"?: string,"issue_id"?: string | null,"kind"?: Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type"?: string,"size_bytes"?: number,"uploaded_by"?: string | null
+                    "appliance_id"?: string | null,"created_at"?: string,"file_name"?: string,"file_path"?: string,"home_id"?: string,"id"?: string,"issue_id"?: string | null,"kind"?: Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type"?: string,"size_bytes"?: number,"updated_at"?: string,"uploaded_by"?: string | null
                   }
                   Relationships: [
                     {
