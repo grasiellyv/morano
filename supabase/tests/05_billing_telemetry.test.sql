@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(79);
+select plan(89);
 
 -- -----------------------------------------------------------------------------
 -- Setup (postgres). Todos nascem PRO (beta).
@@ -17,6 +17,7 @@ begin
   perform set_config('t.m', tests.create_user('m@morano.test')::text, true);
   perform set_config('t.f', tests.create_user('f@morano.test')::text, true);
   perform set_config('t.p', tests.create_user('p@morano.test')::text, true);
+  perform set_config('t.q', tests.create_user('q@morano.test')::text, true);
 
   perform set_config('t.home_a', gen_random_uuid()::text, true);
   perform set_config('t.home_a2', gen_random_uuid()::text, true);
@@ -29,7 +30,12 @@ begin
     (current_setting('t.home_b')::uuid, 'Casa B', current_setting('t.b')::uuid),
     (current_setting('t.home_p')::uuid, 'Casa P', current_setting('t.p')::uuid);
   insert into public.home_members (home_id, user_id, role)
-  values (current_setting('t.home_a')::uuid, current_setting('t.m')::uuid, 'member');
+  values (current_setting('t.home_a')::uuid, current_setting('t.m')::uuid, 'member'),
+         (current_setting('t.home_b')::uuid, current_setting('t.q')::uuid, 'member');
+
+  -- objeto já existente no bucket da casa A (para o teste de downgrade)
+  insert into storage.objects (bucket_id, name, owner_id)
+  values ('home-files', current_setting('t.home_a') || '/obj/velho.pdf', current_setting('t.a'));
 
   -- PRO ainda: 40 tarefas ativas na casa A, 5 equipamentos na A2,
   -- 8 equipamentos e 42 tarefas ativas na P.
@@ -275,11 +281,69 @@ reset role;
 select tests.authenticate_as(current_setting('t.b')::uuid);
 select throws_ok(
   format($$ insert into public.tasks (home_id, title) values (%L, 'Invasão') $$, current_setting('t.home_a')),
-  '42501', null, 'non-member probing a full free home gets the RLS error, not plan_limit_tasks'
+  '42501', 'forbidden', 'non-member probing a full free home gets 42501 forbidden, not plan_limit_tasks'
 );
 select throws_ok(
   format($$ insert into public.appliances (home_id, name) values (%L, 'Invasão') $$, current_setting('t.home_a2')),
-  '42501', null, 'non-member probing appliances gets the RLS error'
+  '42501', 'forbidden', 'non-member probing appliances gets 42501 forbidden'
+);
+
+-- -----------------------------------------------------------------------------
+-- Limites seguem o CRIADOR: membro free em casa de criador PRO passa dos limites
+-- -----------------------------------------------------------------------------
+reset role;
+update public.subscriptions set plan = 'free', provider = 'none' where user_id = current_setting('t.q')::uuid;
+select tests.authenticate_as(current_setting('t.q')::uuid);
+select lives_ok(
+  format($$ insert into public.appliances (home_id, name) select %L, 'Q ' || g from generate_series(1, 6) g $$, current_setting('t.home_b')),
+  'free member in a pro creator home: 6 appliances allowed (limits follow the creator)'
+);
+select lives_ok(
+  format($$ insert into public.tasks (home_id, title) select %L, 'Q ' || g from generate_series(1, 41) g $$, current_setting('t.home_b')),
+  'free member in a pro creator home: 41 active tasks allowed'
+);
+
+-- -----------------------------------------------------------------------------
+-- Storage: upload exige criador PRO; leitura/remoção seguem livres
+-- -----------------------------------------------------------------------------
+select ok(public.home_allows_attachments(current_setting('t.home_b')::uuid),
+  'home_allows_attachments: member of a pro-creator home -> true');
+select ok(not public.home_allows_attachments(current_setting('t.home_a')::uuid),
+  'home_allows_attachments: non-member -> false');
+select lives_ok(
+  format($$ insert into storage.objects (bucket_id, name, owner_id) values ('home-files', %L, %L) $$,
+         current_setting('t.home_b') || '/obj/novo.pdf', current_setting('t.q')),
+  'storage: free member of a PRO-creator home can upload'
+);
+reset role;
+select tests.authenticate_as(current_setting('t.b')::uuid);
+select lives_ok(
+  format($$ insert into storage.objects (bucket_id, name, owner_id) values ('home-files', %L, %L) $$,
+         current_setting('t.home_b') || '/obj/pro.pdf', current_setting('t.b')),
+  'storage: PRO upload allowed'
+);
+reset role;
+select tests.authenticate_as(current_setting('t.a')::uuid);
+select throws_ok(
+  format($$ insert into storage.objects (bucket_id, name, owner_id) values ('home-files', %L, %L) $$,
+         current_setting('t.home_a') || '/obj/novo.pdf', current_setting('t.a')),
+  '42501', null, 'storage: free (creator downgraded) upload rejected'
+);
+reset role;
+select tests.authenticate_as(current_setting('t.m')::uuid);
+select throws_ok(
+  format($$ insert into storage.objects (bucket_id, name, owner_id) values ('home-files', %L, %L) $$,
+         current_setting('t.home_a') || '/obj/membro.pdf', current_setting('t.m')),
+  '42501', null, 'storage: pro member cannot upload to a free creator home'
+);
+reset role;
+select tests.authenticate_as(current_setting('t.a')::uuid);
+select is((select count(*)::int from storage.objects where bucket_id = 'home-files' and name = current_setting('t.home_a') || '/obj/velho.pdf'), 1,
+  'storage: free user still selects an existing object after downgrade');
+select set_config('storage.allow_delete_query', 'true', true);
+select is(
+  tests.affected_rows(format($$ delete from storage.objects where bucket_id = 'home-files' and name = %L $$, current_setting('t.home_a') || '/obj/velho.pdf')),
+  1, 'storage: free user can still delete an existing object after downgrade'
 );
 
 -- -----------------------------------------------------------------------------

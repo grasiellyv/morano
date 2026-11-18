@@ -85,8 +85,9 @@ grant execute on function public.plan_limits(public.subscription_plan) to authen
 -- criador sem passar pela RLS)
 -- -----------------------------------------------------------------------------
 -- Em before-insert o WITH CHECK da RLS ainda não rodou. Para um não-membro não
--- virar sonda de "esta casa está cheia / é free", os triggers de conteúdo saem
--- sem erro quando há usuário logado que não é membro; a RLS então rejeita.
+-- virar sonda de "esta casa está cheia / é free", os triggers de conteúdo
+-- levantam 42501 'forbidden' (o mesmo código que o cliente veria da RLS) quando
+-- há usuário logado que não é membro, antes de olhar contagem ou plano.
 -- (auth.uid() nulo = service role/postgres: a regra vale sem checagem de membro.)
 
 create function public.plan_limit_homes()
@@ -136,7 +137,7 @@ begin
   end if;
 
   if (select auth.uid()) is not null and not public.is_home_member(new.home_id) then
-    return new;
+    raise exception using errcode = '42501', message = 'forbidden';
   end if;
 
   select l.max_active_tasks into v_max
@@ -173,7 +174,7 @@ begin
   end if;
 
   if (select auth.uid()) is not null and not public.is_home_member(new.home_id) then
-    return new;
+    raise exception using errcode = '42501', message = 'forbidden';
   end if;
 
   select l.max_appliances into v_max
@@ -201,7 +202,7 @@ declare
   v_allowed boolean;
 begin
   if (select auth.uid()) is not null and not public.is_home_member(new.home_id) then
-    return new;
+    raise exception using errcode = '42501', message = 'forbidden';
   end if;
 
   select l.attachments_allowed into v_allowed
@@ -280,8 +281,9 @@ grant insert (user_id, endpoint, p256dh, auth, user_agent) on public.push_subscr
 grant update (p256dh, auth, user_agent, last_used_at) on public.push_subscriptions to authenticated;
 
 -- product_events: insert-only. SELECT é concedido, mas sem política a RLS devolve
--- 0 linhas (permite `insert ... returning` não vazar e dá o comportamento
--- "select retorna vazio" em vez de erro). Sem update/delete.
+-- 0 linhas ("select retorna vazio" em vez de erro). `insert ... returning`
+-- falha com 42501, pois as políticas de SELECT também valem para o RETURNING:
+-- o cliente deve inserir sem `.select()`. Sem update/delete.
 grant select on public.product_events to authenticated;
 grant insert (user_id, home_id, event_name) on public.product_events to authenticated;
 
@@ -322,3 +324,38 @@ create policy pro_interest_insert_own on public.pro_interest
   for insert to authenticated with check (user_id = (select auth.uid()));
 
 -- account_deletion_log: RLS ligada e nenhuma política.
+
+-- -----------------------------------------------------------------------------
+-- Storage: upload só em casa cujo criador é PRO
+-- -----------------------------------------------------------------------------
+-- Sem isto, um free subiria arquivos direto no bucket (só a linha em
+-- attachments era barrada). security definer porque lê o plano do criador;
+-- responde false para quem não é membro, então só informa sobre a própria casa.
+-- Select/update/delete do bucket seguem livres: ao cair para free os arquivos
+-- continuam visíveis e baixáveis (decisão A).
+create function public.home_allows_attachments(p_home_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    public.is_home_member(p_home_id)
+    and (select l.attachments_allowed
+         from public.plan_limits(public.home_owner_plan(p_home_id)) l),
+    false
+  );
+$$;
+
+revoke execute on function public.home_allows_attachments(uuid) from public, anon;
+grant execute on function public.home_allows_attachments(uuid) to authenticated, service_role;
+
+drop policy if exists home_files_insert on storage.objects;
+create policy home_files_insert on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'home-files'
+    and public.is_home_member(public.storage_home_id(name))
+    and public.home_allows_attachments(public.storage_home_id(name))
+  );

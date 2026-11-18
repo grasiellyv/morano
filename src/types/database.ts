@@ -1080,6 +1080,7 @@ export type Database = {
         Args: { p_home_id: string; p_roles: Database["public"]["Enums"]["home_role"][] };
         Returns: boolean;
       };
+      home_allows_attachments: { Args: { p_home_id: string }; Returns: boolean };
       home_owner_plan: {
         Args: { p_home_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
