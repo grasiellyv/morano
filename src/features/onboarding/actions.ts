@@ -113,7 +113,14 @@ export async function saveComodos(
     position,
   }));
 
-  await supabase.from("rooms").insert(roomsToInsert);
+  const { error: roomsError } = await supabase.from("rooms").insert(roomsToInsert);
+
+  if (roomsError) {
+    return {
+      status: "error",
+      message: "Erro ao salvar os cômodos. Tente novamente.",
+    };
+  }
 
   await supabase
     .from("profiles")
@@ -226,6 +233,7 @@ export async function approveRoutine(
 
   const includedTasks = parsed.data.filter((t) => t.include);
   const today = format(new TZDate(new Date(), homeTimezone), "yyyy-MM-dd");
+  let insertedCount = 0;
 
   for (const task of includedTasks) {
     const { data: insertedTask, error: taskError } = await supabase
@@ -244,7 +252,7 @@ export async function approveRoutine(
 
     if (taskError ?? !insertedTask) continue;
 
-    await supabase.from("routines").insert({
+    const { error: routineError } = await supabase.from("routines").insert({
       task_id: insertedTask.id,
       home_id: homeId,
       frequency_type: task.frequency_type,
@@ -252,6 +260,18 @@ export async function approveRoutine(
       generated_until: today,
       is_active: true,
     });
+
+    if (routineError) continue;
+
+    insertedCount++;
+  }
+
+  if (insertedCount === 0) {
+    return {
+      status: "error",
+      message:
+        "Não foi possível salvar nenhuma tarefa. Verifique sua conexão e tente novamente.",
+    };
   }
 
   await supabase
