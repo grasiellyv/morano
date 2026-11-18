@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { comodoSchema, residenciaSchema, rotinaSchema } from "./schemas";
+import {
+  comodoSchema,
+  residenciaSchema,
+  revisaoTaskSchema,
+  rotinaSchema,
+} from "./schemas";
 
 describe("residenciaSchema", () => {
   it("rejects empty name", () => {
@@ -58,6 +63,32 @@ describe("rotinaSchema", () => {
       rotinaSchema.safeParse({
         routine_level: "equilibrada",
         available_minutes_per_week: 120,
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe("revisaoTaskSchema", () => {
+  it("rejects invalid include type and invalid frequency_type", () => {
+    expect(
+      revisaoTaskSchema.safeParse({
+        id: "x",
+        include: "yes",
+        title: "T",
+        estimated_minutes: 10,
+        frequency_type: "invalido",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts valid revisao task", () => {
+    expect(
+      revisaoTaskSchema.safeParse({
+        id: "cozinha_lavar_louca",
+        include: true,
+        title: "Lavar louça",
+        estimated_minutes: 15,
+        frequency_type: "daily",
       }).success,
     ).toBe(true);
   });

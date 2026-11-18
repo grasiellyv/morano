@@ -33,7 +33,6 @@ const LEVEL_ORDER: Record<RoutineLevel, number> = {
 };
 
 export const CATALOG: CatalogTask[] = [
-  // cozinha
   {
     id: "cozinha_lavar_louca",
     room_type: "cozinha",
@@ -88,8 +87,6 @@ export const CATALOG: CatalogTask[] = [
     min_level: "detalhada",
     priority: "baixa",
   },
-
-  // sala
   {
     id: "sala_varrer_chao",
     room_type: "sala",
@@ -135,8 +132,6 @@ export const CATALOG: CatalogTask[] = [
     min_level: "detalhada",
     priority: "baixa",
   },
-
-  // quarto
   {
     id: "quarto_arrumar_cama",
     room_type: "quarto",
@@ -182,8 +177,6 @@ export const CATALOG: CatalogTask[] = [
     min_level: "detalhada",
     priority: "media",
   },
-
-  // banheiro
   {
     id: "banheiro_limpar_pia",
     room_type: "banheiro",
@@ -229,8 +222,6 @@ export const CATALOG: CatalogTask[] = [
     min_level: "detalhada",
     priority: "media",
   },
-
-  // lavanderia
   {
     id: "lavanderia_lavar_roupas",
     room_type: "lavanderia",
@@ -265,7 +256,7 @@ export function filterCatalog(
   level: RoutineLevel,
   availableMinutes: number,
 ): CatalogTask[] {
-  if (availableMinutes === 0) return [];
+  if (availableMinutes <= 0) return [];
 
   const eligible = CATALOG.filter(
     (t) =>
