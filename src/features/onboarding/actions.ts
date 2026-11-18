@@ -104,7 +104,17 @@ export async function saveComodos(
   }
 
   // Exclui cômodos anteriores (re-submit idempotente)
-  await supabase.from("rooms").delete().eq("home_id", homeId);
+  const { error: deleteError } = await supabase
+    .from("rooms")
+    .delete()
+    .eq("home_id", homeId);
+
+  if (deleteError) {
+    return {
+      status: "error",
+      message: "Erro ao limpar os cômodos anteriores. Tente novamente.",
+    };
+  }
 
   const roomsToInsert = parsed.data.rooms.map((room, position) => ({
     home_id: homeId,
@@ -215,6 +225,14 @@ export async function approveRoutine(
     .single();
 
   const homeTimezone = home?.timezone ?? "America/Sao_Paulo";
+
+  // Limpa tasks de onboarding anteriores para garantir idempotência em retentativas
+  await supabase
+    .from("tasks")
+    .delete()
+    .eq("home_id", homeId)
+    .eq("source", "onboarding")
+    .eq("status", "active");
 
   let tasksRaw: unknown;
   try {
