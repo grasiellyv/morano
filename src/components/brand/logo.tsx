@@ -14,7 +14,7 @@ export function Logo({
       role="img"
       aria-label="MORANO"
       className={cn(
-        "font-heading text-graphite leading-none font-semibold tracking-[-0.035em]",
+        "font-heading text-foreground leading-none font-semibold tracking-[-0.035em]",
         className,
       )}
       style={{ fontSize: SIZES[size] }}

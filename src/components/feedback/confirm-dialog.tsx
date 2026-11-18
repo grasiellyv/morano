@@ -41,7 +41,8 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       setOpen(false);
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error("Não foi possível concluir. Tente novamente.");
     } finally {
       setPending(false);

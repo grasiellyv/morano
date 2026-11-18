@@ -94,3 +94,14 @@ test("/estilo shows DEMONSTRAÇÃO badge in dev", async ({ page }) => {
   await page.goto("/estilo");
   await expect(page.getByText("DEMONSTRAÇÃO")).toBeVisible();
 });
+
+test("skip link is the first focusable element and jumps to main content", async ({ page }) => {
+  await page.goto("/inicio");
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Pular para o conteúdo" });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#conteudo$/);
+  await expect(page.locator("main#conteudo")).toBeFocused();
+});

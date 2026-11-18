@@ -94,6 +94,7 @@ describe("ConfirmDialog", () => {
 
   it("keeps the dialog open and re-enables buttons when onConfirm rejects", async () => {
     const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     setup(() => Promise.reject(new Error("falhou")));
 
     await user.click(screen.getByRole("button", { name: "Abrir" }));
@@ -105,5 +106,7 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Cancelar" })).toBeEnabled();
+    expect(consoleError).toHaveBeenCalledWith(expect.objectContaining({ message: "falhou" }));
+    consoleError.mockRestore();
   });
 });

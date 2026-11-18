@@ -15,7 +15,7 @@ export function Sidebar() {
   const settingsActive = isNavItemActive(pathname, SETTINGS_NAV.href);
   const SettingsIcon = SETTINGS_NAV.icon;
   return (
-    <aside className="bg-background border-border fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r px-4 py-6 md:flex">
+    <div className="bg-background border-border fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r py-6 pr-4 pl-[max(1rem,env(safe-area-inset-left))] md:flex">
       <Link
         href="/inicio"
         aria-label="MORANO, ir para Início"
@@ -57,6 +57,6 @@ export function Sidebar() {
           {SETTINGS_NAV.label}
         </Link>
       </nav>
-    </aside>
+    </div>
   );
 }

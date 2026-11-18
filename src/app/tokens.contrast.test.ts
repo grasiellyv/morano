@@ -60,4 +60,15 @@ describe("contraste dos tokens (WCAG AA)", () => {
       expect(contrast(fg, "--background")).toBeLessThan(4.5);
     },
   );
+
+  const nonTextPairs: [fg: string, bg: string][] = [
+    ["--ring", "--background"],
+    ["--ring", "--color-sand"],
+    ["--input", "--background"],
+    ["--input", "--card"],
+  ];
+
+  it.each(nonTextPairs)("%s sobre %s tem contraste não textual >= 3 (WCAG 1.4.11)", (fg, bg) => {
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
 });

@@ -4,7 +4,7 @@ import { Logo } from "@/components/brand/logo";
 
 export function AppHeader() {
   return (
-    <header className="flex h-14 items-center justify-between px-4 md:hidden">
+    <header className="flex h-14 items-center justify-between pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] md:hidden">
       <Logo size="sm" />
       <Link
         href="/configuracoes"

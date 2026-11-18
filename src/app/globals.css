@@ -5,7 +5,7 @@
 /* O MVP não tem modo escuro (spec §5). A variante fica presa a uma classe que nunca é aplicada. */
 @custom-variant dark (&:is(.dark *));
 
-/* Paleta bruta: única fonte dos valores hex. Gera as utilities offwhite, sand, graphite, sage, caramel, sage-ink e alert-ink. */
+/* Paleta bruta: única fonte dos valores hex. Gera as utilities offwhite, sand, graphite, sage, caramel, sage-ink, alert-ink e stone. */
 @theme {
   --color-offwhite: #f5f2ec;
   --color-sand: #e7e0d5;
@@ -15,6 +15,8 @@
   /* Versões AA para texto: Sálvia e Caramelo nunca são usados como cor de texto. */
   --color-sage-ink: #5a6155;
   --color-alert-ink: #8a5530;
+  /* Cinza quente para bordas de campos e anéis: >= 3:1 sobre off-white e branco (WCAG 1.4.11). */
+  --color-stone: #827b6f;
 }
 
 @theme inline {
@@ -64,14 +66,14 @@
   --accent-foreground: var(--color-graphite);
   --destructive: var(--color-alert-ink);
   --border: var(--color-sand);
-  --input: var(--color-sand);
-  --ring: var(--color-sage);
+  --input: var(--color-stone);
+  --ring: var(--color-sage-ink);
   --radius: 0.75rem;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
