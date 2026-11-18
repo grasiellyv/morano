@@ -8,13 +8,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
 
   const supabase = await createClient();
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
-    .select("onboarding_completed, current_home_id")
+    .select("onboarding_completed")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.onboarding_completed) {
+  // Only redirect to onboarding when we have a confirmed incomplete profile.
+  // A DB error leaves the user where they are rather than dropping them into the wizard.
+  if (!error && profile && !profile.onboarding_completed) {
     redirect("/onboarding");
   }
 
