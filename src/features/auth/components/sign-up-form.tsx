@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signUp } from "@/features/auth/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { signUpSchema } from "@/features/auth/schemas";
-import { Field, FormMessage, SubmitButton } from "./form-parts";
+import { Field, FormFeedback, SubmitButton } from "./form-parts";
 import { useValidatedSubmit } from "./use-validated-submit";
 
 const linkClass =
@@ -25,9 +25,7 @@ export function SignUpForm() {
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate className="space-y-5">
-      {state.status === "error" && state.message ? (
-        <FormMessage tone="error">{state.message}</FormMessage>
-      ) : null}
+      <FormFeedback state={state} />
       <Field
         label="Nome"
         autoComplete="name"
@@ -68,10 +66,12 @@ export function SignUpForm() {
             Li e aceito os{" "}
             <Link href="/termos" target="_blank" className={linkClass}>
               Termos de Uso
+              <span className="sr-only"> (abre em nova aba)</span>
             </Link>{" "}
             e a{" "}
             <Link href="/privacidade" target="_blank" className={linkClass}>
               Política de Privacidade
+              <span className="sr-only"> (abre em nova aba)</span>
             </Link>
             .
           </label>

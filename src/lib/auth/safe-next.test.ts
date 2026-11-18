@@ -14,6 +14,10 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/\\evil.com")).toBe("/inicio");
     expect(safeNextPath("/rotina?r=https://evil.com")).toBe("/inicio");
     expect(safeNextPath("/\tevil.com")).toBe("/inicio");
+    expect(safeNextPath("/.//evil.com")).toBe("/inicio");
+    expect(safeNextPath("/..//evil.com")).toBe("/inicio");
+    expect(safeNextPath("/%2e%2e//evil.com")).toBe("/inicio");
+    expect(safeNextPath("/rotina/../entrar")).toBe("/inicio");
   });
 
   it("recusa rotas de autenticação", () => {
@@ -25,6 +29,7 @@ describe("safeNextPath", () => {
 
   it("não confunde rotas parecidas com as de autenticação", () => {
     expect(safeNextPath("/entrarx")).toBe("/entrarx");
+    expect(safeNextPath("/casa/.config")).toBe("/casa/.config");
   });
 
   it("usa o fallback quando vazio ou inválido", () => {

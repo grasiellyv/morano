@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPassword } from "@/features/auth/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { resetPasswordSchema } from "@/features/auth/schemas";
-import { Field, FormMessage, SubmitButton } from "./form-parts";
+import { Field, FormFeedback, SubmitButton } from "./form-parts";
 import { useValidatedSubmit } from "./use-validated-submit";
 
 export function ResetPasswordForm() {
@@ -20,9 +20,7 @@ export function ResetPasswordForm() {
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate className="space-y-5">
-      {state.status === "error" && state.message ? (
-        <FormMessage tone="error">{state.message}</FormMessage>
-      ) : null}
+      <FormFeedback state={state} />
       <Field
         label="Nova senha"
         type="password"

@@ -19,6 +19,25 @@ export function safeNextPath(raw: string | null | undefined, fallback = "/inicio
   if (raw.includes("://")) return fallback;
   // Navegadores descartam tab/CR/LF em URLs: "/\t/evil.com" viraria "//evil.com".
   if (/[\u0000-\u001f\u007f\\]/.test(raw)) return fallback;
-  if (isAuthRoute(raw)) return fallback;
+  if (hasDotSegment(raw)) return fallback;
+  // Confirma com o parser do navegador: mesma origem e sem caminho "//host".
+  const base = "http://morano.invalid";
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, base);
+  } catch {
+    return fallback;
+  }
+  if (parsed.origin !== base || parsed.pathname.startsWith("//")) return fallback;
+  if (isAuthRoute(raw) || isAuthRoute(parsed.pathname)) return fallback;
   return raw;
+}
+
+/** "/." e "/.." (inclusive como %2e) são normalizados pelo navegador: "/..//x" vira "//x". */
+function hasDotSegment(path: string): boolean {
+  const pathname = path.split(/[?#]/, 1)[0] ?? "";
+  return pathname.split("/").some((segment) => {
+    const decoded = segment.toLowerCase().replaceAll("%2e", ".");
+    return decoded === "." || decoded === "..";
+  });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authErrorMessage, SIGN_UP_NEUTRAL_MESSAGE } from "./errors";
+import { authErrorMessage, SIGN_UP_NEUTRAL_MESSAGE, unconfirmedSignInMessage } from "./errors";
 
 describe("authErrorMessage", () => {
   it.each([
@@ -21,5 +21,26 @@ describe("authErrorMessage", () => {
 
   it("não usa propriedades herdadas como código", () => {
     expect(authErrorMessage("toString")).toBe("Não foi possível concluir. Tente novamente.");
+  });
+});
+
+describe("unconfirmedSignInMessage", () => {
+  it("promete o reenvio só quando ele deu certo", () => {
+    expect(unconfirmedSignInMessage(null)).toBe(
+      "Confirme seu e-mail antes de entrar. Reenviamos o link.",
+    );
+  });
+
+  it("pede para aguardar quando o reenvio bateu no limite", () => {
+    expect(unconfirmedSignInMessage({ code: "over_email_send_rate_limit" })).toBe(
+      "Confirme seu e-mail antes de entrar. Aguarde alguns minutos para pedir um novo link.",
+    );
+  });
+
+  it("não promete nada em outros erros", () => {
+    expect(unconfirmedSignInMessage({ code: "unexpected_failure" })).toBe(
+      "Confirme seu e-mail antes de entrar.",
+    );
+    expect(unconfirmedSignInMessage({})).toBe("Confirme seu e-mail antes de entrar.");
   });
 });

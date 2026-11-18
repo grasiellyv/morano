@@ -10,11 +10,11 @@ export default function Page() {
     <>
       <AuthHeading title="Confirme seu e-mail">{SIGN_UP_NEUTRAL_MESSAGE}</AuthHeading>
       <p className="text-muted-foreground text-sm">
-        Não chegou? Confira a caixa de spam ou{" "}
+        Não chegou? Confira a caixa de spam e aguarde alguns minutos. Depois,{" "}
         <Link href="/entrar" className={authLinkClass}>
           tente entrar
         </Link>{" "}
-        para receber o link de novo.
+        com seu e-mail e senha: avisaremos se for possível enviar um novo link.
       </p>
     </>
   );

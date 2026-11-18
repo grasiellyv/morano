@@ -5,6 +5,7 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { FormState } from "@/features/auth/form-state";
 import { cn } from "@/lib/utils";
 
 type FieldProps = Omit<ComponentProps<"input">, "name"> & {
@@ -87,4 +88,23 @@ export function FormMessage({
       {children}
     </p>
   );
+}
+
+/**
+ * Retorno da Server Action: mensagem geral ou, quando o servidor recusou campos
+ * (por exemplo, sem JavaScript), um resumo anunciado com role="alert".
+ */
+export function FormFeedback({ state }: { state: FormState }) {
+  if (state.status === "idle") return null;
+  if (state.message) {
+    return (
+      <FormMessage tone={state.status === "error" ? "error" : "success"}>
+        {state.message}
+      </FormMessage>
+    );
+  }
+  if (state.status === "error" && state.fieldErrors && Object.keys(state.fieldErrors).length > 0) {
+    return <FormMessage tone="error">Revise os campos destacados abaixo.</FormMessage>;
+  }
+  return null;
 }

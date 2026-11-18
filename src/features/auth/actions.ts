@@ -7,7 +7,12 @@ import { hasRecoverySession } from "@/lib/auth/require-user";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { authErrorMessage, PASSWORD_RESET_NEUTRAL_MESSAGE, LINK_INVALID_MESSAGE } from "./errors";
+import {
+  authErrorMessage,
+  LINK_INVALID_MESSAGE,
+  PASSWORD_RESET_NEUTRAL_MESSAGE,
+  unconfirmedSignInMessage,
+} from "./errors";
 import { fieldErrorsFrom, textField, type FormState } from "./form-state";
 import { forgotPasswordSchema, resetPasswordSchema, signInSchema, signUpSchema } from "./schemas";
 
@@ -37,7 +42,9 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
         options: { emailRedirectTo: confirmUrl() },
       });
       if (resend.error) logAuthError("resend", resend.error);
-    } else if (error.code !== "invalid_credentials") {
+      return { status: "error", message: unconfirmedSignInMessage(resend.error) };
+    }
+    if (error.code !== "invalid_credentials") {
       logAuthError("signIn", error);
     }
     return { status: "error", message: authErrorMessage(error.code) };
@@ -65,9 +72,12 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       data: { full_name: parsed.data.fullName, terms_accepted: "true" },
     },
   });
-  // Conta existente segue o mesmo caminho do sucesso: a resposta não revela o e-mail.
-  if (error && error.code !== "user_already_exists") {
-    logAuthError("signUp", error);
+  // Conta existente e limite de envio de e-mail seguem o mesmo caminho do sucesso:
+  // o GoTrue limita por usuário, então uma mensagem diferente revelaria contas existentes.
+  const neutral =
+    error?.code === "user_already_exists" || error?.code === "over_email_send_rate_limit";
+  if (error) logAuthError("signUp", error);
+  if (error && !neutral) {
     return { status: "error", message: authErrorMessage(error.code) };
   }
 

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { requestPasswordReset } from "@/features/auth/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { forgotPasswordSchema } from "@/features/auth/schemas";
-import { Field, FormMessage, SubmitButton } from "./form-parts";
+import { Field, FormFeedback, SubmitButton } from "./form-parts";
 import { useValidatedSubmit } from "./use-validated-submit";
 
 export function ForgotPasswordForm() {
@@ -20,11 +20,7 @@ export function ForgotPasswordForm() {
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate className="space-y-5">
-      {state.message ? (
-        <FormMessage tone={state.status === "error" ? "error" : "success"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
+      <FormFeedback state={state} />
       <Field
         label="E-mail"
         type="email"

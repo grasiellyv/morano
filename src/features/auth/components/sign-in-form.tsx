@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "@/features/auth/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { signInSchema } from "@/features/auth/schemas";
-import { Field, FormMessage, SubmitButton } from "./form-parts";
+import { Field, FormFeedback, SubmitButton } from "./form-parts";
 import { useValidatedSubmit } from "./use-validated-submit";
 
 export function SignInForm({ next }: { next?: string }) {
@@ -21,9 +21,7 @@ export function SignInForm({ next }: { next?: string }) {
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate className="space-y-5">
-      {state.status === "error" && state.message ? (
-        <FormMessage tone="error">{state.message}</FormMessage>
-      ) : null}
+      <FormFeedback state={state} />
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <Field
         label="E-mail"

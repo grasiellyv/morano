@@ -24,3 +24,15 @@ export function authErrorMessage(code: string | undefined): string {
   if (code && Object.hasOwn(MESSAGES, code)) return MESSAGES[code]!;
   return DEFAULT_AUTH_ERROR;
 }
+
+/**
+ * Mensagem para quem tenta entrar sem ter confirmado o e-mail, conforme o resultado
+ * do reenvio do link (`null` = reenviado). Só promete o reenvio quando ele aconteceu.
+ */
+export function unconfirmedSignInMessage(resendError: { code?: string } | null): string {
+  if (!resendError) return MESSAGES.email_not_confirmed!;
+  if (resendError.code === "over_email_send_rate_limit") {
+    return "Confirme seu e-mail antes de entrar. Aguarde alguns minutos para pedir um novo link.";
+  }
+  return "Confirme seu e-mail antes de entrar.";
+}
