@@ -1,7 +1,8 @@
 -- pgTAP: fundação (profiles, homes, home_members, subscriptions, helpers).
 -- Para voltar a postgres: `select tests.clear_authentication(); reset role;`
 -- (só `reset role` deixaria as claims do último usuário em auth.uid()).
--- Usuários: A = owner da casa A · M = member da casa A · C = admin da casa A
+-- Usuários: A = owner da casa A · M = member e C = admin da casa A (inseridos
+--           como postgres; o cliente não insere home_members)
 --           B = estranho (tem a própria casa B) · E = cadastro sem metadata.
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -119,18 +120,24 @@ select is(
   1,
   'owner can update home (valid timezone accepted)'
 );
-select lives_ok(
-  format($$ insert into public.home_members (home_id, user_id, role) values (%L, %L, 'member') $$,
-         current_setting('t.home_a'), current_setting('t.m')),
-  'owner adds a member'
+select throws_ok(
+  format($$ insert into public.homes (id, name) values (gen_random_uuid(), 'Com id') $$),
+  '42501', null,
+  'homes.id is not client-insertable'
 );
-select lives_ok(
-  format($$ insert into public.home_members (home_id, user_id, role) values (%L, %L, 'admin') $$,
-         current_setting('t.home_a'), current_setting('t.c')),
-  'owner adds an admin'
+select throws_ok(
+  format($$ insert into public.home_members (home_id, user_id, role) values (%L, %L, 'member') $$,
+         current_setting('t.home_a'), current_setting('t.b')),
+  '42501', null,
+  'authenticated cannot insert home_members'
 );
 select tests.clear_authentication();
 reset role;
+
+-- Sem fluxo de convite no MVP: o 2º membro e o admin entram como postgres.
+insert into public.home_members (home_id, user_id, role) values
+  (current_setting('t.home_a')::uuid, current_setting('t.m')::uuid, 'member'),
+  (current_setting('t.home_a')::uuid, current_setting('t.c')::uuid, 'admin');
 
 -- B cria a própria casa (postgres guarda ids para os testes)
 select tests.authenticate_as(current_setting('t.b')::uuid);

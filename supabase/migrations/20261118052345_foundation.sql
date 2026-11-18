@@ -338,14 +338,19 @@ grant update (full_name, avatar_url, timezone, onboarding_step, onboarding_compl
               marketing_opt_in, current_home_id, last_seen_at)
   on public.profiles to authenticated;
 
--- homes: created_by/id/created_at imutáveis para o cliente.
-grant select, insert, delete on public.homes to authenticated;
+-- homes: id/created_at/updated_at nunca vêm do cliente; created_by só pode
+-- ser o próprio usuário (política homes_insert_self) e é imutável depois.
+grant select, delete on public.homes to authenticated;
+grant insert (name, property_type, ownership_type, household_type, resident_count,
+              available_minutes_per_week, routine_level, timezone, created_by)
+  on public.homes to authenticated;
 grant update (name, property_type, ownership_type, household_type, resident_count,
               available_minutes_per_week, routine_level, timezone)
   on public.homes to authenticated;
 
--- home_members: só o papel é editável; home_id/user_id nunca mudam.
-grant select, insert, delete on public.home_members to authenticated;
+-- home_members: sem insert (ver políticas); só o papel é editável;
+-- home_id/user_id nunca mudam.
+grant select, delete on public.home_members to authenticated;
 grant update (role) on public.home_members to authenticated;
 
 -- subscriptions: somente leitura; escrita só via service role (webhooks).
@@ -414,14 +419,11 @@ create policy home_members_select_member on public.home_members
   for select to authenticated
   using (public.is_home_member(home_id));
 
+-- Sem INSERT pelo cliente: memberships nascem só do trigger on_home_created
+-- (security definer) até existir um fluxo de convite com consentimento (v1.5).
+-- Adicionar qualquer uuid sem consentimento abriria um oráculo de
+-- current_plan e "lavagem" de plano nos limites da Task 6.
 -- owner/admin gerenciam; só owner concede (ou mexe em) papel owner.
-create policy home_members_insert_admin on public.home_members
-  for insert to authenticated
-  with check (
-    public.has_home_role(home_id, '{owner}')
-    or (public.has_home_role(home_id, '{admin}') and role <> 'owner')
-  );
-
 create policy home_members_update_admin on public.home_members
   for update to authenticated
   using (
