@@ -35,30 +35,43 @@ export default async function RevisaoPage() {
 
   const step = profile.onboarding_step ?? 0;
 
-  if (step === 0) redirect("/onboarding/residencia");
-  if (step === 1) redirect("/onboarding/comodos");
-  if (step === 2) redirect("/onboarding/rotina");
+  // Guarda estrita: apenas step === 3 renderiza esta página
+  if (step !== 3) {
+    if (step === 0) redirect("/onboarding/residencia");
+    if (step === 1) redirect("/onboarding/comodos");
+    if (step === 2) redirect("/onboarding/rotina");
+    // step >= 4 sem onboarding_completed é estado inconsistente — redireciona com segurança
+    redirect("/inicio");
+  }
 
   const homeId = profile.current_home_id;
   if (!homeId) {
     redirect("/onboarding/residencia");
   }
 
-  // Carrega configuração da rotina da residência
-  const { data: home } = await supabase
+  // Carrega configuração da rotina da residência — erro redireciona
+  const { data: home, error: homeError } = await supabase
     .from("homes")
     .select("routine_level, available_minutes_per_week")
     .eq("id", homeId)
     .single();
 
-  const routineLevel = toRoutineLevel(home?.routine_level);
-  const availableMinutes = home?.available_minutes_per_week ?? 120;
+  if (homeError ?? !home) {
+    redirect("/inicio");
+  }
 
-  // Carrega tipos de cômodos cadastrados
-  const { data: rooms } = await supabase
+  const routineLevel = toRoutineLevel(home.routine_level);
+  const availableMinutes = home.available_minutes_per_week ?? 120;
+
+  // Carrega tipos de cômodos cadastrados — erro redireciona
+  const { data: rooms, error: roomsError } = await supabase
     .from("rooms")
     .select("room_type")
     .eq("home_id", homeId);
+
+  if (roomsError) {
+    redirect("/inicio");
+  }
 
   const roomTypes: RoomType[] = (rooms ?? [])
     .map((r) => r.room_type as RoomType)

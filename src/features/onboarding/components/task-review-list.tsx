@@ -1,11 +1,15 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import type { CatalogTask } from "@/features/onboarding/catalog";
 import {
   type FormState,
   initialFormState,
 } from "@/features/auth/form-state";
+import { useValidatedSubmit } from "@/features/auth/components/use-validated-submit";
 import { FormFeedback, SubmitButton } from "@/features/auth/components/form-parts";
 
 type FrequencyType = "daily" | "weekly" | "biweekly" | "monthly";
@@ -24,6 +28,12 @@ type TaskState = {
   frequency_type: FrequencyType;
 };
 
+// Schema mínimo client-side — validação real é feita pelo servidor
+const tasksClientSchema = z.object({
+  tasks: z.string().min(1),
+});
+type TasksClientValues = z.infer<typeof tasksClientSchema>;
+
 type Props = {
   tasks: CatalogTask[];
   formAction: (_: FormState, formData: FormData) => Promise<FormState>;
@@ -34,6 +44,23 @@ const SELECT_CLASS =
 
 export function TaskReviewList({ tasks, formAction }: Props) {
   const [state, dispatch, pending] = useActionState(formAction, initialFormState);
+
+  const form = useForm<TasksClientValues>({
+    resolver: zodResolver(tasksClientSchema),
+    defaultValues: {
+      tasks: JSON.stringify(
+        tasks.map((t) => ({
+          id: t.id,
+          include: true,
+          title: t.title,
+          estimated_minutes: t.estimated_minutes,
+          frequency_type: t.frequency_type,
+        })),
+      ),
+    },
+  });
+
+  const { formRef, onSubmit } = useValidatedSubmit(form, dispatch);
 
   const [taskStates, setTaskStates] = useState<Map<string, TaskState>>(() => {
     const map = new Map<string, TaskState>();
@@ -64,22 +91,36 @@ export function TaskReviewList({ tasks, formAction }: Props) {
     return sum + (s?.estimated_minutes ?? t.estimated_minutes);
   }, 0);
 
-  // Serializa todas as tarefas (incluídas e excluídas) com estado atual
+  // Serializa todas as tarefas. Tarefas excluídas preservam o título original
+  // para não falhar na validação server-side (title: min(1)).
   const tasksJSON = JSON.stringify(
     tasks.map((t) => {
       const s = taskStates.get(t.id);
+      const isIncluded = s?.include ?? false;
+      // Para excluídas: usa título original; para incluídas: fallback ao original se vazio
+      const title = isIncluded
+        ? (s?.title?.trim() || t.title)
+        : t.title;
       return {
         id: t.id,
-        include: s?.include ?? false,
-        title: s?.title ?? t.title,
+        include: isIncluded,
+        title,
         estimated_minutes: s?.estimated_minutes ?? t.estimated_minutes,
         frequency_type: s?.frequency_type ?? t.frequency_type,
       };
     }),
   );
 
+  const noTasksSelected = includedEntries.length === 0;
+
   return (
-    <form action={dispatch} className="space-y-6">
+    <form
+      ref={formRef}
+      action={dispatch}
+      onSubmit={onSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {/* Cabeçalho com indicador de progresso */}
       <div className="space-y-1">
         <p className="text-muted-foreground text-sm font-medium">Passo 4 de 4</p>
@@ -168,8 +209,13 @@ export function TaskReviewList({ tasks, formAction }: Props) {
         })}
       </div>
 
-      {/* Campo oculto com JSON de todas as tarefas */}
-      <input type="hidden" name="tasks" value={tasksJSON} readOnly />
+      {/* Campo oculto com JSON de todas as tarefas — sincronizado com taskStates */}
+      <input
+        type="hidden"
+        {...form.register("tasks")}
+        value={tasksJSON}
+        readOnly
+      />
 
       {/* Resumo + botão de aprovação */}
       <div className="space-y-3">
@@ -177,7 +223,16 @@ export function TaskReviewList({ tasks, formAction }: Props) {
           {includedEntries.length} tarefa{includedEntries.length !== 1 ? "s" : ""}{" "}
           · ~{totalMinutes} min/semana
         </p>
-        <SubmitButton pending={pending} pendingLabel="Aprovando…">
+        {noTasksSelected && (
+          <p className="text-destructive text-sm">
+            Selecione ao menos uma tarefa para aprovar.
+          </p>
+        )}
+        <SubmitButton
+          pending={pending}
+          pendingLabel="Aprovando…"
+          disabled={pending || noTasksSelected}
+        >
           Aprovar rotina
         </SubmitButton>
       </div>
