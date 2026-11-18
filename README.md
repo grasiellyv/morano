@@ -1,6 +1,6 @@
 # MORANO
 
-Gestão da casa, sem dor de cabeça.
+Sua casa. Sob controle.
 
 ## Requisitos
 
@@ -13,11 +13,12 @@ Gestão da casa, sem dor de cabeça.
 - `npm run build` — gera o build de produção.
 - `npm run start` — serve o build de produção.
 - `npm run lint` — executa o ESLint.
-- `npm run typecheck` — verifica os tipos com `tsc --noEmit`.
+- `npm run typecheck` — gera os tipos do Next e verifica os tipos (`next typegen && tsc --noEmit`).
 - `npm run format` — formata o código com Prettier.
 - `npm run format:check` — verifica a formatação sem alterar arquivos.
 - `npm test` — executa os testes unitários uma vez (Vitest).
 - `npm run test:watch` — executa os testes em modo observação.
+- `npm run test:e2e` — executa os testes de navegador (Playwright).
 
 ## Documentação
 
