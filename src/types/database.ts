@@ -49,6 +49,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"attachments": {
+                  Row: {
+                    "appliance_id": string | null,"created_at": string,"file_name": string,"file_path": string,"home_id": string,"id": string,"issue_id": string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id": string | null,"mime_type": string,"size_bytes": number,"uploaded_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appliance_id"?: string | null,"created_at"?: string,"file_name": string,"file_path": string,"home_id": string,"id"?: string,"issue_id"?: string | null,"kind": Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type": string,"size_bytes": number,"uploaded_by"?: string | null
+                  }
+                  Update: {
+                    "appliance_id"?: string | null,"created_at"?: string,"file_name"?: string,"file_path"?: string,"home_id"?: string,"id"?: string,"issue_id"?: string | null,"kind"?: Database["public"]['Enums']["attachment_kind"],"maintenance_id"?: string | null,"mime_type"?: string,"size_bytes"?: number,"uploaded_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attachments_appliance_id_fkey"
+      columns: ["appliance_id"]
+isOneToOne: false
+      referencedRelation: "appliances"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attachments_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attachments_issue_id_fkey"
+      columns: ["issue_id"]
+isOneToOne: false
+      referencedRelation: "home_issues"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attachments_maintenance_id_fkey"
+      columns: ["maintenance_id"]
+isOneToOne: false
+      referencedRelation: "maintenance_records"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attachments_uploaded_by_fkey"
+      columns: ["uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"home_issues": {
                   Row: {
                     "appliance_id": string | null,"created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"notify_landlord": boolean,"reported_at": string,"resolved_at": string | null,"room_id": string | null,"status": Database["public"]['Enums']["issue_status"],"title": string,"updated_at": string
@@ -275,6 +319,44 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"shopping_items": {
+                  Row: {
+                    "category": Database["public"]['Enums']["shopping_category"],"created_at": string,"created_by": string | null,"home_id": string,"id": string,"is_purchased": boolean,"issue_id": string | null,"name": string,"purchased_at": string | null,"purchased_by": string | null,"quantity": number,"unit": Database["public"]['Enums']["shopping_unit"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category"?: Database["public"]['Enums']["shopping_category"],"created_at"?: string,"created_by"?: string | null,"home_id": string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name": string,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                  }
+                  Update: {
+                    "category"?: Database["public"]['Enums']["shopping_category"],"created_at"?: string,"created_by"?: string | null,"home_id"?: string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name"?: string,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shopping_items_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shopping_items_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shopping_items_issue_id_fkey"
+      columns: ["issue_id"]
+isOneToOne: false
+      referencedRelation: "home_issues"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shopping_items_purchased_by_fkey"
+      columns: ["purchased_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"subscriptions": {
                   Row: {
                     "created_at": string,"current_period_end": string | null,"current_period_start": string | null,"id": string,"plan": Database["public"]['Enums']["subscription_plan"],"provider": Database["public"]['Enums']["subscription_provider"],"provider_customer_id": string | null,"provider_subscription_id": string | null,"status": Database["public"]['Enums']["subscription_status"],"updated_at": string,"user_id": string
@@ -382,10 +464,13 @@ isOneToOne: false
                            },
 "is_home_member":
 { Args: { "p_home_id": string }; Returns: boolean
+                           },
+"storage_home_id":
+{ Args: { "p_name": string }; Returns: string
                            }
           }
           Enums: {
-            "appliance_category": "geladeira"|"maquina_lavar"|"ar_condicionado"|"micro_ondas"|"fogao"|"televisao"|"lava_loucas"|"outro","frequency_type": "once"|"daily"|"weekly"|"biweekly"|"monthly"|"custom","home_role": "owner"|"admin"|"member","household_type": "sozinho"|"casal"|"familia"|"compartilhada"|"outro","interval_unit": "day"|"week"|"month","issue_event_type": "created"|"status_changed"|"note"|"maintenance_linked","issue_status": "open"|"in_progress"|"resolved","maintenance_status": "scheduled"|"completed"|"cancelled","occurrence_status": "pending"|"completed"|"skipped"|"missed","ownership_type": "proprio"|"alugado"|"outro","property_type": "apartamento"|"casa"|"sobrado"|"studio_kitnet"|"outro","room_type": "sala"|"cozinha"|"quarto"|"banheiro"|"lavanderia"|"escritorio"|"varanda"|"garagem"|"outro","routine_level": "leve"|"equilibrada"|"detalhada","subscription_plan": "free"|"pro","subscription_provider": "none"|"beta_grant"|"stripe"|"mercadopago","subscription_status": "active"|"trialing"|"past_due"|"canceled","task_priority": "baixa"|"media"|"alta","task_source": "manual"|"onboarding","task_status": "active"|"paused"|"archived"
+            "appliance_category": "geladeira"|"maquina_lavar"|"ar_condicionado"|"micro_ondas"|"fogao"|"televisao"|"lava_loucas"|"outro","attachment_kind": "photo"|"document","frequency_type": "once"|"daily"|"weekly"|"biweekly"|"monthly"|"custom","home_role": "owner"|"admin"|"member","household_type": "sozinho"|"casal"|"familia"|"compartilhada"|"outro","interval_unit": "day"|"week"|"month","issue_event_type": "created"|"status_changed"|"note"|"maintenance_linked","issue_status": "open"|"in_progress"|"resolved","maintenance_status": "scheduled"|"completed"|"cancelled","occurrence_status": "pending"|"completed"|"skipped"|"missed","ownership_type": "proprio"|"alugado"|"outro","property_type": "apartamento"|"casa"|"sobrado"|"studio_kitnet"|"outro","room_type": "sala"|"cozinha"|"quarto"|"banheiro"|"lavanderia"|"escritorio"|"varanda"|"garagem"|"outro","routine_level": "leve"|"equilibrada"|"detalhada","shopping_category": "limpeza"|"higiene"|"cozinha"|"lavanderia"|"alimentacao"|"outros","shopping_unit": "un"|"kg"|"g"|"l"|"ml"|"pacote"|"caixa","subscription_plan": "free"|"pro","subscription_provider": "none"|"beta_grant"|"stripe"|"mercadopago","subscription_status": "active"|"trialing"|"past_due"|"canceled","task_priority": "baixa"|"media"|"alta","task_source": "manual"|"onboarding","task_status": "active"|"paused"|"archived"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -505,7 +590,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "appliance_category": ["geladeira", "maquina_lavar", "ar_condicionado", "micro_ondas", "fogao", "televisao", "lava_loucas", "outro"],"frequency_type": ["once", "daily", "weekly", "biweekly", "monthly", "custom"],"home_role": ["owner", "admin", "member"],"household_type": ["sozinho", "casal", "familia", "compartilhada", "outro"],"interval_unit": ["day", "week", "month"],"issue_event_type": ["created", "status_changed", "note", "maintenance_linked"],"issue_status": ["open", "in_progress", "resolved"],"maintenance_status": ["scheduled", "completed", "cancelled"],"occurrence_status": ["pending", "completed", "skipped", "missed"],"ownership_type": ["proprio", "alugado", "outro"],"property_type": ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],"room_type": ["sala", "cozinha", "quarto", "banheiro", "lavanderia", "escritorio", "varanda", "garagem", "outro"],"routine_level": ["leve", "equilibrada", "detalhada"],"subscription_plan": ["free", "pro"],"subscription_provider": ["none", "beta_grant", "stripe", "mercadopago"],"subscription_status": ["active", "trialing", "past_due", "canceled"],"task_priority": ["baixa", "media", "alta"],"task_source": ["manual", "onboarding"],"task_status": ["active", "paused", "archived"]
+            "appliance_category": ["geladeira", "maquina_lavar", "ar_condicionado", "micro_ondas", "fogao", "televisao", "lava_loucas", "outro"],"attachment_kind": ["photo", "document"],"frequency_type": ["once", "daily", "weekly", "biweekly", "monthly", "custom"],"home_role": ["owner", "admin", "member"],"household_type": ["sozinho", "casal", "familia", "compartilhada", "outro"],"interval_unit": ["day", "week", "month"],"issue_event_type": ["created", "status_changed", "note", "maintenance_linked"],"issue_status": ["open", "in_progress", "resolved"],"maintenance_status": ["scheduled", "completed", "cancelled"],"occurrence_status": ["pending", "completed", "skipped", "missed"],"ownership_type": ["proprio", "alugado", "outro"],"property_type": ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],"room_type": ["sala", "cozinha", "quarto", "banheiro", "lavanderia", "escritorio", "varanda", "garagem", "outro"],"routine_level": ["leve", "equilibrada", "detalhada"],"shopping_category": ["limpeza", "higiene", "cozinha", "lavanderia", "alimentacao", "outros"],"shopping_unit": ["un", "kg", "g", "l", "ml", "pacote", "caixa"],"subscription_plan": ["free", "pro"],"subscription_provider": ["none", "beta_grant", "stripe", "mercadopago"],"subscription_status": ["active", "trialing", "past_due", "canceled"],"task_priority": ["baixa", "media", "alta"],"task_source": ["manual", "onboarding"],"task_status": ["active", "paused", "archived"]
           }
         }
 } as const
