@@ -10,7 +10,7 @@ Branch: `etapa-1-fundacao`. Esta etapa não tem nenhuma funcionalidade de verdad
 - **Identidade visual**: cores, fontes e espaçamentos da marca MORANO definidos em um só lugar, com tema claro e verificação automática de contraste (legibilidade).
 - **Logotipo "morano."** e ícones do app, mais o manifesto que permite instalar o MORANO como app no celular.
 - **Componentes prontos**: botão, campo de texto, rótulo, caixa de confirmação, avisos (toasts), esqueleto de carregamento, cabeçalho de página e tela de "nada por aqui ainda".
-- **Estrutura de navegação**: barra inferior no celular e menu lateral no computador, com o item da página atual destacado. Seções: Início, Casa, Rotina, Compras, Manutenção e Configurações (todas ainda como páginas provisórias).
+- **Estrutura de navegação**: barra inferior no celular e menu lateral no computador, com o item da página atual destacado. Seções: Início, Rotina, Casa, Manutenção e Compras, mais Configurações pelo avatar ou rodapé do menu (todas ainda como páginas provisórias).
 - **Acessibilidade**: link "Pular para o conteúdo", foco visível ao navegar pelo teclado, respeito às áreas seguras de celulares com entalhe.
 - **Galeria de estilo** (`/estilo`): página interna que mostra todos os componentes, para conferir o visual.
 - **Testes automáticos** de unidade e de navegador.
