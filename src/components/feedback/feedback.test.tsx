@@ -1,7 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Inbox } from "lucide-react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(cleanup);
+import { toast } from "sonner";
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+
 import { ConfirmDialog } from "./confirm-dialog";
 import { EmptyState } from "./empty-state";
 import { PageHeader } from "./page-header";
@@ -55,5 +60,50 @@ describe("ConfirmDialog", () => {
     await user.click(screen.getByRole("button", { name: "Excluir" }));
     await user.click(await screen.findByRole("button", { name: "Sim, excluir" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  function setup(onConfirm: () => Promise<void>) {
+    render(
+      <ConfirmDialog
+        trigger={<button>Abrir</button>}
+        title="Confirmar?"
+        description="Descrição"
+        confirmLabel="Confirmar"
+        onConfirm={onConfirm}
+      />,
+    );
+  }
+
+  it("shows pending state and closes only after the promise resolves", async () => {
+    const user = userEvent.setup();
+    let resolve!: () => void;
+    const deferred = new Promise<void>((r) => (resolve = r));
+    setup(() => deferred);
+
+    await user.click(screen.getByRole("button", { name: "Abrir" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    const pending = await screen.findByRole("button", { name: "Aguarde…" });
+    expect(pending).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    resolve();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the dialog open and re-enables buttons when onConfirm rejects", async () => {
+    const user = userEvent.setup();
+    setup(() => Promise.reject(new Error("falhou")));
+
+    await user.click(screen.getByRole("button", { name: "Abrir" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Não foi possível concluir. Tente novamente."),
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeEnabled();
   });
 });

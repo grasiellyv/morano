@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,8 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       setOpen(false);
+    } catch {
+      toast.error("Não foi possível concluir. Tente novamente.");
     } finally {
       setPending(false);
     }
