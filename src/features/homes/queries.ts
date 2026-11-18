@@ -29,7 +29,10 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     .eq("id", userId)
     .single();
 
-  if (profileError || !profile?.current_home_id) return null;
+  // Profile DB error → surface as 500, not onboarding redirect
+  if (profileError) throw profileError;
+  // No home configured → user needs onboarding
+  if (!profile?.current_home_id) return null;
 
   const homeId = profile.current_home_id;
 
@@ -39,7 +42,10 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     .eq("id", homeId)
     .single();
 
-  if (homeError || !home) return null;
+  // DB error → surface as 500
+  if (homeError) throw homeError;
+  // Home row missing (data integrity) → treat as not configured
+  if (!home) return null;
 
   const { data: rooms, error: roomsError } = await supabase
     .from("rooms")
@@ -47,7 +53,7 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     .eq("home_id", homeId)
     .order("position");
 
-  if (roomsError) return null;
+  if (roomsError) throw roomsError;
 
   // Guard nullable fields from DB
   const propertyType = (home.property_type ?? "outro") as PropertyType;

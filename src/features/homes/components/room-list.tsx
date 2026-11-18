@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,13 +36,12 @@ type Room = { id: string; name: string; room_type: RoomType; position: number };
 // ---------------------------------------------------------------------------
 
 type AddRoomSchema = z.infer<typeof addRoomSchema>;
-const clientAddSchema = addRoomSchema;
 
 export function AddRoomForm() {
   const [state, formAction, pending] = useActionState(addRoom, initialFormState);
 
   const form = useForm<AddRoomSchema>({
-    resolver: zodResolver(clientAddSchema),
+    resolver: zodResolver(addRoomSchema),
     defaultValues: { name: "", room_type: "outro" },
   });
 
@@ -126,54 +125,63 @@ function EditRoomForm({ room, onCancel }: EditRoomFormProps) {
   const errors = form.formState.errors;
   const serverErrors = state.fieldErrors;
 
+  // Close the edit form automatically on success
+  useEffect(() => {
+    if (state.status === "success") onCancel();
+  }, [state.status, onCancel]);
+
   return (
     <form
       ref={formRef}
       action={formAction}
       onSubmit={onSubmit}
       noValidate
-      className="flex gap-3 flex-wrap items-end"
+      className="space-y-3"
     >
       <input type="hidden" {...form.register("id")} />
 
-      <div className="flex-1 min-w-[140px] space-y-1">
-        <Label htmlFor={`edit-name-${room.id}`}>Nome</Label>
-        <Input
-          id={`edit-name-${room.id}`}
-          type="text"
-          aria-invalid={errors.name ? true : undefined}
-          {...form.register("name")}
-        />
-        {(errors.name?.message ?? serverErrors?.["name"]) && (
-          <p className="text-destructive text-xs">
-            {errors.name?.message ?? serverErrors?.["name"]}
-          </p>
-        )}
-      </div>
+      <FormFeedback state={state} />
 
-      <div className="flex-1 min-w-[120px] space-y-1">
-        <Label htmlFor={`edit-type-${room.id}`}>Tipo</Label>
-        <select
-          id={`edit-type-${room.id}`}
-          className={SELECT_CLASS}
-          aria-invalid={errors.room_type ? true : undefined}
-          {...form.register("room_type")}
-        >
-          {Object.entries(ROOM_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="flex gap-3 flex-wrap items-end">
+        <div className="flex-1 min-w-[140px] space-y-1">
+          <Label htmlFor={`edit-name-${room.id}`}>Nome</Label>
+          <Input
+            id={`edit-name-${room.id}`}
+            type="text"
+            aria-invalid={errors.name ? true : undefined}
+            {...form.register("name")}
+          />
+          {(errors.name?.message ?? serverErrors?.["name"]) && (
+            <p className="text-destructive text-xs">
+              {errors.name?.message ?? serverErrors?.["name"]}
+            </p>
+          )}
+        </div>
 
-      <div className="flex gap-2">
-        <SubmitButton pending={pending} pendingLabel="Salvando…" size="sm">
-          Salvar
-        </SubmitButton>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancelar
-        </Button>
+        <div className="flex-1 min-w-[120px] space-y-1">
+          <Label htmlFor={`edit-type-${room.id}`}>Tipo</Label>
+          <select
+            id={`edit-type-${room.id}`}
+            className={SELECT_CLASS}
+            aria-invalid={errors.room_type ? true : undefined}
+            {...form.register("room_type")}
+          >
+            {Object.entries(ROOM_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-2">
+          <SubmitButton pending={pending} pendingLabel="Salvando…" size="sm">
+            Salvar
+          </SubmitButton>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -183,30 +191,42 @@ function EditRoomForm({ room, onCancel }: EditRoomFormProps) {
 // Delete Room Form
 // ---------------------------------------------------------------------------
 
+const deleteClientSchema = z.object({});
+type DeleteClientSchema = z.infer<typeof deleteClientSchema>;
+
 function DeleteRoomForm({ roomId }: { roomId: string }) {
-  const [, formAction, pending] = useActionState(deleteRoom, initialFormState);
+  const [state, formAction, pending] = useActionState(deleteRoom, initialFormState);
+
+  const form = useForm<DeleteClientSchema>({
+    resolver: zodResolver(deleteClientSchema),
+  });
+
+  const { formRef, onSubmit } = useValidatedSubmit(form, formAction);
 
   return (
-    <form action={formAction}>
-      <input type="hidden" name="id" value={roomId} />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="sm"
-        disabled={pending}
-        className="text-destructive hover:text-destructive"
-      >
-        {pending ? "Removendo…" : "Remover"}
-      </Button>
-    </form>
+    <div>
+      <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate>
+        <input type="hidden" name="id" value={roomId} />
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          className="text-destructive hover:text-destructive"
+        >
+          {pending ? "Removendo…" : "Remover"}
+        </Button>
+      </form>
+      {state.status === "error" && state.message && (
+        <p className="text-destructive text-xs mt-1">{state.message}</p>
+      )}
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Room Row
 // ---------------------------------------------------------------------------
-
-import { useState } from "react";
 
 function RoomRow({ room }: { room: Room }) {
   const [editing, setEditing] = useState(false);

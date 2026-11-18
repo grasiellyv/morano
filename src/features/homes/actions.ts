@@ -58,6 +58,7 @@ export async function updateHome(_: FormState, formData: FormData): Promise<Form
   }
 
   revalidatePath("/casa");
+  revalidatePath("/casa/editar");
   return { status: "success", message: "Dados atualizados com sucesso." };
 }
 
