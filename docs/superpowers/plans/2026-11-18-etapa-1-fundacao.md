@@ -401,7 +401,7 @@ git commit -m "feat: app shell responsivo, páginas provisórias, galeria de est
 
 Use the format the owner requires (master prompt §17):
 1. What was developed.
-2. Files created or modified (from `git diff --stat master...etapa-1-fundacao`).
+2. Files created or modified (from `git diff --stat main...etapa-1-fundacao`).
 3. Dependencies added, with exact installed versions from `package.json`.
 4. Tests run, with pass counts from the last runs.
 5. Problems found.
