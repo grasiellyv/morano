@@ -23,16 +23,233 @@ export type Database = {
   };
   public: {
     Tables: {
-      [_ in never]: never;
+      home_members: {
+        Row: {
+          created_at: string;
+          home_id: string;
+          id: string;
+          role: Database["public"]["Enums"]["home_role"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          home_id: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["home_role"];
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          home_id?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["home_role"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "home_members_home_id_fkey";
+            columns: ["home_id"];
+            isOneToOne: false;
+            referencedRelation: "homes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "home_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      homes: {
+        Row: {
+          available_minutes_per_week: number | null;
+          created_at: string;
+          created_by: string | null;
+          household_type: Database["public"]["Enums"]["household_type"] | null;
+          id: string;
+          name: string;
+          ownership_type: Database["public"]["Enums"]["ownership_type"] | null;
+          property_type: Database["public"]["Enums"]["property_type"] | null;
+          resident_count: number | null;
+          routine_level: Database["public"]["Enums"]["routine_level"] | null;
+          timezone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          available_minutes_per_week?: number | null;
+          created_at?: string;
+          created_by?: string | null;
+          household_type?: Database["public"]["Enums"]["household_type"] | null;
+          id?: string;
+          name: string;
+          ownership_type?: Database["public"]["Enums"]["ownership_type"] | null;
+          property_type?: Database["public"]["Enums"]["property_type"] | null;
+          resident_count?: number | null;
+          routine_level?: Database["public"]["Enums"]["routine_level"] | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          available_minutes_per_week?: number | null;
+          created_at?: string;
+          created_by?: string | null;
+          household_type?: Database["public"]["Enums"]["household_type"] | null;
+          id?: string;
+          name?: string;
+          ownership_type?: Database["public"]["Enums"]["ownership_type"] | null;
+          property_type?: Database["public"]["Enums"]["property_type"] | null;
+          resident_count?: number | null;
+          routine_level?: Database["public"]["Enums"]["routine_level"] | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "homes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string;
+          current_home_id: string | null;
+          full_name: string | null;
+          id: string;
+          last_seen_at: string | null;
+          marketing_opt_in: boolean;
+          onboarding_completed: boolean;
+          onboarding_step: number;
+          terms_accepted_at: string | null;
+          timezone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string;
+          current_home_id?: string | null;
+          full_name?: string | null;
+          id: string;
+          last_seen_at?: string | null;
+          marketing_opt_in?: boolean;
+          onboarding_completed?: boolean;
+          onboarding_step?: number;
+          terms_accepted_at?: string | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string;
+          current_home_id?: string | null;
+          full_name?: string | null;
+          id?: string;
+          last_seen_at?: string | null;
+          marketing_opt_in?: boolean;
+          onboarding_completed?: boolean;
+          onboarding_step?: number;
+          terms_accepted_at?: string | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "profiles_current_home_id_fkey";
+            columns: ["current_home_id"];
+            isOneToOne: false;
+            referencedRelation: "homes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      subscriptions: {
+        Row: {
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          id: string;
+          plan: Database["public"]["Enums"]["subscription_plan"];
+          provider: Database["public"]["Enums"]["subscription_provider"];
+          provider_customer_id: string | null;
+          provider_subscription_id: string | null;
+          status: Database["public"]["Enums"]["subscription_status"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          plan?: Database["public"]["Enums"]["subscription_plan"];
+          provider?: Database["public"]["Enums"]["subscription_provider"];
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          status?: Database["public"]["Enums"]["subscription_status"];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          plan?: Database["public"]["Enums"]["subscription_plan"];
+          provider?: Database["public"]["Enums"]["subscription_provider"];
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          status?: Database["public"]["Enums"]["subscription_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      current_plan: {
+        Args: { p_user_id: string };
+        Returns: Database["public"]["Enums"]["subscription_plan"];
+      };
+      ensure_same_home: {
+        Args: { p_home_id: string; p_id: string; p_table: unknown };
+        Returns: undefined;
+      };
+      has_home_role: {
+        Args: { p_home_id: string; p_roles: Database["public"]["Enums"]["home_role"][] };
+        Returns: boolean;
+      };
+      is_home_member: { Args: { p_home_id: string }; Returns: boolean };
     };
     Enums: {
-      [_ in never]: never;
+      home_role: "owner" | "admin" | "member";
+      household_type: "sozinho" | "casal" | "familia" | "compartilhada" | "outro";
+      ownership_type: "proprio" | "alugado" | "outro";
+      property_type: "apartamento" | "casa" | "sobrado" | "studio_kitnet" | "outro";
+      routine_level: "leve" | "equilibrada" | "detalhada";
+      subscription_plan: "free" | "pro";
+      subscription_provider: "none" | "beta_grant" | "stripe" | "mercadopago";
+      subscription_status: "active" | "trialing" | "past_due" | "canceled";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -146,6 +363,15 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      home_role: ["owner", "admin", "member"],
+      household_type: ["sozinho", "casal", "familia", "compartilhada", "outro"],
+      ownership_type: ["proprio", "alugado", "outro"],
+      property_type: ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],
+      routine_level: ["leve", "equilibrada", "detalhada"],
+      subscription_plan: ["free", "pro"],
+      subscription_provider: ["none", "beta_grant", "stripe", "mercadopago"],
+      subscription_status: ["active", "trialing", "past_due", "canceled"],
+    },
   },
 } as const;
