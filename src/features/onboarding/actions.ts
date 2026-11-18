@@ -57,10 +57,17 @@ export async function saveResidencia(
     };
   }
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ current_home_id: home.id, onboarding_step: 1 })
     .eq("id", userId);
+
+  if (profileError) {
+    return {
+      status: "error",
+      message: "Erro ao avançar o onboarding. Tente novamente.",
+    };
+  }
 
   redirect("/onboarding/comodos");
 }
@@ -206,9 +213,14 @@ export async function approveRoutine(
   // Nunca confiar em home_id vindo do cliente — lê do servidor
   const { data: profile } = await supabase
     .from("profiles")
-    .select("current_home_id")
+    .select("current_home_id, onboarding_completed")
     .eq("id", userId)
     .single();
+
+  // Bloqueia re-execução após onboarding concluído (aba antiga, botão voltar)
+  if (profile?.onboarding_completed) {
+    redirect("/inicio");
+  }
 
   const homeId = profile?.current_home_id;
   if (!homeId) {
@@ -270,7 +282,7 @@ export async function approveRoutine(
         estimated_minutes: task.estimated_minutes,
         priority: "media",
         source: "onboarding",
-        created_by: userId,
+        // created_by is NOT in the INSERT grant — the DB default (auth.uid()) fills it
         status: "active",
       })
       .select("id")
