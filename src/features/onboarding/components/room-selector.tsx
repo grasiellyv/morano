@@ -4,49 +4,9 @@ import { useState, useId } from "react";
 import { cn } from "@/lib/utils";
 import { ROOM_TYPES } from "@/features/onboarding/catalog";
 import type { RoomType } from "@/features/onboarding/catalog";
+import type { Room } from "@/features/onboarding/room-defaults";
 
-export type PropertyType =
-  | "apartamento"
-  | "casa"
-  | "sobrado"
-  | "studio_kitnet"
-  | "outro";
-
-export type Room = { name: string; room_type: RoomType };
-
-export const DEFAULT_ROOMS: Record<PropertyType, Room[]> = {
-  apartamento: [
-    { name: "Sala", room_type: "sala" },
-    { name: "Cozinha", room_type: "cozinha" },
-    { name: "Quarto", room_type: "quarto" },
-    { name: "Banheiro", room_type: "banheiro" },
-  ],
-  casa: [
-    { name: "Sala", room_type: "sala" },
-    { name: "Cozinha", room_type: "cozinha" },
-    { name: "Quarto", room_type: "quarto" },
-    { name: "Banheiro", room_type: "banheiro" },
-    { name: "Lavanderia", room_type: "lavanderia" },
-  ],
-  sobrado: [
-    { name: "Sala", room_type: "sala" },
-    { name: "Cozinha", room_type: "cozinha" },
-    { name: "Quarto", room_type: "quarto" },
-    { name: "Banheiro", room_type: "banheiro" },
-    { name: "Lavanderia", room_type: "lavanderia" },
-    { name: "Garagem", room_type: "garagem" },
-  ],
-  studio_kitnet: [
-    { name: "Sala/Quarto", room_type: "sala" },
-    { name: "Cozinha", room_type: "cozinha" },
-    { name: "Banheiro", room_type: "banheiro" },
-  ],
-  outro: [
-    { name: "Sala", room_type: "sala" },
-    { name: "Cozinha", room_type: "cozinha" },
-    { name: "Banheiro", room_type: "banheiro" },
-  ],
-};
+export type { Room } from "@/features/onboarding/room-defaults";
 
 const ROOM_LABELS: Record<RoomType, string> = {
   sala: "Sala",
@@ -63,29 +23,39 @@ const ROOM_LABELS: Record<RoomType, string> = {
 const SELECT_CLASS =
   "border-input bg-background text-foreground ring-offset-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
-export function RoomSelector({ defaultRooms }: { defaultRooms: Room[] }) {
+type RoomSelectorProps = {
+  defaultRooms: Room[];
+  /** Chamado sempre que a lista de cômodos muda — útil para sincronizar com RHF. */
+  onRoomsChange?: (rooms: Room[]) => void;
+};
+
+export function RoomSelector({ defaultRooms, onRoomsChange }: RoomSelectorProps) {
   const [rooms, setRooms] = useState<Room[]>(defaultRooms);
   const [customName, setCustomName] = useState("");
   const [customType, setCustomType] = useState<RoomType>("outro");
   const addNameId = useId();
 
-  // Chips: cada tipo de cômodo do catálogo
   const selectedTypes = new Set<RoomType>(rooms.map((r) => r.room_type));
 
+  function applyRooms(next: Room[]) {
+    setRooms(next);
+    onRoomsChange?.(next);
+  }
+
+  // Finding 2 fix: remove by room_type only so o chip é consistente com o destaque
   function toggleChip(roomType: RoomType) {
-    const label = ROOM_LABELS[roomType];
-    const idx = rooms.findIndex((r) => r.room_type === roomType && r.name === label);
-    if (idx >= 0) {
-      setRooms((prev) => prev.filter((_, i) => i !== idx));
+    if (selectedTypes.has(roomType)) {
+      applyRooms(rooms.filter((r) => r.room_type !== roomType));
     } else {
-      setRooms((prev) => [...prev, { name: label, room_type: roomType }]);
+      const label = ROOM_LABELS[roomType];
+      applyRooms([...rooms, { name: label, room_type: roomType }]);
     }
   }
 
   function addCustomRoom() {
     const name = customName.trim();
     if (!name) return;
-    setRooms((prev) => [...prev, { name, room_type: customType }]);
+    applyRooms([...rooms, { name, room_type: customType }]);
     setCustomName("");
   }
 
@@ -182,7 +152,7 @@ export function RoomSelector({ defaultRooms }: { defaultRooms: Room[] }) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setRooms((prev) => prev.filter((_, idx) => idx !== i))}
+                  onClick={() => applyRooms(rooms.filter((_, idx) => idx !== i))}
                   aria-label={`Remover ${room.name}`}
                   className="text-muted-foreground hover:text-destructive ml-2 text-base leading-none"
                 >
@@ -194,7 +164,7 @@ export function RoomSelector({ defaultRooms }: { defaultRooms: Room[] }) {
         </div>
       )}
 
-      {/* Valor serializado enviado com o formulário */}
+      {/* Valor serializado enviado com o formulário (progressive enhancement sem JS) */}
       <textarea
         name="rooms"
         hidden

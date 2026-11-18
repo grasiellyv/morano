@@ -17,7 +17,11 @@ import { Label } from "@/components/ui/label";
 // resident_count usa z.number() (sem coerce) porque RHF vai ler valueAsNumber
 // diretamente do input[type=number]. O servidor continua usando z.coerce.
 const clientSchema = residenciaSchema.omit({ timezone: true }).extend({
-  resident_count: z.number().int().min(1, "Informe ao menos 1 morador").max(20),
+  resident_count: z
+    .number({ error: "Informe o número de moradores" })
+    .int("Deve ser um número inteiro")
+    .min(1, "Mínimo 1 morador")
+    .max(20, "Máximo 20 moradores"),
 });
 type ClientFormValues = z.infer<typeof clientSchema>;
 

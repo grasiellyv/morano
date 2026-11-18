@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
 import { ComodosForm } from "@/features/onboarding/components/comodos-form";
-import { DEFAULT_ROOMS } from "@/features/onboarding/components/room-selector";
-import type { PropertyType } from "@/features/onboarding/components/room-selector";
+import { DEFAULT_ROOMS } from "@/features/onboarding/room-defaults";
+import type { PropertyType } from "@/features/onboarding/room-defaults";
 
 const VALID_PROPERTY_TYPES = new Set<string>([
   "apartamento",

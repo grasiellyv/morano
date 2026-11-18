@@ -18,7 +18,11 @@ export const residenciaSchema = z.object({
     "compartilhada",
     "outro",
   ]),
-  resident_count: z.coerce.number().int().min(1).max(20),
+  resident_count: z.coerce
+    .number({ error: "Informe o número de moradores" })
+    .int("Deve ser um número inteiro")
+    .min(1, "Mínimo 1 morador")
+    .max(20, "Máximo 20 moradores"),
   timezone: z.string().min(1),
 });
 
