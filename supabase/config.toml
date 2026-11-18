@@ -252,6 +252,16 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Links com token_hash para /auth/confirm (verifyOtp no servidor; funcionam sem cookie PKCE).
+# Em produção, copie os mesmos templates no painel do Supabase (Authentication > Emails).
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail no MORANO"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Redefina sua senha do MORANO"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
