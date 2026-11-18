@@ -1,26 +1,96 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* O MVP não tem modo escuro (spec §5). A variante fica presa a uma classe que nunca é aplicada. */
+@custom-variant dark (&:is(.dark *));
+
+/* Paleta bruta: única fonte dos valores hex. Gera as utilities offwhite, sand, graphite, sage, caramel, sage-ink e alert-ink. */
+@theme {
+  --color-offwhite: #f5f2ec;
+  --color-sand: #e7e0d5;
+  --color-graphite: #30332f;
+  --color-sage: #879080;
+  --color-caramel: #b69b79;
+  /* Versões AA para texto: Sálvia e Caramelo nunca são usados como cor de texto. */
+  --color-sage-ink: #5a6155;
+  --color-alert-ink: #8a5530;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-manrope);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: var(--color-offwhite);
+  --foreground: var(--color-graphite);
+  --card: #ffffff;
+  --card-foreground: var(--color-graphite);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-graphite);
+  --primary: var(--color-graphite);
+  --primary-foreground: var(--color-offwhite);
+  --secondary: var(--color-sand);
+  --secondary-foreground: var(--color-graphite);
+  --muted: var(--color-sand);
+  --muted-foreground: var(--color-sage-ink);
+  --accent: var(--color-sand);
+  --accent-foreground: var(--color-graphite);
+  --destructive: var(--color-alert-ink);
+  --border: var(--color-sand);
+  --input: var(--color-sand);
+  --ring: var(--color-sage);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
