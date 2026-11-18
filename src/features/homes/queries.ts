@@ -27,7 +27,7 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   // Profile DB error → surface as 500, not onboarding redirect
   if (profileError) throw profileError;
@@ -40,7 +40,7 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     .from("homes")
     .select("id, name, property_type, ownership_type, household_type, resident_count, available_minutes_per_week, routine_level, timezone")
     .eq("id", homeId)
-    .single();
+    .maybeSingle();
 
   // DB error → surface as 500
   if (homeError) throw homeError;
