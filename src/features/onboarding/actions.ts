@@ -226,14 +226,6 @@ export async function approveRoutine(
 
   const homeTimezone = home?.timezone ?? "America/Sao_Paulo";
 
-  // Limpa tasks de onboarding anteriores para garantir idempotência em retentativas
-  await supabase
-    .from("tasks")
-    .delete()
-    .eq("home_id", homeId)
-    .eq("source", "onboarding")
-    .eq("status", "active");
-
   let tasksRaw: unknown;
   try {
     tasksRaw = JSON.parse(textField(formData, "tasks")) as unknown;
@@ -246,6 +238,22 @@ export async function approveRoutine(
     return {
       status: "error",
       message: "Lista de tarefas inválida. Recarregue a página e tente novamente.",
+    };
+  }
+
+  // Limpa tasks de onboarding anteriores APÓS validação — evita perda de dados
+  // em caso de payload inválido e garante idempotência em retentativas
+  const { error: purgeError } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("home_id", homeId)
+    .eq("source", "onboarding")
+    .eq("status", "active");
+
+  if (purgeError) {
+    return {
+      status: "error",
+      message: "Erro ao limpar tarefas anteriores. Tente novamente.",
     };
   }
 
