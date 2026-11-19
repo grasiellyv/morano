@@ -10,6 +10,8 @@ import {
 } from "@/features/auth/form-state";
 import { trackEvent } from "@/lib/telemetry";
 import { getLocalDateString, addDaysStr } from "@/lib/dates";
+import { TZDate } from "@date-fns/tz";
+import { format } from "date-fns";
 import {
   generateOccurrenceDates,
   type RoutineRule,
@@ -222,4 +224,219 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
   revalidatePath("/inicio");
 
   return { status: "success", message: "Tarefa criada." };
+}
+
+// ---------------------------------------------------------------------------
+// Operações em ocorrências
+// ---------------------------------------------------------------------------
+
+export async function completeOccurrence(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  // Fetch occurrence — RLS validates membership implicitly
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, status")
+    .eq("id", occurrenceId)
+    .single();
+
+  if (fetchError || !occurrence) {
+    return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      completed_by: userId,
+    })
+    .eq("id", occurrenceId);
+
+  if (error) {
+    return { status: "error", message: "Erro ao concluir. Tente novamente." };
+  }
+
+  await trackEvent(userId, occurrence.home_id, "occurrence_completed");
+  revalidatePath("/rotina");
+
+  return { status: "success" };
+}
+
+export async function undoComplete(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, status, completed_at, task_id")
+    .eq("id", occurrenceId)
+    .single();
+
+  if (fetchError || !occurrence) {
+    return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  if (occurrence.status !== "completed") {
+    return { status: "error", message: "Esta ocorrência não está concluída." };
+  }
+
+  // Buscar timezone da home para verificar o dia
+  const { data: home, error: homeError } = await supabase
+    .from("homes")
+    .select("timezone")
+    .eq("id", occurrence.home_id)
+    .single();
+
+  if (homeError || !home) {
+    return { status: "error", message: "Casa não encontrada." };
+  }
+
+  const homeTimezone = home.timezone;
+  const today = getLocalDateString(homeTimezone);
+
+  // Verificar se completed_at foi hoje no fuso da casa
+  const completedOnDay = format(
+    new TZDate(new Date(occurrence.completed_at!), homeTimezone),
+    "yyyy-MM-dd",
+  );
+
+  if (completedOnDay !== today) {
+    return { status: "error", message: "Só é possível desfazer no mesmo dia" };
+  }
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({
+      status: "pending",
+      completed_at: null,
+      completed_by: null,
+    })
+    .eq("id", occurrenceId);
+
+  if (error) {
+    return { status: "error", message: "Erro ao desfazer. Tente novamente." };
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success" };
+}
+
+export async function skipOccurrence(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ status: "skipped" })
+    .eq("id", occurrenceId);
+
+  if (error) {
+    return { status: "error", message: "Erro ao pular. Tente novamente." };
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success" };
+}
+
+export async function postponeOccurrence(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  const newDate = textField(fd, "new_date");
+
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+  if (!newDate || !/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+    return { status: "error", fieldErrors: { new_date: "Data inválida." } };
+  }
+
+  // Fetch occurrence
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, task_id, scheduled_for, status")
+    .eq("id", occurrenceId)
+    .single();
+
+  if (fetchError || !occurrence) {
+    return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  // Buscar timezone para today
+  const { data: home, error: homeError } = await supabase
+    .from("homes")
+    .select("timezone")
+    .eq("id", occurrence.home_id)
+    .single();
+
+  if (homeError || !home) {
+    return { status: "error", message: "Casa não encontrada." };
+  }
+
+  const today = getLocalDateString(home.timezone);
+
+  // new_date must be > today (future only)
+  if (newDate <= today) {
+    return {
+      status: "error",
+      fieldErrors: { new_date: "A nova data deve ser no futuro." },
+    };
+  }
+
+  // Find the next pending occurrence of the same task after current scheduled_for
+  const { data: nextOccurrences } = await supabase
+    .from("task_occurrences")
+    .select("id, scheduled_for")
+    .eq("task_id", occurrence.task_id)
+    .eq("status", "pending")
+    .gt("scheduled_for", occurrence.scheduled_for)
+    .order("scheduled_for", { ascending: true })
+    .limit(1);
+
+  const nextOccurrence = nextOccurrences?.[0] ?? null;
+
+  // If next exists: new_date must be strictly less than next.scheduled_for
+  if (nextOccurrence && newDate >= nextOccurrence.scheduled_for) {
+    return {
+      status: "error",
+      fieldErrors: {
+        new_date:
+          "Não é possível adiar para depois da próxima ocorrência — evita duas na mesma data efetiva.",
+      },
+    };
+  }
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ scheduled_for: newDate })
+    .eq("id", occurrenceId);
+
+  if (error) {
+    return { status: "error", message: "Erro ao adiar. Tente novamente." };
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success" };
 }
