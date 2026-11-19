@@ -20,7 +20,7 @@ export function CelebrationOverlay({ show, onDismiss }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-card rounded-xl p-6 shadow-lg text-center space-y-4">
         <p className="text-xl font-semibold">Rotina completa!</p>
-        <p className="text-sm text-muted-foreground">Todas as tarefas do dia foram concluidas.</p>
+        <p className="text-sm text-muted-foreground">Todas as tarefas do dia foram concluídas.</p>
         <button
           type="button"
           onClick={onDismiss}
