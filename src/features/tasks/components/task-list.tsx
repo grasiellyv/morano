@@ -91,8 +91,6 @@ export function TaskList({
   const displayOverdue = filterEssencial ? overdue.filter((o) => o.task.is_essential) : overdue;
   const displayUpcoming = filterEssencial ? upcoming.filter((o) => o.task.is_essential) : upcoming;
 
-  const totalMinutes = displayToday.reduce((s, o) => s + o.task.estimated_minutes, 0);
-
   const dateParam = selectedDate !== currentDate ? `date=${selectedDate}&` : "";
   const filterToggleHref = filterEssencial
     ? selectedDate !== currentDate ? `?date=${selectedDate}` : "/rotina"
@@ -246,7 +244,7 @@ export function TaskList({
           <DailyProgressBar occurrences={displayToday} />
           <h2 className="mb-3 text-base font-semibold">
             {selectedDate === currentDate ? "Hoje" : formatSelectedDate(selectedDate)} —{" "}
-            {displayToday.length} {displayToday.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes} min
+            {displayToday.length} {displayToday.length === 1 ? "tarefa" : "tarefas"}
           </h2>
           {displayToday.length > 0 ? (
             <div className="space-y-2">

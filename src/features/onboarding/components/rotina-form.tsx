@@ -9,18 +9,11 @@ import { ROUTINE_LEVELS, type RoutineLevel } from "@/features/onboarding/catalog
 import { initialFormState } from "@/features/auth/form-state";
 import { useValidatedSubmit } from "@/features/auth/components/use-validated-submit";
 import { FormFeedback, SubmitButton } from "@/features/auth/components/form-parts";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-// Client schema: available_minutes_per_week sem coerce (RHF lê valueAsNumber)
 const clientSchema = z.object({
   routine_level: z.enum(ROUTINE_LEVELS),
-  available_minutes_per_week: z
-    .number({ error: "Informe os minutos disponíveis por semana" })
-    .int("Deve ser um número inteiro")
-    .min(10, "Mínimo 10 minutos")
-    .max(2000, "Máximo 2000 minutos"),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -61,7 +54,6 @@ export function RotinaForm() {
     resolver: zodResolver(clientSchema),
     defaultValues: {
       routine_level: "equilibrada",
-      available_minutes_per_week: 120,
     },
   });
 
@@ -82,7 +74,7 @@ export function RotinaForm() {
         <p className="text-muted-foreground text-sm font-medium">Passo 3 de 4</p>
         <h1 className="font-heading text-2xl font-semibold">Sua rotina</h1>
         <p className="text-muted-foreground text-sm">
-          Escolha a intensidade e quanto tempo você tem disponível por semana.
+          Escolha a intensidade da sua rotina de limpeza.
         </p>
       </div>
 
@@ -123,29 +115,6 @@ export function RotinaForm() {
         </div>
         <FieldError
           msg={errors.routine_level?.message ?? serverErrors?.routine_level}
-        />
-      </div>
-
-      {/* Minutos disponíveis por semana */}
-      <div className="space-y-2">
-        <Label htmlFor="available_minutes_per_week">
-          Minutos disponíveis por semana
-        </Label>
-        <Input
-          id="available_minutes_per_week"
-          type="number"
-          min={10}
-          max={2000}
-          aria-invalid={errors.available_minutes_per_week ? true : undefined}
-          {...form.register("available_minutes_per_week", {
-            valueAsNumber: true,
-          })}
-        />
-        <FieldError
-          msg={
-            errors.available_minutes_per_week?.message ??
-            serverErrors?.available_minutes_per_week
-          }
         />
       </div>
 

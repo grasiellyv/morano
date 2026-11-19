@@ -132,7 +132,6 @@ export function TaskOccurrenceRow({ occurrence, today, userId }: Props) {
         </div>
 
         <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <span>{occurrence.task.estimated_minutes} min</span>
           {isOverdue && !isCompleted ? (
             <span className="text-destructive">
               Atrasada · há {daysOverdue} {daysOverdue === 1 ? "dia" : "dias"}

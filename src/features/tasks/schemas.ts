@@ -6,7 +6,6 @@ export const createTaskSchema = z.object({
   instructions: z.string().max(2000).optional(),
   priority: z.enum(["baixa", "media", "alta"]),
   is_essential: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
-  estimated_minutes: z.coerce.number({ error: "Informe os minutos" }).min(1).max(480),
   room_id: z.string().uuid().nullable().optional(),
   frequency_type: z.enum(["once", "daily", "weekly", "biweekly", "monthly", "custom"]),
   interval_value: z.coerce.number().min(1).max(365).nullable().optional(),
@@ -27,7 +26,6 @@ export const updateTaskMetaSchema = z.object({
   instructions: z.string().max(2000).optional(),
   priority: z.enum(["baixa", "media", "alta"]),
   is_essential: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
-  estimated_minutes: z.coerce.number({ error: "Informe os minutos" }).min(1).max(480),
   room_id: z.string().uuid().nullable().optional(),
 });
 

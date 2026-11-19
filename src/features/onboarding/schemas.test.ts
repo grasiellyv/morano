@@ -49,11 +49,10 @@ describe("comodoSchema", () => {
 });
 
 describe("rotinaSchema", () => {
-  it("validates routine_level enum", () => {
+  it("rejects invalid routine_level", () => {
     expect(
       rotinaSchema.safeParse({
         routine_level: "invalido",
-        available_minutes_per_week: 60,
       }).success,
     ).toBe(false);
   });
@@ -62,7 +61,6 @@ describe("rotinaSchema", () => {
     expect(
       rotinaSchema.safeParse({
         routine_level: "equilibrada",
-        available_minutes_per_week: 120,
       }).success,
     ).toBe(true);
   });
@@ -75,7 +73,6 @@ describe("revisaoTaskSchema", () => {
         id: "x",
         include: "yes",
         title: "T",
-        estimated_minutes: 10,
         frequency_type: "invalido",
       }).success,
     ).toBe(false);
@@ -87,7 +84,6 @@ describe("revisaoTaskSchema", () => {
         id: "cozinha_lavar_louca",
         include: true,
         title: "Lavar louça",
-        estimated_minutes: 15,
         frequency_type: "daily",
       }).success,
     ).toBe(true);
