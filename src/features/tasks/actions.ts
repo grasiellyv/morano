@@ -559,7 +559,7 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
       frequency_type: parsed.data.frequency_type,
       interval_value: parsed.data.interval_value ?? undefined,
       interval_unit: parsed.data.interval_unit ?? undefined,
-      weekdays: parsed.data.weekdays ?? undefined,
+      weekdays: (parsed.data.weekdays ?? null) as number[] | undefined,
       month_day: parsed.data.month_day ?? null,
       start_date: parsed.data.start_date,
       end_date: parsed.data.end_date ?? null,

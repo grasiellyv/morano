@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTaskSchema } from "@/features/tasks/schemas";
@@ -100,10 +100,10 @@ export function TaskForm({
     );
   };
 
-  // Call onSuccess when the action returns success
-  if (state.status === "success" && onSuccess) {
-    onSuccess();
-  }
+  // Call onSuccess after render when the action returns success
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+  }, [state.status]);
 
   return (
     <form
