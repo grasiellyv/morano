@@ -16,6 +16,7 @@ import {
   generateOccurrenceDates,
   type RoutineRule,
 } from "@/features/tasks/rules/recurrence";
+import { applyRetroactivePolicy } from "@/features/tasks/rules/missed-policy";
 import {
   createTaskSchema,
   updateTaskMetaSchema,
@@ -86,10 +87,26 @@ export async function extendWindowForHome(
           ? addDaysStr(routine.generated_until, 1)
           : routine.start_date;
 
-        const dates = generateOccurrenceDates(rule, fromDate, newUntil);
+        const yesterday = addDaysStr(today, -1);
 
-        if (dates.length > 0) {
-          const occurrences = dates.map((d) => ({
+        // Step 1: retroactive dates (before today)
+        let retroToInsert: string[] = [];
+        let ungeneratedCount = 0;
+        if (fromDate <= yesterday) {
+          const retroDates = generateOccurrenceDates(rule, fromDate, yesterday);
+          const policy = applyRetroactivePolicy(retroDates, today);
+          retroToInsert = policy.toInsert;
+          ungeneratedCount = policy.ungeneratedCount;
+        }
+
+        // Step 2: future dates (today onward) — no limit
+        const futureDates = generateOccurrenceDates(rule, today, newUntil);
+
+        // Merge for upsert
+        const allToInsert = [...retroToInsert, ...futureDates];
+
+        if (allToInsert.length > 0) {
+          const occurrences = allToInsert.map((d) => ({
             task_id: routine.task_id,
             home_id: homeId,
             original_date: d,
@@ -102,10 +119,19 @@ export async function extendWindowForHome(
             .upsert(occurrences, { onConflict: "task_id,original_date", ignoreDuplicates: true });
         }
 
+        // Update generated_until — always advances to newUntil (covers skipped dates)
         await supabase
           .from("routines")
           .update({ generated_until: newUntil })
           .eq("id", routine.id);
+
+        // Accumulate ungenerated count — only if > 0
+        if (ungeneratedCount > 0) {
+          await supabase
+            .from("routines")
+            .update({ ungenerated_count: (routine.ungenerated_count ?? 0) + ungeneratedCount })
+            .eq("id", routine.id);
+        }
       } catch {
         // Swallow individual routine errors — continue processing others
       }
