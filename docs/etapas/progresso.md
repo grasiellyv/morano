@@ -9,7 +9,7 @@ Atualizado ao fim de cada etapa. Novas sessões leem este arquivo primeiro.
 | 1 | Fundação | ✅ Completa | main (acf9730) |
 | 2 | Backend e autenticação | ✅ Completa | main (merge 2764ba8) |
 | 3 | Casa e onboarding | ✅ Completa | worktree-etapa-3-casa-onboarding (0650b09) |
-| 4 | Rotina completa | ⏳ Aguardando | — |
+| 4 | Rotina completa | ✅ Completa | worktree-etapa-4-rotina (commit final após task 7) |
 | 5 | Compras | ⏳ Aguardando | — |
 | 6 | Dashboard mínimo | ⏳ Aguardando | — |
 | 7 | Configurações essenciais + lançamento | ⏳ Aguardando | — |
@@ -37,6 +37,7 @@ Etapa 6 (compras) foi avançada para Etapa 5. Dashboard (era 7) virou Etapa 6. C
 - Etapa 1: `docs/etapas/etapa-1-relatorio.md`
 - Etapa 2: `docs/etapas/etapa-2-relatorio.md`
 - Etapa 3: `docs/etapas/etapa-3-relatorio.md`
+- Etapa 4: `docs/etapas/etapa-4-relatorio.md`
 
 ## Como retomar uma sessão
 
