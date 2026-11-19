@@ -93,11 +93,12 @@ export default async function Page() {
           </Button>
         </div>
 
-        {/* Manutenção */}
+        {/* Membros */}
         <div className="border rounded-xl p-4 space-y-1">
-          <p className="text-muted-foreground text-xs uppercase tracking-wide">Manutenções</p>
-          <p className="text-2xl font-semibold">0</p>
-          <p className="text-muted-foreground text-xs">Em breve</p>
+          <p className="text-muted-foreground text-xs uppercase tracking-wide">Membros</p>
+          <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs">
+            <Link href="/casa/membros">Ver membros →</Link>
+          </Button>
         </div>
       </section>
     </>
