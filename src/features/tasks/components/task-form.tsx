@@ -51,8 +51,6 @@ export function TaskForm({
   formAction,
   onSuccess,
 }: TaskFormProps) {
-  const today = new Date().toISOString().slice(0, 10);
-
   const [state, dispatchAction, pending] = useActionState(formAction, initialFormState);
 
   const form = useForm({
@@ -76,7 +74,7 @@ export function TaskForm({
         (initialValues?.interval_unit as "day" | "week" | "month") ?? null,
       weekdays: initialValues?.weekdays ?? null,
       month_day: initialValues?.month_day ?? null,
-      start_date: initialValues?.start_date ?? today,
+      start_date: initialValues?.start_date ?? "",
       end_date: initialValues?.end_date ?? null,
     },
   });

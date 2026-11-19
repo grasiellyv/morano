@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { FormState } from "@/features/auth/form-state";
 import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
@@ -33,12 +34,26 @@ export function TaskList({
       {/* Page header with "Nova tarefa" button */}
       <header className="flex flex-wrap items-start justify-between gap-4 pb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Rotina</h1>
-        <Button
-          type="button"
-          onClick={() => setShowCreate((v) => !v)}
-        >
-          {showCreate ? "Cancelar" : "Nova tarefa"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/rotina/calendario"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Calendário
+          </Link>
+          <Link
+            href="/rotina/historico"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Histórico
+          </Link>
+          <Button
+            type="button"
+            onClick={() => setShowCreate((v) => !v)}
+          >
+            {showCreate ? "Cancelar" : "Nova tarefa"}
+          </Button>
+        </div>
       </header>
 
       {/* Create task form */}
@@ -49,6 +64,7 @@ export function TaskList({
             mode="create"
             rooms={rooms}
             formAction={createTaskAction}
+            initialValues={{ start_date: currentDate }}
             onSuccess={() => setShowCreate(false)}
           />
         </div>

@@ -32,15 +32,7 @@ export async function markMissedOccurrences(
   homeId: string,
   today: string,
 ): Promise<void> {
-  // Try RPC first (migration may have created this function)
-  const { error: rpcError } = await supabase.rpc("mark_missed_occurrences", {
-    p_home_id: homeId,
-    p_today: today,
-  });
-
-  if (!rpcError) return;
-
-  // Fall back to in-memory approach
+  // In-memory approach: fetch pending occurrences before today and mark all but the most recent per task as missed
   const { data: pendingOld } = await supabase
     .from("task_occurrences")
     .select("id, task_id, scheduled_for")
@@ -85,7 +77,7 @@ export async function getTodayOccurrences(
       "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
-    .eq("status", "pending")
+    .in("status", ["pending", "completed"])
     .eq("scheduled_for", today);
 
   if (error || !data) return [];

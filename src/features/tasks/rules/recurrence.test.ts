@@ -117,6 +117,26 @@ describe("monthly", () => {
   });
 });
 
+// ─── weekly with empty weekdays ──────────────────────────────────────────────
+
+describe("weekly empty weekdays", () => {
+  it("weekdays: [] behaves the same as weekdays: null (every 7 days from start_date)", () => {
+    const rEmpty = rule({ frequency_type: "weekly", start_date: "2026-11-01", weekdays: [] });
+    const rNull = rule({ frequency_type: "weekly", start_date: "2026-11-01", weekdays: null });
+    const range = generateOccurrenceDates(rEmpty, "2026-11-01", "2026-11-30");
+    expect(range).toEqual(generateOccurrenceDates(rNull, "2026-11-01", "2026-11-30"));
+    expect(range).toEqual(["2026-11-01", "2026-11-08", "2026-11-15", "2026-11-22", "2026-11-29"]);
+  });
+
+  it("biweekly weekdays: [] behaves the same as weekdays: null (every 14 days from start_date)", () => {
+    const rEmpty = rule({ frequency_type: "biweekly", start_date: "2026-11-01", weekdays: [] });
+    const rNull = rule({ frequency_type: "biweekly", start_date: "2026-11-01", weekdays: null });
+    const range = generateOccurrenceDates(rEmpty, "2026-11-01", "2026-11-30");
+    expect(range).toEqual(generateOccurrenceDates(rNull, "2026-11-01", "2026-11-30"));
+    expect(range).toEqual(["2026-11-01", "2026-11-15", "2026-11-29"]);
+  });
+});
+
 // ─── fromDate / end_date boundary ────────────────────────────────────────────
 
 describe("date boundaries", () => {

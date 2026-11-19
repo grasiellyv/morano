@@ -32,6 +32,16 @@ export async function extendWindowForHome(
 ): Promise<void> {
   try {
     const supabase = await createClient();
+    // Verify caller owns this home
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("current_home_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile?.current_home_id !== homeId) return;
+
     const today = getLocalDateString(homeTimezone);
     const threshold = addDaysStr(today, 28);
     const newUntil = addDaysStr(today, 56);
@@ -409,6 +419,14 @@ export async function postponeOccurrence(
     };
   }
 
+  // new_date must be > occurrence.scheduled_for (cannot move to an earlier date)
+  if (newDate <= occurrence.scheduled_for) {
+    return {
+      status: "error",
+      message: "A nova data deve ser posterior à data original.",
+    };
+  }
+
   // Find the next pending occurrence of the same task after current scheduled_for
   const { data: nextOccurrences } = await supabase
     .from("task_occurrences")
@@ -559,7 +577,7 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
       frequency_type: parsed.data.frequency_type,
       interval_value: parsed.data.interval_value ?? undefined,
       interval_unit: parsed.data.interval_unit ?? undefined,
-      weekdays: (parsed.data.weekdays ?? null) as number[] | undefined,
+      weekdays: (parsed.data.weekdays ?? []) as number[] | undefined,
       month_day: parsed.data.month_day ?? null,
       start_date: parsed.data.start_date,
       end_date: parsed.data.end_date ?? null,

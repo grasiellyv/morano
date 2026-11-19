@@ -45,23 +45,31 @@ export function generateOccurrenceDates(
   fromDate: string,
   toDate: string,
 ): string[] {
+  // Normalize empty weekdays to null so weekly/biweekly falls back to start_date rhythm
+  const normalizedRule: RoutineRule = {
+    ...rule,
+    weekdays: rule.weekdays && rule.weekdays.length > 0 ? rule.weekdays : null,
+  };
+
   // Respeita end_date quando for anterior ao toDate solicitado
   const effectiveEnd =
-    rule.end_date !== null && rule.end_date < toDate ? rule.end_date : toDate;
+    normalizedRule.end_date !== null && normalizedRule.end_date < toDate
+      ? normalizedRule.end_date
+      : toDate;
 
   const result: string[] = [];
 
-  switch (rule.frequency_type) {
+  switch (normalizedRule.frequency_type) {
     case "once": {
-      if (rule.start_date >= fromDate && rule.start_date <= toDate) {
-        result.push(rule.start_date);
+      if (normalizedRule.start_date >= fromDate && normalizedRule.start_date <= toDate) {
+        result.push(normalizedRule.start_date);
       }
       break;
     }
 
     case "daily": {
       // Começa no maior entre start_date e fromDate
-      const start = rule.start_date > fromDate ? rule.start_date : fromDate;
+      const start = normalizedRule.start_date > fromDate ? normalizedRule.start_date : fromDate;
       let current = start;
       while (current <= effectiveEnd) {
         result.push(current);
@@ -71,20 +79,20 @@ export function generateOccurrenceDates(
     }
 
     case "weekly": {
-      if (rule.weekdays !== null) {
+      if (normalizedRule.weekdays !== null) {
         // Itera dia a dia e inclui apenas os dias cujo weekday está em weekdays
-        const start = rule.start_date > fromDate ? rule.start_date : fromDate;
+        const start = normalizedRule.start_date > fromDate ? normalizedRule.start_date : fromDate;
         let current = start;
         while (current <= effectiveEnd) {
           const dow = getDay(parseISO(current));
-          if (rule.weekdays.includes(dow)) {
+          if (normalizedRule.weekdays.includes(dow)) {
             result.push(current);
           }
           current = format(addDays(parseISO(current), 1), "yyyy-MM-dd");
         }
       } else {
         // A cada 7 dias a partir do start_date
-        let current = rule.start_date;
+        let current = normalizedRule.start_date;
         while (current <= effectiveEnd) {
           if (current >= fromDate) {
             result.push(current);
@@ -96,20 +104,20 @@ export function generateOccurrenceDates(
     }
 
     case "biweekly": {
-      if (rule.weekdays !== null) {
+      if (normalizedRule.weekdays !== null) {
         // Itera dia a dia e inclui apenas os dias cujo weekday está em weekdays
-        const start = rule.start_date > fromDate ? rule.start_date : fromDate;
+        const start = normalizedRule.start_date > fromDate ? normalizedRule.start_date : fromDate;
         let current = start;
         while (current <= effectiveEnd) {
           const dow = getDay(parseISO(current));
-          if (rule.weekdays.includes(dow)) {
+          if (normalizedRule.weekdays.includes(dow)) {
             result.push(current);
           }
           current = format(addDays(parseISO(current), 1), "yyyy-MM-dd");
         }
       } else {
         // A cada 14 dias a partir do start_date
-        let current = rule.start_date;
+        let current = normalizedRule.start_date;
         while (current <= effectiveEnd) {
           if (current >= fromDate) {
             result.push(current);
@@ -121,9 +129,9 @@ export function generateOccurrenceDates(
     }
 
     case "monthly": {
-      const startDate = parseISO(rule.start_date);
+      const startDate = parseISO(normalizedRule.start_date);
       // Usa month_day se definido, senão o dia do start_date
-      const targetDay = rule.month_day ?? getDate(startDate);
+      const targetDay = normalizedRule.month_day ?? getDate(startDate);
       let year = getYear(startDate);
       let month = getMonth(startDate); // 0-indexed (0=Jan … 11=Dec)
 
@@ -140,7 +148,7 @@ export function generateOccurrenceDates(
         // Segurança extra caso o clamped date ainda passe o fim
         if (dateStr > effectiveEnd) break;
 
-        if (dateStr >= fromDate && dateStr >= rule.start_date) {
+        if (dateStr >= fromDate && dateStr >= normalizedRule.start_date) {
           result.push(dateStr);
         }
 
@@ -155,7 +163,7 @@ export function generateOccurrenceDates(
     }
 
     case "custom": {
-      const { interval_value: iv, interval_unit: iu } = rule;
+      const { interval_value: iv, interval_unit: iu } = normalizedRule;
       if (iv === null || iu === null) break;
 
       let n = 0;
@@ -163,17 +171,17 @@ export function generateOccurrenceDates(
         let current: string;
         if (iu === "day") {
           current = format(
-            addDays(parseISO(rule.start_date), n * iv),
+            addDays(parseISO(normalizedRule.start_date), n * iv),
             "yyyy-MM-dd",
           );
         } else if (iu === "week") {
           current = format(
-            addDays(parseISO(rule.start_date), n * iv * 7),
+            addDays(parseISO(normalizedRule.start_date), n * iv * 7),
             "yyyy-MM-dd",
           );
         } else {
           current = format(
-            addMonths(parseISO(rule.start_date), n * iv),
+            addMonths(parseISO(normalizedRule.start_date), n * iv),
             "yyyy-MM-dd",
           );
         }
