@@ -9,7 +9,7 @@ Atualizado ao fim de cada etapa. Novas sessões leem este arquivo primeiro.
 | 1 | Fundação | ✅ Completa | main (acf9730) |
 | 2 | Backend e autenticação | ✅ Completa | main (merge 2764ba8) |
 | 3 | Casa e onboarding | ✅ Completa | worktree-etapa-3-casa-onboarding (0650b09) |
-| 4 | Rotina completa | ✅ Completa | worktree-etapa-4-rotina (commit final após task 7) |
+| 4 | Rotina completa | ✅ Completa | worktree-etapa-4-rotina (d208115) |
 | 5 | Compras | ⏳ Aguardando | — |
 | 6 | Dashboard mínimo | ⏳ Aguardando | — |
 | 7 | Configurações essenciais + lançamento | ⏳ Aguardando | — |
