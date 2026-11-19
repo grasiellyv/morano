@@ -21,7 +21,7 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
@@ -66,7 +66,7 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
@@ -116,7 +116,7 @@ export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 

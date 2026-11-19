@@ -26,7 +26,7 @@ create index events_home_date_idx on public.events (home_id, start_date);
 alter table public.events enable row level security;
 
 revoke all on public.events from anon, authenticated;
-grant select, insert, update, delete on public.events to authenticated;
+grant select, delete on public.events to authenticated;
 
 grant insert (title, event_type, start_date, end_date, start_time, end_time, description, home_id)
   on public.events to authenticated;
