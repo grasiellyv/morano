@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { parseISO } from "date-fns";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { FormState } from "@/features/auth/form-state";
 import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
@@ -10,22 +11,37 @@ import { Button } from "@/components/ui/button";
 import { DailyProgressBar, calcProgress } from "@/features/tasks/components/daily-progress-bar";
 import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 
+const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
+const MONTH_ABBR = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+] as const;
+
+function formatSelectedDate(dateStr: string): string {
+  const d = parseISO(dateStr);
+  return `${DAY_ABBR[d.getDay()]}, ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+}
+
 type Props = {
   today: OccurrenceWithTask[];
-  overdue: OccurrenceWithTask[];
-  upcoming: OccurrenceWithTask[];
+  overdue?: OccurrenceWithTask[];
+  upcoming?: OccurrenceWithTask[];
   currentDate: string;
+  selectedDate: string;
   createTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
   rooms: Array<{ id: string; name: string }>;
+  weekNav: React.ReactNode;
 };
 
 export function TaskList({
   today,
-  overdue,
-  upcoming,
+  overdue = [],
+  upcoming = [],
   currentDate,
+  selectedDate,
   createTaskAction,
   rooms,
+  weekNav,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -97,6 +113,8 @@ export function TaskList({
 
       <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
 
+      {weekNav}
+
       <div className="space-y-8">
         {/* Atrasadas */}
         {overdue.length > 0 ? (
@@ -112,12 +130,12 @@ export function TaskList({
           </section>
         ) : null}
 
-        {/* Hoje */}
+        {/* Dia selecionado */}
         <section>
           <DailyProgressBar occurrences={today} />
           <h2 className="mb-3 text-base font-semibold">
-            Hoje — {today.length} {today.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes}{" "}
-            min
+            {selectedDate === currentDate ? "Hoje" : formatSelectedDate(selectedDate)} —{" "}
+            {today.length} {today.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes} min
           </h2>
           {today.length > 0 ? (
             <div className="space-y-2">
@@ -126,7 +144,7 @@ export function TaskList({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa para hoje 🎉</p>
+            <p className="text-sm text-muted-foreground">Nenhuma tarefa para este dia.</p>
           )}
         </section>
 

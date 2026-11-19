@@ -11,14 +11,17 @@ import {
 import {
   markMissedOccurrences,
   getTodayOccurrences,
-  getOverdueOccurrences,
-  getUpcomingOccurrences,
 } from "@/features/tasks/queries";
 import { TaskList } from "@/features/tasks/components/task-list";
+import { WeekNav } from "@/features/tasks/components/week-nav";
 
 export const metadata: Metadata = { title: "Rotina" };
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id: userId } = await requireUser();
   const home = await getHomeWithRooms(userId);
 
@@ -29,23 +32,24 @@ export default async function Page() {
   const supabase = await createClient();
   const currentDate = getLocalDateString(home.timezone);
 
+  const params = await searchParams;
+  const dateRaw = typeof params["date"] === "string" ? params["date"] : null;
+  const selectedDate =
+    dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : currentDate;
+
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
-  const [todayOcc, overdueOcc, upcomingOcc] = await Promise.all([
-    getTodayOccurrences(supabase, home.id, currentDate),
-    getOverdueOccurrences(supabase, home.id, currentDate),
-    getUpcomingOccurrences(supabase, home.id, currentDate, 7),
-  ]);
+  const todayOcc = await getTodayOccurrences(supabase, home.id, selectedDate);
 
   return (
     <TaskList
       today={todayOcc}
-      overdue={overdueOcc}
-      upcoming={upcomingOcc}
       currentDate={currentDate}
+      selectedDate={selectedDate}
       createTaskAction={createTask}
       rooms={home.rooms}
+      weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} />}
     />
   );
 }
