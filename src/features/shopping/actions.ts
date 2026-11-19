@@ -75,14 +75,16 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
   }
 
   // Verify item belongs to this home (RLS handles this, but we also confirm homeId)
-  const { error } = await supabase
+  // Finding 5: select("id") detects 0-row matches that return error:null
+  const { data: updated, error } = await supabase
     .from("shopping_items")
     .update({ is_purchased: parsed.data.is_purchased })
     .eq("id", parsed.data.id)
-    .eq("home_id", homeId);
+    .eq("home_id", homeId)
+    .select("id");
 
-  if (error) {
-    return { status: "error", message: "Erro ao atualizar item. Tente novamente." };
+  if (error || !updated?.length) {
+    return { status: "error", message: "Item não encontrado." };
   }
 
   revalidatePath("/compras");
@@ -112,7 +114,8 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { error } = await supabase
+  // Finding 5: select("id") detects 0-row matches that return error:null
+  const { data: updated, error } = await supabase
     .from("shopping_items")
     .update({
       name: parsed.data.name,
@@ -121,10 +124,11 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
       unit: parsed.data.unit,
     })
     .eq("id", parsed.data.id)
-    .eq("home_id", homeId);
+    .eq("home_id", homeId)
+    .select("id");
 
-  if (error) {
-    return { status: "error", message: "Erro ao editar item. Tente novamente." };
+  if (error || !updated?.length) {
+    return { status: "error", message: "Item não encontrado." };
   }
 
   revalidatePath("/compras");
@@ -150,14 +154,16 @@ export async function deleteItem(_: FormState, fd: FormData): Promise<FormState>
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { error } = await supabase
+  // Finding 5: select("id") detects 0-row matches that return error:null
+  const { data: deleted, error } = await supabase
     .from("shopping_items")
     .delete()
     .eq("id", parsed.data.id)
-    .eq("home_id", homeId);
+    .eq("home_id", homeId)
+    .select("id");
 
-  if (error) {
-    return { status: "error", message: "Erro ao excluir item. Tente novamente." };
+  if (error || !deleted?.length) {
+    return { status: "error", message: "Item não encontrado." };
   }
 
   revalidatePath("/compras");

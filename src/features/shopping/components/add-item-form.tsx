@@ -2,12 +2,9 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { addItem } from "@/features/shopping/actions";
-import { initialFormState } from "@/features/auth/form-state";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type Category = "limpeza" | "higiene" | "cozinha" | "lavanderia" | "alimentacao" | "outros";
-type Unit = "un" | "kg" | "g" | "l" | "ml" | "pacote" | "caixa";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -16,14 +13,27 @@ export function AddItemForm() {
   const nameRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [showExtras, setShowExtras] = useState(false);
+  // Finding 6: controlled input so React 19 auto-reset doesn't clear value on error
+  const [nameValue, setNameValue] = useState("");
 
-  const [state, dispatch, pending] = useActionState(addItem, initialFormState);
+  // Finding 2: wrappedAdd moves setShowExtras out of useEffect
+  // Finding 6: nameValue is cleared here on success
+  const wrappedAdd = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    const result = await addItem(prev, fd);
+    if (result.status === "success") {
+      setShowExtras(false);
+      setNameValue("");
+    }
+    return result;
+  };
+
+  const [state, dispatch, pending] = useActionState(wrappedAdd, initialFormState);
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
       nameRef.current?.focus();
-      setShowExtras(false);
+      // setShowExtras(false) moved to wrappedAdd to satisfy react-hooks/set-state-in-effect
     }
   }, [state]);
 
@@ -33,6 +43,8 @@ export function AddItemForm() {
         <Input
           ref={nameRef}
           name="name"
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
           placeholder="Adicionar item…"
           autoFocus
           autoComplete="off"

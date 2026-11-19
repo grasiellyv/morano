@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { toast } from "sonner";
 import type { ShoppingItem } from "@/features/shopping/queries";
 import { togglePurchased, editItem, deleteItem } from "@/features/shopping/actions";
-import { initialFormState } from "@/features/auth/form-state";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 type Category = ShoppingItem["category"];
 type Unit = ShoppingItem["unit"];
@@ -46,20 +48,33 @@ export function ShoppingItemRow({ item }: Props) {
   const [editQuantity, setEditQuantity] = useState(String(item.quantity));
   const [editUnit, setEditUnit] = useState<Unit>(item.unit);
 
-  const [, toggleDispatch, togglePending] = useActionState(
-    togglePurchased,
-    initialFormState,
-  );
-  const [editState, editDispatch, editPending] = useActionState(
-    editItem,
-    initialFormState,
-  );
-  const [, deleteDispatch, deletePending] = useActionState(
-    deleteItem,
-    initialFormState,
-  );
+  // Finding 4: wrap toggle to surface errors via toast
+  const wrappedToggle = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    const result = await togglePurchased(prev, fd);
+    if (result.status === "error") toast.error(result.message ?? "Erro ao atualizar item");
+    return result;
+  };
+  const [, toggleDispatch, togglePending] = useActionState(wrappedToggle, initialFormState);
 
-  const anyPending = togglePending || editPending || deletePending;
+  // Finding 3: wrap edit to close only on success
+  const wrappedEdit = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    const result = await editItem(prev, fd);
+    if (result.status === "success") setEditing(false);
+    return result;
+  };
+  const [editState, editDispatch, editPending] = useActionState(wrappedEdit, initialFormState);
+
+  // Finding 7 / Critical 1: delete handled via ConfirmDialog, not inline form
+  async function handleDelete() {
+    const fd = new FormData();
+    fd.append("id", item.id);
+    const result = await deleteItem(initialFormState, fd);
+    // Finding 4: surface delete errors via toast
+    if (result.status === "error") toast.error(result.message ?? "Erro ao excluir item");
+    setMenuOpen(false);
+  }
+
+  const anyPending = togglePending || editPending;
 
   function startEdit() {
     setEditName(item.name);
@@ -77,14 +92,9 @@ export function ShoppingItemRow({ item }: Props) {
   if (editing) {
     return (
       <div className="rounded-lg border border-border bg-card px-4 py-3">
+        {/* Finding 3: removed onSubmit optimistic close; wrappedEdit closes on success */}
         <form
           action={editDispatch}
-          onSubmit={() => {
-            // We'll close editing on success via useEffect is not needed here —
-            // the server revalidates and the component re-renders from the parent.
-            // For immediate UX, close editing optimistically.
-            setEditing(false);
-          }}
           className="space-y-2"
         >
           <input type="hidden" name="id" value={item.id} />
@@ -252,18 +262,23 @@ export function ShoppingItemRow({ item }: Props) {
               Editar
             </button>
 
-            <form action={deleteDispatch}>
-              <input type="hidden" name="id" value={item.id} />
-              <button
-                role="menuitem"
-                type="submit"
-                disabled={deletePending}
-                className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-muted disabled:opacity-50"
-                onClick={() => setMenuOpen(false)}
-              >
-                {deletePending ? "Excluindo…" : "Excluir"}
-              </button>
-            </form>
+            {/* Finding 7 / Critical 1: ConfirmDialog wraps delete — no form inside dropdown */}
+            <ConfirmDialog
+              trigger={
+                <button
+                  role="menuitem"
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-muted"
+                >
+                  Excluir
+                </button>
+              }
+              title="Excluir item"
+              description={`Tem certeza que deseja excluir "${item.name}"? Esta ação não pode ser desfeita.`}
+              confirmLabel="Excluir"
+              onConfirm={handleDelete}
+              destructive
+            />
           </div>
         ) : null}
       </div>
