@@ -178,3 +178,93 @@ export async function getUpcomingOccurrences(
 
   return rows;
 }
+
+/**
+ * Returns occurrence counts per day for a given month.
+ * Includes pending, completed, skipped (NOT missed).
+ */
+export async function getOccurrencesForMonth(
+  supabase: SupabaseClient,
+  homeId: string,
+  year: number,
+  month: number, // 1-12
+): Promise<{ date: string; pendingCount: number; completedCount: number }[]> {
+  const monthStr = String(month).padStart(2, "0");
+  const firstDay = `${year}-${monthStr}-01`;
+  const nextMonthYear = month === 12 ? year + 1 : year;
+  const nextMonthNum = month === 12 ? 1 : month + 1;
+  const lastDay = addDaysStr(
+    `${nextMonthYear}-${String(nextMonthNum).padStart(2, "0")}-01`,
+    -1,
+  );
+
+  const { data, error } = await supabase
+    .from("task_occurrences")
+    .select("scheduled_for, status")
+    .eq("home_id", homeId)
+    .in("status", ["pending", "completed", "skipped"])
+    .gte("scheduled_for", firstDay)
+    .lte("scheduled_for", lastDay);
+
+  if (error || !data) return [];
+
+  const map = new Map<string, { pendingCount: number; completedCount: number }>();
+  for (const row of data) {
+    const date = row.scheduled_for as string;
+    const status = row.status as string;
+    const entry = map.get(date) ?? { pendingCount: 0, completedCount: 0 };
+    if (status === "pending") entry.pendingCount++;
+    else if (status === "completed") entry.completedCount++;
+    map.set(date, entry);
+  }
+
+  return Array.from(map.entries()).map(([date, counts]) => ({ date, ...counts }));
+}
+
+/**
+ * Returns all occurrences for a week (Sunday to Saturday).
+ */
+export async function getOccurrencesForWeek(
+  supabase: SupabaseClient,
+  homeId: string,
+  weekStart: string, // "yyyy-MM-dd" Sunday
+): Promise<OccurrenceWithTask[]> {
+  const weekEnd = addDaysStr(weekStart, 6);
+
+  const { data, error } = await supabase
+    .from("task_occurrences")
+    .select(
+      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, estimated_minutes, room_id, status)",
+    )
+    .eq("home_id", homeId)
+    .gte("scheduled_for", weekStart)
+    .lte("scheduled_for", weekEnd);
+
+  if (error || !data) return [];
+
+  return data as unknown as OccurrenceWithTask[];
+}
+
+/**
+ * Returns completed, skipped, and missed occurrences, ordered by scheduled_for DESC.
+ * Includes archived tasks (no filter on tasks.status).
+ */
+export async function getHistory(
+  supabase: SupabaseClient,
+  homeId: string,
+  limit = 50,
+): Promise<OccurrenceWithTask[]> {
+  const { data, error } = await supabase
+    .from("task_occurrences")
+    .select(
+      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, estimated_minutes, room_id, status)",
+    )
+    .eq("home_id", homeId)
+    .in("status", ["completed", "skipped", "missed"])
+    .order("scheduled_for", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return data as unknown as OccurrenceWithTask[];
+}
