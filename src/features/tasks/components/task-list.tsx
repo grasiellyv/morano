@@ -128,7 +128,7 @@ export function TaskList({
 
       {weekNav}
 
-      {(events.length > 0 || createEventAction) ? (
+      {(events.length > 0 || showCreateEvent) ? (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold">Eventos</h2>
@@ -163,11 +163,12 @@ export function TaskList({
                   <button
                     type="button"
                     className="w-full text-left"
-                    onClick={() =>
+                    onClick={() => {
+                      setShowCreateEvent(false);
                       setEditingEventId((prev) =>
                         prev === event.id ? null : event.id,
-                      )
-                    }
+                      );
+                    }}
                   >
                     <EventChip event={event} />
                   </button>
@@ -186,9 +187,19 @@ export function TaskList({
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum evento para este dia.</p>
-          )}
+          ) : null}
+        </div>
+      ) : null}
+      {createEventAction && events.length === 0 && !showCreateEvent ? (
+        <div className="mb-6 flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCreateEvent(true)}
+          >
+            Novo evento
+          </Button>
         </div>
       ) : null}
 
