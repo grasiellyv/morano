@@ -52,7 +52,7 @@ export default async function RevisaoPage() {
   // Carrega configuração da rotina da residência — erro redireciona
   const { data: home, error: homeError } = await supabase
     .from("homes")
-    .select("routine_level, available_minutes_per_week")
+    .select("routine_level")
     .eq("id", homeId)
     .single();
 
@@ -61,7 +61,6 @@ export default async function RevisaoPage() {
   }
 
   const routineLevel = toRoutineLevel(home.routine_level);
-  const availableMinutes = home.available_minutes_per_week ?? 120;
 
   // Carrega tipos de cômodos cadastrados — erro redireciona
   const { data: rooms, error: roomsError } = await supabase
@@ -77,7 +76,7 @@ export default async function RevisaoPage() {
     .map((r) => r.room_type as RoomType)
     .filter((rt): rt is RoomType => typeof rt === "string" && rt.length > 0);
 
-  const suggested = filterCatalog(roomTypes, routineLevel, availableMinutes);
+  const suggested = filterCatalog(roomTypes, routineLevel);
 
   return (
     <TaskReviewList tasks={suggested} formAction={approveRoutine} />

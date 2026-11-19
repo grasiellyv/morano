@@ -159,7 +159,6 @@ export async function saveRotina(
 
   const parsed = rotinaSchema.safeParse({
     routine_level: textField(formData, "routine_level"),
-    available_minutes_per_week: textField(formData, "available_minutes_per_week"),
   });
 
   if (!parsed.success) {
@@ -186,7 +185,6 @@ export async function saveRotina(
     .from("homes")
     .update({
       routine_level: parsed.data.routine_level,
-      available_minutes_per_week: parsed.data.available_minutes_per_week,
     })
     .eq("id", homeId);
 
@@ -279,7 +277,6 @@ export async function approveRoutine(
       .insert({
         home_id: homeId,
         title: task.title,
-        estimated_minutes: task.estimated_minutes,
         priority: "media",
         source: "onboarding",
         // created_by is NOT in the INSERT grant — the DB default (auth.uid()) fills it

@@ -24,7 +24,6 @@ const FREQ_LABELS: Record<FrequencyType, string> = {
 type TaskState = {
   include: boolean;
   title: string;
-  estimated_minutes: number;
   frequency_type: FrequencyType;
 };
 
@@ -53,7 +52,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
           id: t.id,
           include: true,
           title: t.title,
-          estimated_minutes: t.estimated_minutes,
           frequency_type: t.frequency_type,
         })),
       ),
@@ -68,7 +66,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
       map.set(t.id, {
         include: true,
         title: t.title,
-        estimated_minutes: t.estimated_minutes,
         frequency_type: t.frequency_type,
       });
     }
@@ -86,10 +83,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
   }
 
   const includedEntries = tasks.filter((t) => taskStates.get(t.id)?.include);
-  const totalMinutes = includedEntries.reduce((sum, t) => {
-    const s = taskStates.get(t.id);
-    return sum + (s?.estimated_minutes ?? t.estimated_minutes);
-  }, 0);
 
   // Serializa todas as tarefas. Tarefas excluídas preservam o título original
   // para não falhar na validação server-side (title: min(1)).
@@ -105,7 +98,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
         id: t.id,
         include: isIncluded,
         title,
-        estimated_minutes: s?.estimated_minutes ?? t.estimated_minutes,
         frequency_type: s?.frequency_type ?? t.frequency_type,
       };
     }),
@@ -138,7 +130,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
           const s = taskStates.get(task.id);
           const include = s?.include ?? true;
           const title = s?.title ?? task.title;
-          const estimatedMinutes = s?.estimated_minutes ?? task.estimated_minutes;
           const frequencyType = s?.frequency_type ?? task.frequency_type;
 
           return (
@@ -169,22 +160,6 @@ export function TaskReviewList({ tasks, formAction }: Props) {
                 aria-label="Título da tarefa"
                 className="border-input bg-background text-foreground ring-offset-background focus-visible:ring-ring flex-1 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
-
-              {/* Minutos estimados */}
-              <input
-                type="number"
-                value={estimatedMinutes}
-                disabled={!include}
-                min={1}
-                onChange={(e) =>
-                  updateTask(task.id, {
-                    estimated_minutes: Math.max(1, Number(e.target.value) || 1),
-                  })
-                }
-                aria-label="Minutos estimados"
-                className="border-input bg-background text-foreground ring-offset-background focus-visible:ring-ring w-16 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-              <span className="text-muted-foreground text-xs">min</span>
 
               {/* Frequência */}
               <select
@@ -220,8 +195,7 @@ export function TaskReviewList({ tasks, formAction }: Props) {
       {/* Resumo + botão de aprovação */}
       <div className="space-y-3">
         <p className="text-muted-foreground text-sm">
-          {includedEntries.length} tarefa{includedEntries.length !== 1 ? "s" : ""}{" "}
-          · ~{totalMinutes} min/semana
+          {includedEntries.length} tarefa{includedEntries.length !== 1 ? "s" : ""} selecionada{includedEntries.length !== 1 ? "s" : ""}
         </p>
         {noTasksSelected && (
           <p className="text-destructive text-sm">

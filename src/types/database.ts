@@ -279,14 +279,14 @@ isOneToOne: false
                   ]
                 },"homes": {
                   Row: {
-                    "available_minutes_per_week": number | null,"created_at": string,"created_by": string | null,"household_type": Database["public"]['Enums']["household_type"] | null,"id": string,"name": string,"ownership_type": Database["public"]['Enums']["ownership_type"] | null,"property_type": Database["public"]['Enums']["property_type"] | null,"resident_count": number | null,"routine_level": Database["public"]['Enums']["routine_level"] | null,"timezone": string,"updated_at": string
+                    "created_at": string,"created_by": string | null,"household_type": Database["public"]['Enums']["household_type"] | null,"id": string,"name": string,"ownership_type": Database["public"]['Enums']["ownership_type"] | null,"property_type": Database["public"]['Enums']["property_type"] | null,"resident_count": number | null,"routine_level": Database["public"]['Enums']["routine_level"] | null,"timezone": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "available_minutes_per_week"?: number | null,"created_at"?: string,"created_by"?: string | null,"household_type"?: Database["public"]['Enums']["household_type"] | null,"id"?: string,"name": string,"ownership_type"?: Database["public"]['Enums']["ownership_type"] | null,"property_type"?: Database["public"]['Enums']["property_type"] | null,"resident_count"?: number | null,"routine_level"?: Database["public"]['Enums']["routine_level"] | null,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"household_type"?: Database["public"]['Enums']["household_type"] | null,"id"?: string,"name": string,"ownership_type"?: Database["public"]['Enums']["ownership_type"] | null,"property_type"?: Database["public"]['Enums']["property_type"] | null,"resident_count"?: number | null,"routine_level"?: Database["public"]['Enums']["routine_level"] | null,"timezone"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "available_minutes_per_week"?: number | null,"created_at"?: string,"created_by"?: string | null,"household_type"?: Database["public"]['Enums']["household_type"] | null,"id"?: string,"name"?: string,"ownership_type"?: Database["public"]['Enums']["ownership_type"] | null,"property_type"?: Database["public"]['Enums']["property_type"] | null,"resident_count"?: number | null,"routine_level"?: Database["public"]['Enums']["routine_level"] | null,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"household_type"?: Database["public"]['Enums']["household_type"] | null,"id"?: string,"name"?: string,"ownership_type"?: Database["public"]['Enums']["ownership_type"] | null,"property_type"?: Database["public"]['Enums']["property_type"] | null,"resident_count"?: number | null,"routine_level"?: Database["public"]['Enums']["routine_level"] | null,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -603,14 +603,14 @@ isOneToOne: false
                   ]
                 },"tasks": {
                   Row: {
-                    "appliance_id": string | null,"created_at": string,"created_by": string | null,"description": string | null,"estimated_minutes": number | null,"home_id": string,"id": string,"instructions": string | null,"is_essential": boolean,"priority": Database["public"]['Enums']["task_priority"],"room_id": string | null,"source": Database["public"]['Enums']["task_source"],"status": Database["public"]['Enums']["task_status"],"title": string,"updated_at": string
+                    "appliance_id": string | null,"created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"instructions": string | null,"is_essential": boolean,"priority": Database["public"]['Enums']["task_priority"],"room_id": string | null,"source": Database["public"]['Enums']["task_source"],"status": Database["public"]['Enums']["task_status"],"title": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"estimated_minutes"?: number | null,"home_id": string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title": string,"updated_at"?: string
+                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id": string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"estimated_minutes"?: number | null,"home_id"?: string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title"?: string,"updated_at"?: string
+                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id"?: string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {

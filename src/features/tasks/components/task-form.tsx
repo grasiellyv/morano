@@ -30,7 +30,6 @@ export interface TaskFormProps {
     instructions?: string;
     priority?: string;
     is_essential?: boolean;
-    estimated_minutes?: number;
     room_id?: string | null;
     frequency_type?: string;
     start_date?: string;
@@ -63,7 +62,6 @@ export function TaskForm({
       instructions: initialValues?.instructions ?? "",
       priority: (initialValues?.priority as "baixa" | "media" | "alta") ?? "media",
       is_essential: initialValues?.is_essential ?? false,
-      estimated_minutes: initialValues?.estimated_minutes ?? 30,
       room_id: initialValues?.room_id ?? null,
       frequency_type:
         (initialValues?.frequency_type as
@@ -178,15 +176,6 @@ export function TaskForm({
       </div>
 
       {/* Estimated minutes */}
-      <Field
-        label="Duração estimada (minutos)"
-        type="number"
-        min={1}
-        max={480}
-        registration={form.register("estimated_minutes")}
-        error={errors.estimated_minutes?.message ?? state.fieldErrors?.estimated_minutes}
-      />
-
       {/* Room (optional) */}
       {rooms.length > 0 ? (
         <div className="space-y-2">

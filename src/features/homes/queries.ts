@@ -13,7 +13,6 @@ export type HomeWithRooms = {
   ownership_type: OwnershipType;
   household_type: HouseholdType;
   resident_count: number;
-  available_minutes_per_week: number;
   routine_level: RoutineLevel;
   timezone: string;
   rooms: Array<{ id: string; name: string; room_type: RoomType; position: number }>;
@@ -38,7 +37,7 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
 
   const { data: home, error: homeError } = await supabase
     .from("homes")
-    .select("id, name, property_type, ownership_type, household_type, resident_count, available_minutes_per_week, routine_level, timezone")
+    .select("id, name, property_type, ownership_type, household_type, resident_count, routine_level, timezone")
     .eq("id", homeId)
     .maybeSingle();
 
@@ -68,7 +67,6 @@ export async function getHomeWithRooms(userId: string): Promise<HomeWithRooms | 
     ownership_type: ownershipType,
     household_type: householdType,
     resident_count: home.resident_count ?? 1,
-    available_minutes_per_week: home.available_minutes_per_week ?? 0,
     routine_level: routineLevel,
     timezone: home.timezone,
     rooms: (rooms ?? []).map((r) => ({

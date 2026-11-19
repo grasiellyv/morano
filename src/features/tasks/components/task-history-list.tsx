@@ -68,8 +68,6 @@ export function TaskHistoryList({ occurrences }: Props) {
               {format(parseISO(occ.scheduled_for), "d 'de' MMMM", {
                 locale: ptBR,
               })}
-              {" · "}
-              {occ.task.estimated_minutes} min
             </div>
           </div>
         </li>

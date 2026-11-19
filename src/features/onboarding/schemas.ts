@@ -39,13 +39,11 @@ export const comodoSchema = z.object({
 
 export const rotinaSchema = z.object({
   routine_level: z.enum(ROUTINE_LEVELS),
-  available_minutes_per_week: z.coerce.number().int().min(10).max(2000),
 });
 
 export const revisaoTaskSchema = z.object({
   id: z.string(),
   include: z.boolean(),
   title: z.string().min(1).max(200),
-  estimated_minutes: z.coerce.number().int().min(1),
   frequency_type: z.enum(["once", "daily", "weekly", "biweekly", "monthly"]),
 });
