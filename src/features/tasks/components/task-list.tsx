@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { FormState } from "@/features/auth/form-state";
 import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
 import { TaskForm } from "@/features/tasks/components/task-form";
 import { Button } from "@/components/ui/button";
+import { DailyProgressBar, calcProgress } from "@/features/tasks/components/daily-progress-bar";
+import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 
 type Props = {
   today: OccurrenceWithTask[];
@@ -26,6 +28,29 @@ export function TaskList({
   rooms,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const prevDone = useRef<number | null>(null);
+  const prevTotal = useRef<number>(0);
+  const hasMounted = useRef(false);
+
+  const progress = calcProgress(today);
+
+  useEffect(() => {
+    if (progress.total === 0) { prevDone.current = null; prevTotal.current = 0; hasMounted.current = false; return; }
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      prevDone.current = progress.done;
+      prevTotal.current = progress.total;
+      return;
+    }
+    const isNow100 = progress.done === progress.total;
+    const wasBefore100 = prevDone.current === prevTotal.current && prevTotal.current > 0;
+    if (isNow100 && !wasBefore100) setCelebrate(true);
+    prevDone.current = progress.done;
+    prevTotal.current = progress.total;
+  }, [progress.done, progress.total]);
+
+  const handleCelebrateDismiss = useCallback(() => setCelebrate(false), []);
 
   const totalMinutes = today.reduce((s, o) => s + o.task.estimated_minutes, 0);
 
@@ -70,6 +95,8 @@ export function TaskList({
         </div>
       ) : null}
 
+      <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
+
       <div className="space-y-8">
         {/* Atrasadas */}
         {overdue.length > 0 ? (
@@ -87,6 +114,7 @@ export function TaskList({
 
         {/* Hoje */}
         <section>
+          <DailyProgressBar occurrences={today} />
           <h2 className="mb-3 text-base font-semibold">
             Hoje — {today.length} {today.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes}{" "}
             min
