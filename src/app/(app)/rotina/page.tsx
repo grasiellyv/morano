@@ -29,7 +29,7 @@ export default async function Page() {
   const supabase = await createClient();
   const currentDate = getLocalDateString(home.timezone);
 
-  await extendWindowForHome(home.id, home.timezone).catch(() => {});
+  extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
   const [todayOcc, overdueOcc, upcomingOcc] = await Promise.all([
