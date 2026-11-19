@@ -34,6 +34,7 @@ type Props = {
   createTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
   rooms: Array<{ id: string; name: string }>;
   weekNav: React.ReactNode;
+  absenceBanner?: React.ReactNode;
   events?: Event[];
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
@@ -49,6 +50,7 @@ export function TaskList({
   createTaskAction,
   rooms,
   weekNav,
+  absenceBanner,
   events = [],
   createEventAction,
   updateEventAction,
@@ -125,6 +127,8 @@ export function TaskList({
       ) : null}
 
       <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
+
+      {absenceBanner}
 
       {weekNav}
 
