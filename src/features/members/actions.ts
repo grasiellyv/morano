@@ -13,6 +13,8 @@ import {
   revokeInviteSchema,
   removeMemberSchema,
   transferOwnershipSchema,
+  setMemberPermissionsSchema,
+  SHOPPING_CATEGORIES,
 } from "@/features/members/schemas";
 
 function friendlyError(msg: string | undefined): string {
@@ -185,4 +187,51 @@ export async function transferOwnership(
 
   revalidatePath("/casa/membros");
   return { status: "success", message: "Propriedade transferida com sucesso" };
+}
+
+export async function setMemberPermissions(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const rawTaskRoomIds = fd.getAll("task_room_id").map(String).filter(Boolean);
+  const rawCategories = fd.getAll("shopping_category").map(String).filter(Boolean);
+
+  const parsed = setMemberPermissionsSchema.safeParse({
+    user_id: textField(fd, "user_id"),
+    can_manage_tasks: textField(fd, "can_manage_tasks") === "true",
+    can_complete_tasks: textField(fd, "can_complete_tasks") === "true",
+    can_manage_shopping: textField(fd, "can_manage_shopping") === "true",
+    can_purchase_shopping: textField(fd, "can_purchase_shopping") === "true",
+    can_manage_events: textField(fd, "can_manage_events") === "true",
+    task_room_ids: rawTaskRoomIds,
+    shopping_categories: rawCategories.filter((c) =>
+      (SHOPPING_CATEGORIES as readonly string[]).includes(c),
+    ),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const { error } = await supabase.rpc("set_member_permissions", {
+    p_target_user_id: parsed.data.user_id,
+    p_can_manage_tasks: parsed.data.can_manage_tasks,
+    p_can_complete_tasks: parsed.data.can_complete_tasks,
+    p_can_manage_shopping: parsed.data.can_manage_shopping,
+    p_can_purchase_shopping: parsed.data.can_purchase_shopping,
+    p_can_manage_events: parsed.data.can_manage_events,
+    p_task_room_ids: parsed.data.task_room_ids,
+    p_shopping_categories: parsed.data.shopping_categories,
+  });
+
+  if (error) {
+    return { status: "error", message: extractErrorMessage(error) };
+  }
+
+  revalidatePath(`/casa/membros/${parsed.data.user_id}/permissoes`);
+  revalidatePath("/casa/membros");
+  return { status: "success", message: "Permissões atualizadas" };
 }

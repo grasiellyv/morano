@@ -13,6 +13,7 @@ import {
   updateEventSchema,
   deleteEventSchema,
 } from "@/features/events/schemas";
+import { getMemberPermissions } from "@/features/members/permissions";
 
 export async function createEvent(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -24,6 +25,11 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
     .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
+
+  const createEventPerms = await getMemberPermissions(supabase, userId, homeId);
+  if (!createEventPerms.bypass && !createEventPerms.can_manage_events) {
+    return { status: "error", message: "Sem permissão para gerenciar eventos." };
+  }
 
   const parsed = createEventSchema.safeParse({
     title: textField(fd, "title"),
@@ -69,6 +75,11 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
     .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
+
+  const updateEventPerms = await getMemberPermissions(supabase, userId, homeId);
+  if (!updateEventPerms.bypass && !updateEventPerms.can_manage_events) {
+    return { status: "error", message: "Sem permissão para gerenciar eventos." };
+  }
 
   const parsed = updateEventSchema.safeParse({
     id: textField(fd, "id"),
@@ -119,6 +130,11 @@ export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState
     .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
+
+  const deleteEventPerms = await getMemberPermissions(supabase, userId, homeId);
+  if (!deleteEventPerms.bypass && !deleteEventPerms.can_manage_events) {
+    return { status: "error", message: "Sem permissão para gerenciar eventos." };
+  }
 
   const parsed = deleteEventSchema.safeParse({
     id: textField(fd, "id"),
