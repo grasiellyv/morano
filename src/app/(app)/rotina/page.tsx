@@ -14,6 +14,12 @@ import {
 } from "@/features/tasks/queries";
 import { TaskList } from "@/features/tasks/components/task-list";
 import { WeekNav } from "@/features/tasks/components/week-nav";
+import { getEventsForRange } from "@/features/events/queries";
+import {
+  createEvent,
+  updateEvent,
+  deleteEvent,
+} from "@/features/events/actions";
 
 export const metadata: Metadata = { title: "Rotina" };
 
@@ -40,7 +46,10 @@ export default async function Page({
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
-  const todayOcc = await getTodayOccurrences(supabase, home.id, selectedDate);
+  const [todayOcc, events] = await Promise.all([
+    getTodayOccurrences(supabase, home.id, selectedDate),
+    getEventsForRange(supabase, home.id, selectedDate, selectedDate),
+  ]);
 
   return (
     <TaskList
@@ -50,6 +59,10 @@ export default async function Page({
       createTaskAction={createTask}
       rooms={home.rooms}
       weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} />}
+      events={events}
+      createEventAction={createEvent}
+      updateEventAction={updateEvent}
+      deleteEventAction={deleteEvent}
     />
   );
 }

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { format, parseISO, getDaysInMonth, getDay, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
+import type { Event } from "@/features/events/queries";
+import { EventChip } from "@/features/events/components/event-chip";
 
 type MonthDay = { date: string; pendingCount: number; completedCount: number };
 
@@ -14,6 +16,7 @@ type Props = {
   weekStart: string;
   weekData: OccurrenceWithTask[];
   today: string;
+  events?: Event[];
 };
 
 const SHORT_DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
@@ -49,11 +52,31 @@ export function CalendarView({
   weekStart,
   weekData,
   today,
+  events = [],
 }: Props) {
   // --- Month view data ---
   const monthDataMap = new Map<string, MonthDay>(
     monthData.map((d): [string, MonthDay] => [d.date, d]),
   );
+
+  // --- Events by day (multi-day events appear on each day in their range) ---
+  const eventsByDate = new Map<string, Event[]>();
+  for (const event of events) {
+    const endDate = event.end_date ?? event.start_date;
+    // Iterate days in the month only
+    const monthPad = String(month).padStart(2, "0");
+    const daysCount = getDaysInMonth(
+      parseISO(`${year}-${monthPad}-01`),
+    );
+    for (let d = 1; d <= daysCount; d++) {
+      const dateStr = `${year}-${monthPad}-${String(d).padStart(2, "0")}`;
+      if (dateStr >= event.start_date && dateStr <= endDate) {
+        const existing = eventsByDate.get(dateStr) ?? [];
+        existing.push(event);
+        eventsByDate.set(dateStr, existing);
+      }
+    }
+  }
 
   const firstDayOfMonth = parseISO(
     `${year}-${String(month).padStart(2, "0")}-01`,
@@ -202,6 +225,7 @@ export function CalendarView({
               ? null
               : `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
             const dayData = dateStr ? monthDataMap.get(dateStr) : undefined;
+            const dayEvents = dateStr ? (eventsByDate.get(dateStr) ?? []) : [];
             const isToday = dateStr === today;
             const allDone =
               !!dayData &&
@@ -212,7 +236,7 @@ export function CalendarView({
               <div
                 key={idx}
                 className={[
-                  "h-20 p-2 border-b border-r border-sand",
+                  "min-h-20 p-2 border-b border-r border-sand",
                   isLastCol ? "border-r-0" : "",
                   isToday ? "bg-sand/40" : "",
                   isEmpty ? "bg-background/50" : "",
@@ -230,7 +254,7 @@ export function CalendarView({
                       {dayNum}
                     </div>
                     {dayData && (
-                      <div>
+                      <div className="mb-1">
                         {allDone ? (
                           <span
                             className="inline-block w-2 h-2 rounded-full bg-sage"
@@ -243,6 +267,13 @@ export function CalendarView({
                         ) : null}
                       </div>
                     )}
+                    {dayEvents.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {dayEvents.map((event) => (
+                          <EventChip key={event.id} event={event} compact />
+                        ))}
+                      </div>
+                    ) : null}
                   </>
                 )}
               </div>

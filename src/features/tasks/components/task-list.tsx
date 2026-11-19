@@ -5,11 +5,14 @@ import Link from "next/link";
 import { parseISO } from "date-fns";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { FormState } from "@/features/auth/form-state";
+import type { Event } from "@/features/events/queries";
 import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
 import { TaskForm } from "@/features/tasks/components/task-form";
 import { Button } from "@/components/ui/button";
 import { DailyProgressBar, calcProgress } from "@/features/tasks/components/daily-progress-bar";
 import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
+import { EventChip } from "@/features/events/components/event-chip";
+import { EventForm } from "@/features/events/components/event-form";
 
 const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 const MONTH_ABBR = [
@@ -31,6 +34,10 @@ type Props = {
   createTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
   rooms: Array<{ id: string; name: string }>;
   weekNav: React.ReactNode;
+  events?: Event[];
+  createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
 };
 
 export function TaskList({
@@ -42,8 +49,14 @@ export function TaskList({
   createTaskAction,
   rooms,
   weekNav,
+  events = [],
+  createEventAction,
+  updateEventAction,
+  deleteEventAction,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const prevDone = useRef<number | null>(null);
   const prevTotal = useRef<number>(0);
@@ -114,6 +127,70 @@ export function TaskList({
       <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
 
       {weekNav}
+
+      {(events.length > 0 || createEventAction) ? (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold">Eventos</h2>
+            {createEventAction ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowCreateEvent((v) => !v); setEditingEventId(null); }}
+              >
+                {showCreateEvent ? "Cancelar" : "Novo evento"}
+              </Button>
+            ) : null}
+          </div>
+
+          {showCreateEvent && createEventAction ? (
+            <div className="mb-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold">Novo evento</h3>
+              <EventForm
+                mode="create"
+                createAction={createEventAction}
+                initialValues={{ start_date: selectedDate }}
+                onSuccess={() => setShowCreateEvent(false)}
+              />
+            </div>
+          ) : null}
+
+          {events.length > 0 ? (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <div key={event.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() =>
+                      setEditingEventId((prev) =>
+                        prev === event.id ? null : event.id,
+                      )
+                    }
+                  >
+                    <EventChip event={event} />
+                  </button>
+                  {editingEventId === event.id ? (
+                    <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
+                      <h3 className="mb-4 text-sm font-semibold">Editar evento</h3>
+                      <EventForm
+                        mode="edit"
+                        initialValues={event}
+                        updateAction={updateEventAction}
+                        deleteAction={deleteEventAction}
+                        onSuccess={() => setEditingEventId(null)}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum evento para este dia.</p>
+          )}
+        </div>
+      ) : null}
 
       <div className="space-y-8">
         {/* Atrasadas */}

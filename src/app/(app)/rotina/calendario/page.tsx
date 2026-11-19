@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { startOfWeek, format, parseISO } from "date-fns";
+import { startOfWeek, format, parseISO, endOfMonth } from "date-fns";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +9,7 @@ import {
   getOccurrencesForMonth,
   getOccurrencesForWeek,
 } from "@/features/tasks/queries";
+import { getEventsForRange } from "@/features/events/queries";
 import { CalendarView } from "@/features/tasks/components/calendar-view";
 
 export const metadata: Metadata = { title: "Calendário" };
@@ -58,9 +59,13 @@ export default async function Page({
       ? weekRaw
       : defaultWeekStart;
 
-  const [monthData, weekData] = await Promise.all([
+  const monthStart = format(new Date(year, month - 1, 1), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(new Date(year, month - 1)), "yyyy-MM-dd");
+
+  const [monthData, weekData, eventsData] = await Promise.all([
     getOccurrencesForMonth(supabase, home.id, year, month),
     getOccurrencesForWeek(supabase, home.id, weekStart),
+    getEventsForRange(supabase, home.id, monthStart, monthEnd),
   ]);
 
   return (
@@ -77,6 +82,7 @@ export default async function Page({
             weekStart={weekStart}
             weekData={weekData}
             today={today}
+            events={eventsData}
           />
         </div>
       </div>
