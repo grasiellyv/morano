@@ -184,6 +184,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     title: textField(fd, "title"),
     description: textField(fd, "description") || undefined,
     priority: textField(fd, "priority"),
+    is_essential: textField(fd, "is_essential"),
     estimated_minutes: textField(fd, "estimated_minutes"),
     room_id: textField(fd, "room_id") || null,
     frequency_type: textField(fd, "frequency_type"),
@@ -213,6 +214,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       priority: parsed.data.priority,
+      is_essential: parsed.data.is_essential,
       estimated_minutes: parsed.data.estimated_minutes,
       room_id: parsed.data.room_id ?? null,
       source: "manual",
@@ -605,6 +607,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
     title: textField(fd, "title"),
     description: textField(fd, "description") || undefined,
     priority: textField(fd, "priority"),
+    is_essential: textField(fd, "is_essential"),
     estimated_minutes: textField(fd, "estimated_minutes"),
     room_id: textField(fd, "room_id") || null,
   });
@@ -633,6 +636,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       priority: parsed.data.priority,
+      is_essential: parsed.data.is_essential,
       estimated_minutes: parsed.data.estimated_minutes,
       room_id: parsed.data.room_id ?? null,
     })

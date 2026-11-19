@@ -14,6 +14,7 @@ const BASE_OCC: OccurrenceWithTask = {
     id: "00000000-0000-1000-8000-000000000002",
     title: "Teste",
     priority: "media",
+    is_essential: false,
     estimated_minutes: 10,
     room_id: null,
     status: "active",

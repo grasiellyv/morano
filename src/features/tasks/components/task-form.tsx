@@ -28,6 +28,7 @@ export interface TaskFormProps {
     title?: string;
     description?: string;
     priority?: string;
+    is_essential?: boolean;
     estimated_minutes?: number;
     room_id?: string | null;
     frequency_type?: string;
@@ -59,6 +60,7 @@ export function TaskForm({
       title: initialValues?.title ?? "",
       description: initialValues?.description ?? "",
       priority: (initialValues?.priority as "baixa" | "media" | "alta") ?? "media",
+      is_essential: initialValues?.is_essential ?? false,
       estimated_minutes: initialValues?.estimated_minutes ?? 30,
       room_id: initialValues?.room_id ?? null,
       frequency_type:
@@ -142,6 +144,19 @@ export function TaskForm({
             {errors.priority?.message ?? state.fieldErrors?.priority}
           </p>
         ) : null}
+      </div>
+
+      {/* Is essential */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="is_essential"
+          name="is_essential"
+          value="true"
+          defaultChecked={initialValues?.is_essential ?? false}
+          className="h-4 w-4 rounded border-input accent-primary"
+        />
+        <Label htmlFor="is_essential">Tarefa essencial</Label>
       </div>
 
       {/* Estimated minutes */}

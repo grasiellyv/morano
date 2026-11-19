@@ -47,6 +47,7 @@ export default async function Page({
   const currentDate = getLocalDateString(home.timezone);
 
   const params = await searchParams;
+  const filterEssencial = params["filter"] === "essenciais";
   const dateRaw = typeof params["date"] === "string" ? params["date"] : null;
   let selectedDate = currentDate;
   if (dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
@@ -96,6 +97,7 @@ export default async function Page({
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}
+      filterEssencial={filterEssencial}
     />
   );
 }

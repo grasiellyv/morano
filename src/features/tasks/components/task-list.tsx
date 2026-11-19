@@ -39,6 +39,7 @@ type Props = {
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  filterEssencial?: boolean;
 };
 
 export function TaskList({
@@ -55,6 +56,7 @@ export function TaskList({
   createEventAction,
   updateEventAction,
   deleteEventAction,
+  filterEssencial = false,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -83,7 +85,16 @@ export function TaskList({
 
   const handleCelebrateDismiss = useCallback(() => setCelebrate(false), []);
 
-  const totalMinutes = today.reduce((s, o) => s + o.task.estimated_minutes, 0);
+  const displayToday = filterEssencial ? today.filter((o) => o.task.is_essential) : today;
+  const displayOverdue = filterEssencial ? overdue.filter((o) => o.task.is_essential) : overdue;
+  const displayUpcoming = filterEssencial ? upcoming.filter((o) => o.task.is_essential) : upcoming;
+
+  const totalMinutes = displayToday.reduce((s, o) => s + o.task.estimated_minutes, 0);
+
+  const dateParam = selectedDate !== currentDate ? `date=${selectedDate}&` : "";
+  const filterToggleHref = filterEssencial
+    ? selectedDate !== currentDate ? `?date=${selectedDate}` : "/rotina"
+    : `?${dateParam}filter=essenciais`;
 
   return (
     <>
@@ -102,6 +113,12 @@ export function TaskList({
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Histórico
+          </Link>
+          <Link
+            href={filterToggleHref}
+            className={`text-sm underline-offset-4 hover:underline ${filterEssencial ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+          >
+            {filterEssencial ? "Ver todas" : "Essenciais"}
           </Link>
           <Button
             type="button"
@@ -209,13 +226,13 @@ export function TaskList({
 
       <div className="space-y-8">
         {/* Atrasadas */}
-        {overdue.length > 0 ? (
+        {displayOverdue.length > 0 ? (
           <section>
             <h2 className="mb-3 text-base font-semibold text-destructive">
-              Atrasadas ({overdue.length})
+              Atrasadas ({displayOverdue.length})
             </h2>
             <div className="space-y-2">
-              {overdue.map((o) => (
+              {displayOverdue.map((o) => (
                 <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
               ))}
             </div>
@@ -224,28 +241,30 @@ export function TaskList({
 
         {/* Dia selecionado */}
         <section>
-          <DailyProgressBar occurrences={today} />
+          <DailyProgressBar occurrences={displayToday} />
           <h2 className="mb-3 text-base font-semibold">
             {selectedDate === currentDate ? "Hoje" : formatSelectedDate(selectedDate)} —{" "}
-            {today.length} {today.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes} min
+            {displayToday.length} {displayToday.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes} min
           </h2>
-          {today.length > 0 ? (
+          {displayToday.length > 0 ? (
             <div className="space-y-2">
-              {today.map((o) => (
+              {displayToday.map((o) => (
                 <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa para este dia.</p>
+            <p className="text-sm text-muted-foreground">
+              {filterEssencial ? "Nenhuma tarefa essencial para este dia." : "Nenhuma tarefa para este dia."}
+            </p>
           )}
         </section>
 
         {/* Próximas 7 dias */}
-        {upcoming.length > 0 ? (
+        {displayUpcoming.length > 0 ? (
           <section>
             <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
             <div className="space-y-2">
-              {upcoming.map((o) => (
+              {displayUpcoming.map((o) => (
                 <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
               ))}
             </div>

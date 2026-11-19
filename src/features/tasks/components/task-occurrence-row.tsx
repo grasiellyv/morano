@@ -112,6 +112,11 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
           >
             {priorityLabel(pKey)}
           </span>
+          {occurrence.task.is_essential ? (
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              Essencial
+            </span>
+          ) : null}
         </div>
 
         <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
