@@ -1,0 +1,103 @@
+"use client";
+
+import { useState } from "react";
+import type { OccurrenceWithTask } from "@/features/tasks/queries";
+import type { FormState } from "@/features/auth/form-state";
+import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
+import { TaskForm } from "@/features/tasks/components/task-form";
+import { Button } from "@/components/ui/button";
+
+type Props = {
+  today: OccurrenceWithTask[];
+  overdue: OccurrenceWithTask[];
+  upcoming: OccurrenceWithTask[];
+  currentDate: string;
+  createTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
+  rooms: Array<{ id: string; name: string }>;
+};
+
+export function TaskList({
+  today,
+  overdue,
+  upcoming,
+  currentDate,
+  createTaskAction,
+  rooms,
+}: Props) {
+  const [showCreate, setShowCreate] = useState(false);
+
+  const totalMinutes = today.reduce((s, o) => s + o.task.estimated_minutes, 0);
+
+  return (
+    <>
+      {/* Page header with "Nova tarefa" button */}
+      <header className="flex flex-wrap items-start justify-between gap-4 pb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Rotina</h1>
+        <Button
+          type="button"
+          onClick={() => setShowCreate((v) => !v)}
+        >
+          {showCreate ? "Cancelar" : "Nova tarefa"}
+        </Button>
+      </header>
+
+      {/* Create task form */}
+      {showCreate ? (
+        <div className="mb-8 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-4 text-base font-semibold">Nova tarefa</h2>
+          <TaskForm
+            mode="create"
+            rooms={rooms}
+            formAction={createTaskAction}
+            onSuccess={() => setShowCreate(false)}
+          />
+        </div>
+      ) : null}
+
+      <div className="space-y-8">
+        {/* Atrasadas */}
+        {overdue.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-base font-semibold text-destructive">
+              Atrasadas ({overdue.length})
+            </h2>
+            <div className="space-y-2">
+              {overdue.map((o) => (
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Hoje */}
+        <section>
+          <h2 className="mb-3 text-base font-semibold">
+            Hoje — {today.length} {today.length === 1 ? "tarefa" : "tarefas"} · ~{totalMinutes}{" "}
+            min
+          </h2>
+          {today.length > 0 ? (
+            <div className="space-y-2">
+              {today.map((o) => (
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma tarefa para hoje 🎉</p>
+          )}
+        </section>
+
+        {/* Próximas 7 dias */}
+        {upcoming.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
+            <div className="space-y-2">
+              {upcoming.map((o) => (
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </>
+  );
+}

@@ -1,17 +1,51 @@
 import type { Metadata } from "next";
-import { EmptyState } from "@/components/feedback/empty-state";
-import { PageHeader } from "@/components/feedback/page-header";
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth/require-user";
+import { getHomeWithRooms } from "@/features/homes/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getLocalDateString } from "@/lib/dates";
+import {
+  extendWindowForHome,
+  createTask,
+} from "@/features/tasks/actions";
+import {
+  markMissedOccurrences,
+  getTodayOccurrences,
+  getOverdueOccurrences,
+  getUpcomingOccurrences,
+} from "@/features/tasks/queries";
+import { TaskList } from "@/features/tasks/components/task-list";
 
 export const metadata: Metadata = { title: "Rotina" };
 
-export default function Page() {
+export default async function Page() {
+  const { id: userId } = await requireUser();
+  const home = await getHomeWithRooms(userId);
+
+  if (!home) {
+    redirect("/onboarding");
+  }
+
+  const supabase = await createClient();
+  const currentDate = getLocalDateString(home.timezone);
+
+  await extendWindowForHome(home.id, home.timezone).catch(() => {});
+  await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
+
+  const [todayOcc, overdueOcc, upcomingOcc] = await Promise.all([
+    getTodayOccurrences(supabase, home.id, currentDate),
+    getOverdueOccurrences(supabase, home.id, currentDate),
+    getUpcomingOccurrences(supabase, home.id, currentDate, 7),
+  ]);
+
   return (
-    <>
-      <PageHeader title="Rotina" />
-      <EmptyState
-        title="Suas tarefas e rotinas aparecem aqui"
-        description="Disponível na Etapa 4."
-      />
-    </>
+    <TaskList
+      today={todayOcc}
+      overdue={overdueOcc}
+      upcoming={upcomingOcc}
+      currentDate={currentDate}
+      createTaskAction={createTask}
+      rooms={home.rooms}
+    />
   );
 }
