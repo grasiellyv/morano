@@ -14,7 +14,7 @@ export default async function Page() {
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   const homeId = profile?.current_home_id ?? null;
   const items = homeId ? await getShoppingItems(supabase, homeId) : { pending: [], purchased: [] };
   return (
