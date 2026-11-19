@@ -9,6 +9,7 @@ const BASE_OCC: OccurrenceWithTask = {
   scheduled_for: "2026-11-19",
   status: "pending",
   completed_at: null,
+  assigned_to: null,
   notes: null,
   task: {
     id: "00000000-0000-1000-8000-000000000002",

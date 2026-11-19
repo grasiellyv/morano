@@ -9,6 +9,7 @@ export type OccurrenceWithTask = {
   scheduled_for: string;
   status: "pending" | "completed" | "skipped" | "missed";
   completed_at: string | null;
+  assigned_to: string | null;
   notes: string | null;
   task: {
     id: string;
@@ -76,7 +77,7 @@ export async function getTodayOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
     .in("status", ["pending", "completed"])
@@ -110,7 +111,7 @@ export async function getOverdueOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
     .eq("status", "pending")
@@ -148,7 +149,7 @@ export async function getUpcomingOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
     .eq("status", "pending")
@@ -228,7 +229,7 @@ export async function getOccurrencesForWeek(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
     .gte("scheduled_for", weekStart)
@@ -251,7 +252,7 @@ export async function getHistory(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, estimated_minutes, room_id, status)",
     )
     .eq("home_id", homeId)
     .in("status", ["completed", "skipped", "missed"])

@@ -40,6 +40,7 @@ type Props = {
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   filterEssencial?: boolean;
+  userId?: string;
 };
 
 export function TaskList({
@@ -57,6 +58,7 @@ export function TaskList({
   updateEventAction,
   deleteEventAction,
   filterEssencial = false,
+  userId,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -233,7 +235,7 @@ export function TaskList({
             </h2>
             <div className="space-y-2">
               {displayOverdue.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} />
               ))}
             </div>
           </section>
@@ -249,7 +251,7 @@ export function TaskList({
           {displayToday.length > 0 ? (
             <div className="space-y-2">
               {displayToday.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} />
               ))}
             </div>
           ) : (
@@ -265,7 +267,7 @@ export function TaskList({
             <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
             <div className="space-y-2">
               {displayUpcoming.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} />
+                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} />
               ))}
             </div>
           </section>

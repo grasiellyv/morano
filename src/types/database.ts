@@ -565,17 +565,23 @@ isOneToOne: true
                   ]
                 },"task_occurrences": {
                   Row: {
-                    "completed_at": string | null,"completed_by": string | null,"created_at": string,"home_id": string,"id": string,"notes": string | null,"original_date": string,"scheduled_for": string,"status": Database["public"]['Enums']["occurrence_status"],"task_id": string,"updated_at": string
+                    "assigned_to": string | null,"completed_at": string | null,"completed_by": string | null,"created_at": string,"home_id": string,"id": string,"notes": string | null,"original_date": string,"scheduled_for": string,"status": Database["public"]['Enums']["occurrence_status"],"task_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "completed_at"?: string | null,"completed_by"?: string | null,"created_at"?: string,"home_id": string,"id"?: string,"notes"?: string | null,"original_date": string,"scheduled_for": string,"status"?: Database["public"]['Enums']["occurrence_status"],"task_id": string,"updated_at"?: string
+                    "assigned_to"?: string | null,"completed_at"?: string | null,"completed_by"?: string | null,"created_at"?: string,"home_id": string,"id"?: string,"notes"?: string | null,"original_date": string,"scheduled_for": string,"status"?: Database["public"]['Enums']["occurrence_status"],"task_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "completed_at"?: string | null,"completed_by"?: string | null,"created_at"?: string,"home_id"?: string,"id"?: string,"notes"?: string | null,"original_date"?: string,"scheduled_for"?: string,"status"?: Database["public"]['Enums']["occurrence_status"],"task_id"?: string,"updated_at"?: string
+                    "assigned_to"?: string | null,"completed_at"?: string | null,"completed_by"?: string | null,"created_at"?: string,"home_id"?: string,"id"?: string,"notes"?: string | null,"original_date"?: string,"scheduled_for"?: string,"status"?: Database["public"]['Enums']["occurrence_status"],"task_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "task_occurrences_assigned_to_fkey"
+      columns: ["assigned_to"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "task_occurrences_completed_by_fkey"
       columns: ["completed_by"]
 isOneToOne: false

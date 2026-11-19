@@ -98,6 +98,7 @@ export default async function Page({
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}
       filterEssencial={filterEssencial}
+      userId={userId}
     />
   );
 }

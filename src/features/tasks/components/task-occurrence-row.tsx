@@ -6,6 +6,8 @@ import {
   undoComplete,
   skipOccurrence,
   postponeOccurrence,
+  claimOccurrence,
+  unclaimOccurrence,
 } from "@/features/tasks/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
@@ -43,9 +45,10 @@ function priorityLabel(priority: "alta" | "media" | "baixa"): string {
 type Props = {
   occurrence: OccurrenceWithTask;
   today: string;
+  userId?: string;
 };
 
-export function TaskOccurrenceRow({ occurrence, today }: Props) {
+export function TaskOccurrenceRow({ occurrence, today, userId }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
 
@@ -63,6 +66,14 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
   );
   const [postponeState, postponeDispatch, postponePending] = useActionState(
     postponeOccurrence,
+    initialFormState,
+  );
+  const [claimState, claimDispatch, claimPending] = useActionState(
+    claimOccurrence,
+    initialFormState,
+  );
+  const [, unclaimDispatch, unclaimPending] = useActionState(
+    unclaimOccurrence,
     initialFormState,
   );
 
@@ -143,6 +154,35 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
           <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
             {occurrence.task.instructions}
           </p>
+        ) : null}
+
+        {/* Assignment */}
+        {!isCompleted ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {occurrence.assigned_to === null ? (
+              <form action={claimDispatch}>
+                <input type="hidden" name="occurrence_id" value={occurrence.id} />
+                <Button type="submit" variant="outline" size="sm" disabled={claimPending}>
+                  {claimPending ? "Aguarde…" : "Eu pego"}
+                </Button>
+              </form>
+            ) : occurrence.assigned_to === userId ? (
+              <>
+                <span className="text-xs font-medium text-primary">Você pegou</span>
+                <form action={unclaimDispatch}>
+                  <input type="hidden" name="occurrence_id" value={occurrence.id} />
+                  <Button type="submit" variant="ghost" size="sm" disabled={unclaimPending}>
+                    Liberar
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">Atribuída a outro membro</span>
+            )}
+            {claimState.status === "error" && claimState.message ? (
+              <p className="text-xs text-destructive">{claimState.message}</p>
+            ) : null}
+          </div>
         ) : null}
 
         {/* Undo error */}

@@ -835,3 +835,64 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
   revalidatePath("/rotina");
   return { status: "success", message: "Tarefa excluída." };
 }
+
+// ---------------------------------------------------------------------------
+// claimOccurrence / unclaimOccurrence
+// ---------------------------------------------------------------------------
+
+export async function claimOccurrence(_: FormState, fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { data: occ } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, status, assigned_to")
+    .eq("id", occurrenceId)
+    .maybeSingle();
+
+  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
+  if (occ.status !== "pending") return { status: "error", message: "Ocorrência não está pendente." };
+  if (occ.assigned_to !== null) return { status: "error", message: "Já atribuída a outro membro." };
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ assigned_to: userId })
+    .eq("id", occurrenceId)
+    .eq("home_id", occ.home_id);
+
+  if (error) return { status: "error", message: "Erro ao atribuir tarefa. Tente novamente." };
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "" };
+}
+
+export async function unclaimOccurrence(_: FormState, fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { data: occ } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, status, assigned_to")
+    .eq("id", occurrenceId)
+    .maybeSingle();
+
+  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
+  if (occ.assigned_to !== userId) return { status: "error", message: "Esta tarefa não está atribuída a você." };
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ assigned_to: null })
+    .eq("id", occurrenceId)
+    .eq("home_id", occ.home_id);
+
+  if (error) return { status: "error", message: "Erro ao liberar tarefa. Tente novamente." };
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "" };
+}
