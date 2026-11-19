@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
+import { parseISO, format } from "date-fns";
 import { getLocalDateString } from "@/lib/dates";
 import {
   extendWindowForHome,
@@ -40,8 +41,13 @@ export default async function Page({
 
   const params = await searchParams;
   const dateRaw = typeof params["date"] === "string" ? params["date"] : null;
-  const selectedDate =
-    dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : currentDate;
+  let selectedDate = currentDate;
+  if (dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+    const parsed = parseISO(dateRaw);
+    if (!isNaN(parsed.getTime()) && format(parsed, "yyyy-MM-dd") === dateRaw) {
+      selectedDate = dateRaw;
+    }
+  }
 
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});

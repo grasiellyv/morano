@@ -26,10 +26,11 @@ export async function getEventsForRange(
     .select("id, home_id, title, event_type, start_date, end_date, start_time, end_time, description, created_at")
     .eq("home_id", homeId)
     .lte("start_date", to)
-    .or(`end_date.is.null.and.start_date.gte.${from},end_date.gte.${from}`)
+    .or(`end_date.gte.${from},and(end_date.is.null,start_date.gte.${from})`)
     .order("start_date", { ascending: true });
 
-  if (error || !data) return [];
+  if (error) throw error;
+  if (!data) return [];
 
   return data;
 }

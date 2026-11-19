@@ -118,7 +118,7 @@ export function TaskList({
             mode="create"
             rooms={rooms}
             formAction={createTaskAction}
-            initialValues={{ start_date: currentDate }}
+            initialValues={{ start_date: selectedDate }}
             onSuccess={() => setShowCreate(false)}
           />
         </div>

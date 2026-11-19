@@ -48,12 +48,46 @@ describe("createEventSchema", () => {
     }
   });
 
-  it("aceita end_date anterior a start_date (validação é do DB)", () => {
+  it("rejeita end_date anterior a start_date", () => {
     const result = createEventSchema.safeParse({
       title: "Teste",
       event_type: "viagem",
       start_date: "2026-11-27",
       end_date: "2026-11-25",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const flat = result.error.flatten();
+      expect(flat.fieldErrors["end_date"]).toBeDefined();
+    }
+  });
+
+  it("aceita end_date igual a start_date", () => {
+    const result = createEventSchema.safeParse({
+      title: "Teste",
+      event_type: "viagem",
+      start_date: "2026-11-27",
+      end_date: "2026-11-27",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita end_date posterior a start_date", () => {
+    const result = createEventSchema.safeParse({
+      title: "Teste",
+      event_type: "viagem",
+      start_date: "2026-11-25",
+      end_date: "2026-11-27",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita start_time com segundos (formato HH:mm:ss do banco)", () => {
+    const result = createEventSchema.safeParse({
+      title: "Teste",
+      event_type: "outros",
+      start_date: "2026-11-25",
+      start_time: "14:30:00",
     });
     expect(result.success).toBe(true);
   });
