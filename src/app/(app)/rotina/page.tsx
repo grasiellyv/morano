@@ -21,6 +21,13 @@ import {
   updateEvent,
   deleteEvent,
 } from "@/features/events/actions";
+import {
+  getMyAbsence,
+  filterAbsenceOccurrences,
+  type AbsenceRange,
+} from "@/features/absence/queries";
+import { clearAbsence } from "@/features/absence/actions";
+import { AbsenceBanner } from "@/features/absence/components/absence-banner";
 
 export const metadata: Metadata = { title: "Rotina" };
 
@@ -52,19 +59,39 @@ export default async function Page({
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
-  const [todayOcc, events] = await Promise.all([
+  const [todayOcc, events, absence] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
+    getMyAbsence(supabase, userId),
   ]);
+
+  const activeAbsenceRange: AbsenceRange =
+    absence !== null &&
+    absence.absence_start <= selectedDate &&
+    absence.absence_end >= selectedDate
+      ? { start: absence.absence_start, end: absence.absence_end }
+      : null;
+
+  const filteredOccurrences = filterAbsenceOccurrences(todayOcc, activeAbsenceRange);
+
+  const isAbsent =
+    absence !== null &&
+    absence.absence_start <= currentDate &&
+    absence.absence_end >= currentDate;
+
+  const absenceBanner = isAbsent ? (
+    <AbsenceBanner absenceEnd={absence.absence_end} clearAbsenceAction={clearAbsence} />
+  ) : undefined;
 
   return (
     <TaskList
-      today={todayOcc}
+      today={filteredOccurrences}
       currentDate={currentDate}
       selectedDate={selectedDate}
       createTaskAction={createTask}
       rooms={home.rooms}
       weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} />}
+      absenceBanner={absenceBanner}
       events={events}
       createEventAction={createEvent}
       updateEventAction={updateEvent}

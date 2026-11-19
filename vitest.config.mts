@@ -1,9 +1,17 @@
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
+import { createRequire } from "module";
+import path from "path";
+
+const require = createRequire(import.meta.url);
+const serverOnlyEmpty = path.join(path.dirname(require.resolve("server-only")), "empty.js");
 
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
+  resolve: {
+    alias: { "server-only": serverOnlyEmpty },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
