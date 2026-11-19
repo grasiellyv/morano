@@ -45,6 +45,9 @@ next-env.d.ts
 # superpowers
 .superpowers/
 
+# claude code worktrees (managed by claude code cli)
+.claude/worktrees/
+
 # playwright
 /test-results
 /playwright-report
