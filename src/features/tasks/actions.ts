@@ -183,6 +183,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
   const parsed = createTaskSchema.safeParse({
     title: textField(fd, "title"),
     description: textField(fd, "description") || undefined,
+    instructions: textField(fd, "instructions") || undefined,
     priority: textField(fd, "priority"),
     is_essential: textField(fd, "is_essential"),
     estimated_minutes: textField(fd, "estimated_minutes"),
@@ -213,6 +214,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
       home_id: homeId,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
+      instructions: parsed.data.instructions ?? null,
       priority: parsed.data.priority,
       is_essential: parsed.data.is_essential,
       estimated_minutes: parsed.data.estimated_minutes,
@@ -606,6 +608,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
     id: textField(fd, "id"),
     title: textField(fd, "title"),
     description: textField(fd, "description") || undefined,
+    instructions: textField(fd, "instructions") || undefined,
     priority: textField(fd, "priority"),
     is_essential: textField(fd, "is_essential"),
     estimated_minutes: textField(fd, "estimated_minutes"),
@@ -635,6 +638,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
     .update({
       title: parsed.data.title,
       description: parsed.data.description ?? null,
+      instructions: parsed.data.instructions ?? null,
       priority: parsed.data.priority,
       is_essential: parsed.data.is_essential,
       estimated_minutes: parsed.data.estimated_minutes,

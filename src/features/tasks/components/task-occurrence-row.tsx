@@ -66,6 +66,7 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
     initialFormState,
   );
 
+  const [showInstructions, setShowInstructions] = useState(false);
   const isCompleted = occurrence.status === "completed";
   const isOverdue = occurrence.scheduled_for < today;
   const daysOverdue = isOverdue ? daysBetween(occurrence.scheduled_for, today) : 0;
@@ -126,7 +127,23 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
               Atrasada · há {daysOverdue} {daysOverdue === 1 ? "dia" : "dias"}
             </span>
           ) : null}
+          {occurrence.task.instructions ? (
+            <button
+              type="button"
+              onClick={() => setShowInstructions((v) => !v)}
+              className="underline-offset-2 hover:underline"
+            >
+              {showInstructions ? "Ocultar instruções" : "Como fazer"}
+            </button>
+          ) : null}
         </div>
+
+        {/* Instructions */}
+        {showInstructions && occurrence.task.instructions ? (
+          <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
+            {occurrence.task.instructions}
+          </p>
+        ) : null}
 
         {/* Undo error */}
         {undoState.status === "error" && undoState.message ? (

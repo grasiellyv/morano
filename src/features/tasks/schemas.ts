@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createTaskSchema = z.object({
   title: z.string().min(1, { error: "Título obrigatório" }).max(120),
   description: z.string().max(500).optional(),
+  instructions: z.string().max(2000).optional(),
   priority: z.enum(["baixa", "media", "alta"]),
   is_essential: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
   estimated_minutes: z.coerce.number({ error: "Informe os minutos" }).min(1).max(480),
@@ -23,6 +24,7 @@ export const updateTaskMetaSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, { error: "Título obrigatório" }).max(120),
   description: z.string().max(500).optional(),
+  instructions: z.string().max(2000).optional(),
   priority: z.enum(["baixa", "media", "alta"]),
   is_essential: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
   estimated_minutes: z.coerce.number({ error: "Informe os minutos" }).min(1).max(480),

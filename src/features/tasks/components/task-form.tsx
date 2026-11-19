@@ -27,6 +27,7 @@ export interface TaskFormProps {
   initialValues?: {
     title?: string;
     description?: string;
+    instructions?: string;
     priority?: string;
     is_essential?: boolean;
     estimated_minutes?: number;
@@ -59,6 +60,7 @@ export function TaskForm({
     defaultValues: {
       title: initialValues?.title ?? "",
       description: initialValues?.description ?? "",
+      instructions: initialValues?.instructions ?? "",
       priority: (initialValues?.priority as "baixa" | "media" | "alta") ?? "media",
       is_essential: initialValues?.is_essential ?? false,
       estimated_minutes: initialValues?.estimated_minutes ?? 30,
@@ -157,6 +159,22 @@ export function TaskForm({
           className="h-4 w-4 rounded border-input accent-primary"
         />
         <Label htmlFor="is_essential">Tarefa essencial</Label>
+      </div>
+
+      {/* Instructions */}
+      <div className="space-y-2">
+        <Label htmlFor="instructions">Como fazer (opcional)</Label>
+        <textarea
+          id="instructions"
+          rows={3}
+          className={`${selectClass} h-auto resize-y`}
+          {...form.register("instructions")}
+        />
+        {errors.instructions?.message ?? state.fieldErrors?.instructions ? (
+          <p className="text-destructive text-sm">
+            {errors.instructions?.message ?? state.fieldErrors?.instructions}
+          </p>
+        ) : null}
       </div>
 
       {/* Estimated minutes */}
