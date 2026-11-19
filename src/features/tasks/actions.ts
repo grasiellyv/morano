@@ -16,7 +16,11 @@ import {
   generateOccurrenceDates,
   type RoutineRule,
 } from "@/features/tasks/rules/recurrence";
-import { createTaskSchema } from "@/features/tasks/schemas";
+import {
+  createTaskSchema,
+  updateTaskMetaSchema,
+  editTaskRuleSchema,
+} from "@/features/tasks/schemas";
 
 /**
  * Extende a janela de ocorrências para todas as rotinas ativas de uma home.
@@ -439,4 +443,197 @@ export async function postponeOccurrence(
 
   revalidatePath("/rotina");
   return { status: "success" };
+}
+
+// ---------------------------------------------------------------------------
+// Edição de tarefas
+// ---------------------------------------------------------------------------
+
+export async function updateTask(_: FormState, fd: FormData): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const parsed = updateTaskMetaSchema.safeParse({
+    id: textField(fd, "id"),
+    title: textField(fd, "title"),
+    description: textField(fd, "description") || undefined,
+    priority: textField(fd, "priority"),
+    estimated_minutes: textField(fd, "estimated_minutes"),
+    room_id: textField(fd, "room_id") || null,
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      title: parsed.data.title,
+      description: parsed.data.description ?? null,
+      priority: parsed.data.priority,
+      estimated_minutes: parsed.data.estimated_minutes,
+      room_id: parsed.data.room_id ?? null,
+    })
+    .eq("id", parsed.data.id);
+
+  if (error) {
+    return { status: "error", message: "Erro ao atualizar tarefa. Tente novamente." };
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "Tarefa atualizada." };
+}
+
+export async function editTaskRule(_: FormState, fd: FormData): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const parsed = editTaskRuleSchema.safeParse({
+    id: textField(fd, "id"),
+    frequency_type: textField(fd, "frequency_type"),
+    interval_value: textField(fd, "interval_value") || null,
+    interval_unit: textField(fd, "interval_unit") || null,
+    weekdays: textField(fd, "weekdays") || null,
+    month_day: textField(fd, "month_day") || null,
+    start_date: textField(fd, "start_date"),
+    end_date: textField(fd, "end_date") || null,
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  // Buscar a routine para obter home_id e timezone
+  const { data: routine, error: routineError } = await supabase
+    .from("routines")
+    .select("id, home_id")
+    .eq("task_id", parsed.data.id)
+    .single();
+
+  if (routineError || !routine) {
+    return { status: "error", message: "Rotina não encontrada." };
+  }
+
+  const { data: home, error: homeError } = await supabase
+    .from("homes")
+    .select("timezone")
+    .eq("id", routine.home_id)
+    .single();
+
+  if (homeError || !home) {
+    return { status: "error", message: "Casa não encontrada." };
+  }
+
+  const homeTimezone = home.timezone;
+  const today = getLocalDateString(homeTimezone);
+
+  // Review Focus 3: delete only non-postponed pending occurrences (scheduled_for = original_date)
+  // Cannot use a column-to-column filter in Supabase SDK, so: fetch + filter + delete by IDs
+  const { data: pendingOccurrences } = await supabase
+    .from("task_occurrences")
+    .select("id, original_date, scheduled_for")
+    .eq("task_id", parsed.data.id)
+    .eq("status", "pending")
+    .gte("original_date", today);
+
+  if (pendingOccurrences && pendingOccurrences.length > 0) {
+    const toDeleteIds = pendingOccurrences
+      .filter((o) => o.scheduled_for === o.original_date)
+      .map((o) => o.id);
+
+    if (toDeleteIds.length > 0) {
+      await supabase
+        .from("task_occurrences")
+        .delete()
+        .in("id", toDeleteIds);
+    }
+  }
+
+  // Reset generated_until so extendWindowForHome regenerates from today
+  const yesterday = addDaysStr(today, -1);
+
+  const { error: updateError } = await supabase
+    .from("routines")
+    .update({
+      frequency_type: parsed.data.frequency_type,
+      interval_value: parsed.data.interval_value ?? undefined,
+      interval_unit: parsed.data.interval_unit ?? undefined,
+      weekdays: parsed.data.weekdays ?? undefined,
+      month_day: parsed.data.month_day ?? null,
+      start_date: parsed.data.start_date,
+      end_date: parsed.data.end_date ?? null,
+      generated_until: yesterday,
+    })
+    .eq("task_id", parsed.data.id);
+
+  if (updateError) {
+    return { status: "error", message: "Erro ao atualizar regra. Tente novamente." };
+  }
+
+  await extendWindowForHome(routine.home_id, homeTimezone);
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "Regra de recorrência atualizada." };
+}
+
+export async function archiveTask(_: FormState, fd: FormData): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const id = textField(fd, "id");
+  if (!id) return { status: "error", message: "ID inválido." };
+
+  // Check if any occurrence has been completed for this task
+  const { data: completedOccurrences, error: checkError } = await supabase
+    .from("task_occurrences")
+    .select("id")
+    .eq("task_id", id)
+    .eq("status", "completed")
+    .limit(1);
+
+  if (checkError) {
+    return { status: "error", message: "Erro ao verificar histórico. Tente novamente." };
+  }
+
+  const hasHistory = (completedOccurrences?.length ?? 0) > 0;
+
+  if (hasHistory) {
+    // Preserve history — just archive the task
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: "archived" })
+      .eq("id", id);
+
+    if (error) {
+      return { status: "error", message: "Erro ao arquivar tarefa. Tente novamente." };
+    }
+  } else {
+    // No history — delete entirely (cascade deletes routines and task_occurrences)
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+
+    if (error) {
+      return { status: "error", message: "Erro ao excluir tarefa. Tente novamente." };
+    }
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "Tarefa arquivada." };
+}
+
+export async function deleteTask(_: FormState, fd: FormData): Promise<FormState> {
+  await requireUser();
+  const supabase = await createClient();
+
+  const id = textField(fd, "id");
+  if (!id) return { status: "error", message: "ID inválido." };
+
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+
+  if (error) {
+    return { status: "error", message: "Erro ao excluir tarefa. Tente novamente." };
+  }
+
+  revalidatePath("/rotina");
+  return { status: "success", message: "Tarefa excluída." };
 }

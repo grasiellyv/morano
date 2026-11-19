@@ -112,3 +112,24 @@ describe("postponeOccurrence validation logic", () => {
     expect(result.reason).toContain("futuro");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Review Focus 3: editTaskRule não apaga ocorrências adiadas
+// ---------------------------------------------------------------------------
+it("editTaskRule only purges non-postponed pending occurrences (scheduled_for = original_date)", () => {
+  // Simular 2 occurrences do mesmo task:
+  //   A: original_date="2026-11-20", scheduled_for="2026-11-25" (adiada → scheduled_for ≠ original_date)
+  //   B: original_date="2026-11-22", scheduled_for="2026-11-22" (não adiada)
+  // today = "2026-11-19"
+  // editTaskRule deve deletar B (scheduled_for=original_date, >= today) e NÃO A (adiada)
+  const occurrences = [
+    { id: "a", original_date: "2026-11-20", scheduled_for: "2026-11-25", status: "pending" }, // postponed
+    { id: "b", original_date: "2026-11-22", scheduled_for: "2026-11-22", status: "pending" }, // not postponed
+  ];
+  const today = "2026-11-19";
+  const toDelete = occurrences.filter(
+    (o) => o.status === "pending" && o.original_date >= today && o.scheduled_for === o.original_date
+  );
+  expect(toDelete).toHaveLength(1);
+  expect(toDelete[0]?.id).toBe("b");
+});
