@@ -55,4 +55,31 @@ describe("calcProgress", () => {
   it("skipped nao entra no total", () => {
     expect(calcProgress([{ ...BASE_OCC, status: "skipped" }])).toEqual({ done: 0, total: 0 });
   });
+
+  // RF2 (via calcProgress): 2 active completed = done===total
+  it("RF2: 2 active completed resulta em done===total", () => {
+    expect(
+      calcProgress([
+        { ...BASE_OCC, id: "00000000-0000-1000-8000-000000000004", status: "completed" },
+        { ...BASE_OCC, id: "00000000-0000-1000-8000-000000000005", status: "completed" },
+      ]),
+    ).toEqual({ done: 2, total: 2 });
+  });
+
+  // RF4: só tarefas paused → total=0
+  it("RF4: somente tarefas paused resulta em total=0", () => {
+    expect(
+      calcProgress([
+        { ...BASE_OCC, task: { ...BASE_OCC.task, status: "paused" } },
+        {
+          ...BASE_OCC,
+          id: "00000000-0000-1000-8000-000000000006",
+          task: { ...BASE_OCC.task, status: "paused" },
+        },
+      ]),
+    ).toEqual({ done: 0, total: 0 });
+  });
+
+  // RF2: coberto pelo hasMounted ref — não testável sem render
+  // RF5: coberto pela lógica hasMounted + prevDone — testável apenas com RTL
 });

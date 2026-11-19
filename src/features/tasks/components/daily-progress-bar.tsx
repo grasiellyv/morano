@@ -24,7 +24,7 @@ export function DailyProgressBar({ occurrences }: { occurrences: OccurrenceWithT
   return (
     <div className="mb-4 space-y-1">
       <p className="text-sm text-muted-foreground">
-        {done} de {total} {label} concluídas
+        {done} de {total} {label} {total === 1 ? "concluída" : "concluídas"}
       </p>
       <div className="bg-muted rounded-full h-2">
         <div

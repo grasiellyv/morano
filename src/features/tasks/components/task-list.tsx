@@ -30,13 +30,19 @@ export function TaskList({
   const [showCreate, setShowCreate] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const prevDone = useRef<number | null>(null);
+  const hasMounted = useRef(false);
 
   const progress = calcProgress(today);
 
   useEffect(() => {
-    if (progress.total === 0) { prevDone.current = null; return; }
+    if (progress.total === 0) { prevDone.current = null; hasMounted.current = false; return; }
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      prevDone.current = progress.done;
+      return;
+    }
     const isNow100 = progress.done === progress.total;
-    const wasBefore100 = prevDone.current !== null && prevDone.current === progress.total;
+    const wasBefore100 = prevDone.current === progress.total;
     if (isNow100 && !wasBefore100) setCelebrate(true);
     prevDone.current = progress.done;
   }, [progress.done, progress.total]);
