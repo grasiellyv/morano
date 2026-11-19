@@ -11,7 +11,7 @@ import {
 import { setAbsenceSchema } from "@/features/absence/schemas";
 
 export async function setAbsence(_: FormState, fd: FormData): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const parsed = setAbsenceSchema.safeParse({
@@ -23,25 +23,10 @@ export async function setAbsence(_: FormState, fd: FormData): Promise<FormState>
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("current_home_id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!profile?.current_home_id) {
-    return { status: "error", message: "Residência não encontrada" };
-  }
-  const homeId = profile.current_home_id;
-
-  const { error } = await supabase
-    .from("home_members")
-    .update({
-      absence_start: parsed.data.absence_start,
-      absence_end: parsed.data.absence_end,
-    })
-    .eq("user_id", userId)
-    .eq("home_id", homeId);
+  const { error } = await supabase.rpc("set_my_absence", {
+    p_start: parsed.data.absence_start,
+    p_end: parsed.data.absence_end,
+  });
 
   if (error) {
     return { status: "error", message: "Erro ao salvar" };
@@ -53,33 +38,15 @@ export async function setAbsence(_: FormState, fd: FormData): Promise<FormState>
 }
 
 export async function clearAbsence(_fd: FormData): Promise<void> {
-  let userId: string;
   try {
-    const user = await requireUser();
-    userId = user.id;
+    await requireUser();
   } catch {
     return;
   }
 
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("current_home_id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!profile?.current_home_id) return;
-  const homeId = profile.current_home_id;
-
-  await supabase
-    .from("home_members")
-    .update({
-      absence_start: null,
-      absence_end: null,
-    })
-    .eq("user_id", userId)
-    .eq("home_id", homeId);
+  await supabase.rpc("clear_my_absence");
 
   revalidatePath("/rotina");
   revalidatePath("/configuracoes");

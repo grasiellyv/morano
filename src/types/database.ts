@@ -1128,6 +1128,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      clear_my_absence: { Args: Record<PropertyKey, never>; Returns: undefined };
       current_plan: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
@@ -1159,6 +1160,7 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
       };
+      set_my_absence: { Args: { p_end: string; p_start: string }; Returns: undefined };
       storage_home_id: { Args: { p_name: string }; Returns: string };
     };
     Enums: {

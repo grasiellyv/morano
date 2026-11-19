@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { FormState } from "@/features/auth/form-state";
 import type { AbsenceInfo } from "@/features/absence/queries";
+import { cn } from "@/lib/utils";
 
 type Props = {
   currentAbsence: AbsenceInfo | null;
@@ -30,9 +31,15 @@ export function AbsenceForm({
             id="absence_start"
             type="date"
             name="absence_start"
+            required
             defaultValue={currentAbsence?.absence_start ?? ""}
             className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
+          {state.fieldErrors?.absence_start ? (
+            <p className="text-sm text-destructive">
+              {state.fieldErrors.absence_start}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -43,6 +50,7 @@ export function AbsenceForm({
             id="absence_end"
             type="date"
             name="absence_end"
+            required
             defaultValue={currentAbsence?.absence_end ?? ""}
             className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
@@ -55,11 +63,7 @@ export function AbsenceForm({
 
         {state.message ? (
           <p
-            className={`text-sm ${
-              state.status === "error"
-                ? "text-destructive"
-                : "text-green-600 dark:text-green-400"
-            }`}
+            className={cn("text-sm", state.status === "error" ? "text-destructive" : "text-green-600 dark:text-green-400")}
           >
             {state.message}
           </p>

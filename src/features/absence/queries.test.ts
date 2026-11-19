@@ -47,4 +47,14 @@ describe("filterAbsenceOccurrences", () => {
     const completed: TestOcc = { scheduled_for: "2026-11-21", status: "completed" };
     expect(filterAbsenceOccurrences([pending, completed], RANGE)).toEqual([completed]);
   });
+
+  it("filtra pending na data de início do período (inclusive)", () => {
+    const occ: TestOcc = { scheduled_for: "2026-11-20", status: "pending" };
+    expect(filterAbsenceOccurrences([occ], RANGE)).toEqual([]);
+  });
+
+  it("filtra pending na data de fim do período (inclusive)", () => {
+    const occ: TestOcc = { scheduled_for: "2026-11-25", status: "pending" };
+    expect(filterAbsenceOccurrences([occ], RANGE)).toEqual([]);
+  });
 });
