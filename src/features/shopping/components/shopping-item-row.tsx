@@ -64,17 +64,24 @@ export function ShoppingItemRow({ item }: Props) {
   };
   const [editState, editDispatch, editPending] = useActionState(wrappedEdit, initialFormState);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Finding 7 / Critical 1: delete handled via ConfirmDialog, not inline form
   async function handleDelete() {
-    const fd = new FormData();
-    fd.append("id", item.id);
-    const result = await deleteItem(initialFormState, fd);
-    // Finding 4: surface delete errors via toast
-    if (result.status === "error") toast.error(result.message ?? "Erro ao excluir item");
-    setMenuOpen(false);
+    setIsDeleting(true);
+    try {
+      const fd = new FormData();
+      fd.append("id", item.id);
+      const result = await deleteItem(initialFormState, fd);
+      // Finding 4: surface delete errors via toast
+      if (result.status === "error") toast.error(result.message ?? "Erro ao excluir item");
+      setMenuOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
-  const anyPending = togglePending || editPending;
+  const anyPending = togglePending || editPending || isDeleting;
 
   function startEdit() {
     setEditName(item.name);
