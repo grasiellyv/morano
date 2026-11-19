@@ -22,6 +22,7 @@ import {
   updateTaskMetaSchema,
   editTaskRuleSchema,
 } from "@/features/tasks/schemas";
+import { getMemberPermissions } from "@/features/members/permissions";
 
 /**
  * Extende a janela de ocorrências para todas as rotinas ativas de uma home.
@@ -172,6 +173,11 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
   }
   const timezone = home.timezone;
 
+  const perms = await getMemberPermissions(supabase, userId, homeId);
+  if (!perms.bypass && !perms.can_manage_tasks) {
+    return { status: "error", message: "Sem permissão para gerenciar tarefas." };
+  }
+
   // Validar com createTaskSchema
   const rawWeekdays = textField(fd, "weekdays");
   const parsed = createTaskSchema.safeParse({
@@ -191,6 +197,12 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  if (!perms.bypass && perms.task_room_ids.length > 0 && parsed.data.room_id) {
+    if (!perms.task_room_ids.includes(parsed.data.room_id)) {
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    }
   }
 
   // Insert task (omitir created_by — sem grant)
@@ -301,12 +313,27 @@ export async function completeOccurrence(
   // Fetch occurrence — RLS validates membership implicitly
   const { data: occurrence, error: fetchError } = await supabase
     .from("task_occurrences")
-    .select("id, home_id, status")
+    .select("id, home_id, status, task_id")
     .eq("id", occurrenceId)
     .single();
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  const perms = await getMemberPermissions(supabase, userId, occurrence.home_id);
+  if (!perms.bypass && !perms.can_complete_tasks) {
+    return { status: "error", message: "Sem permissão para concluir tarefas." };
+  }
+  if (!perms.bypass && perms.task_room_ids.length > 0) {
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("room_id")
+      .eq("id", occurrence.task_id)
+      .maybeSingle();
+    if (task?.room_id && !perms.task_room_ids.includes(task.room_id)) {
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    }
   }
 
   const { error } = await supabase
@@ -346,6 +373,11 @@ export async function undoComplete(
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  const undoPerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
+  if (!undoPerms.bypass && !undoPerms.can_complete_tasks) {
+    return { status: "error", message: "Sem permissão para desfazer conclusão." };
   }
 
   if (occurrence.status !== "completed") {
@@ -397,11 +429,36 @@ export async function skipOccurrence(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, task_id")
+    .eq("id", occurrenceId)
+    .maybeSingle();
+
+  if (fetchError || !occurrence) {
+    return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  const skipPerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
+  if (!skipPerms.bypass && !skipPerms.can_complete_tasks) {
+    return { status: "error", message: "Sem permissão para pular tarefas." };
+  }
+  if (!skipPerms.bypass && skipPerms.task_room_ids.length > 0) {
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("room_id")
+      .eq("id", occurrence.task_id)
+      .maybeSingle();
+    if (task?.room_id && !skipPerms.task_room_ids.includes(task.room_id)) {
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    }
+  }
 
   const { error } = await supabase
     .from("task_occurrences")
@@ -420,7 +477,7 @@ export async function postponeOccurrence(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
@@ -440,6 +497,21 @@ export async function postponeOccurrence(
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
+  }
+
+  const postponePerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
+  if (!postponePerms.bypass && !postponePerms.can_complete_tasks) {
+    return { status: "error", message: "Sem permissão para adiar tarefas." };
+  }
+  if (!postponePerms.bypass && postponePerms.task_room_ids.length > 0) {
+    const { data: postponeTask } = await supabase
+      .from("tasks")
+      .select("room_id")
+      .eq("id", occurrence.task_id)
+      .maybeSingle();
+    if (postponeTask?.room_id && !postponePerms.task_room_ids.includes(postponeTask.room_id)) {
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    }
   }
 
   // Buscar timezone para today
@@ -512,8 +584,21 @@ export async function postponeOccurrence(
 // ---------------------------------------------------------------------------
 
 export async function updateTask(_: FormState, fd: FormData): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_home_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+  const homeId = profile.current_home_id;
+
+  const updatePerms = await getMemberPermissions(supabase, userId, homeId);
+  if (!updatePerms.bypass && !updatePerms.can_manage_tasks) {
+    return { status: "error", message: "Sem permissão para gerenciar tarefas." };
+  }
 
   const parsed = updateTaskMetaSchema.safeParse({
     id: textField(fd, "id"),
@@ -526,6 +611,20 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  if (!updatePerms.bypass && updatePerms.task_room_ids.length > 0) {
+    const { data: existingTask } = await supabase
+      .from("tasks")
+      .select("room_id")
+      .eq("id", parsed.data.id)
+      .maybeSingle();
+    if (existingTask?.room_id && !updatePerms.task_room_ids.includes(existingTask.room_id)) {
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    }
+    if (parsed.data.room_id && !updatePerms.task_room_ids.includes(parsed.data.room_id)) {
+      return { status: "error", message: "Sem acesso ao cômodo de destino." };
+    }
   }
 
   const { error } = await supabase
@@ -548,7 +647,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
 }
 
 export async function editTaskRule(_: FormState, fd: FormData): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
 
   const parsed = editTaskRuleSchema.safeParse({
@@ -575,6 +674,11 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
 
   if (routineError || !routine) {
     return { status: "error", message: "Rotina não encontrada." };
+  }
+
+  const rulePerms = await getMemberPermissions(supabase, userId, routine.home_id);
+  if (!rulePerms.bypass && !rulePerms.can_manage_tasks) {
+    return { status: "error", message: "Sem permissão para gerenciar tarefas." };
   }
 
   const { data: home, error: homeError } = await supabase
@@ -640,11 +744,23 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
 }
 
 export async function archiveTask(_: FormState, fd: FormData): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
 
   const id = textField(fd, "id");
   if (!id) return { status: "error", message: "ID inválido." };
+
+  const { data: archiveProfile } = await supabase
+    .from("profiles")
+    .select("current_home_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!archiveProfile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+
+  const archivePerms = await getMemberPermissions(supabase, userId, archiveProfile.current_home_id);
+  if (!archivePerms.bypass && !archivePerms.can_manage_tasks) {
+    return { status: "error", message: "Sem permissão para gerenciar tarefas." };
+  }
 
   // Check if any occurrence has been completed for this task
   const { data: completedOccurrences, error: checkError } = await supabase
@@ -684,11 +800,23 @@ export async function archiveTask(_: FormState, fd: FormData): Promise<FormState
 }
 
 export async function deleteTask(_: FormState, fd: FormData): Promise<FormState> {
-  await requireUser();
+  const { id: userId } = await requireUser();
   const supabase = await createClient();
 
   const id = textField(fd, "id");
   if (!id) return { status: "error", message: "ID inválido." };
+
+  const { data: deleteProfile } = await supabase
+    .from("profiles")
+    .select("current_home_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!deleteProfile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+
+  const deletePerms = await getMemberPermissions(supabase, userId, deleteProfile.current_home_id);
+  if (!deletePerms.bypass && !deletePerms.can_manage_tasks) {
+    return { status: "error", message: "Sem permissão para gerenciar tarefas." };
+  }
 
   const { error } = await supabase.from("tasks").delete().eq("id", id);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { HomeMember } from "@/features/members/queries";
 import type { FormState } from "@/features/auth/form-state";
@@ -116,6 +117,15 @@ function MemberRow({
           ) : null}
           {transferState.status === "error" ? (
             <span className="text-xs text-destructive">{transferState.message}</span>
+          ) : null}
+
+          {isAdminOrOwner && member.role === "member" ? (
+            <Link
+              href={`/casa/membros/${member.user_id}/permissoes`}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Permissões
+            </Link>
           ) : null}
 
           {canTransfer ? (
