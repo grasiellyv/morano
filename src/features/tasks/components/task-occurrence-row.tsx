@@ -137,6 +137,7 @@ export function TaskOccurrenceRow({ occurrence, today }: Props) {
               name="new_date"
               min={today}
               required
+              aria-label="nova data"
               className="rounded border border-input bg-background px-2 py-1 text-sm"
             />
             <Button
