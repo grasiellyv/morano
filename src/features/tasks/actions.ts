@@ -119,17 +119,20 @@ export async function extendWindowForHome(
             .upsert(occurrences, { onConflict: "task_id,original_date", ignoreDuplicates: true });
         }
 
-        // Update generated_until — always advances to newUntil (covers skipped dates)
-        await supabase
-          .from("routines")
-          .update({ generated_until: newUntil })
-          .eq("id", routine.id);
-
-        // Accumulate ungenerated count — only if > 0
+        // Read-then-write (not SQL increment) is intentional: concurrent sessions both
+        // write the same value, so double-counting is impossible even with fire-and-forget calls.
         if (ungeneratedCount > 0) {
           await supabase
             .from("routines")
-            .update({ ungenerated_count: (routine.ungenerated_count ?? 0) + ungeneratedCount })
+            .update({
+              generated_until: newUntil,
+              ungenerated_count: routine.ungenerated_count + ungeneratedCount,
+            })
+            .eq("id", routine.id);
+        } else {
+          await supabase
+            .from("routines")
+            .update({ generated_until: newUntil })
             .eq("id", routine.id);
         }
       } catch {
@@ -211,7 +214,34 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
   }
 
   const today = getLocalDateString(timezone);
-  const until = addDaysStr(today, 56);
+  const yesterday = addDaysStr(today, -1);
+  const newUntil = addDaysStr(today, 56);
+
+  // Build rule first — needed for occurrence generation before routine INSERT
+  const rule: RoutineRule = {
+    frequency_type: parsed.data.frequency_type,
+    interval_value: parsed.data.interval_value ?? null,
+    interval_unit: parsed.data.interval_unit ?? null,
+    weekdays: parsed.data.weekdays ?? null,
+    month_day: parsed.data.month_day ?? null,
+    start_date: parsed.data.start_date,
+    end_date: parsed.data.end_date ?? null,
+  };
+
+  // Same split as extendWindowForHome
+  let retroToInsert: string[] = [];
+  let ungeneratedCount = 0;
+  if (parsed.data.start_date <= yesterday) {
+    const retroDates = generateOccurrenceDates(rule, parsed.data.start_date, yesterday);
+    const policy = applyRetroactivePolicy(retroDates, today);
+    retroToInsert = policy.toInsert;
+    ungeneratedCount = policy.ungeneratedCount;
+  }
+
+  // Future portion (today to today+56)
+  const futureDates = generateOccurrenceDates(rule, today, newUntil);
+
+  const allDates = [...retroToInsert, ...futureDates];
 
   // Insert routine
   const { error: routineError } = await supabase.from("routines").insert({
@@ -224,7 +254,8 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     month_day: parsed.data.month_day ?? null,
     start_date: parsed.data.start_date,
     end_date: parsed.data.end_date ?? null,
-    generated_until: until,
+    generated_until: newUntil,
+    ungenerated_count: ungeneratedCount,
     is_active: true,
   });
 
@@ -232,21 +263,8 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     return { status: "error", message: "Erro ao configurar recorrência. Tente novamente." };
   }
 
-  // Gerar ocorrências
-  const rule: RoutineRule = {
-    frequency_type: parsed.data.frequency_type,
-    interval_value: parsed.data.interval_value ?? null,
-    interval_unit: parsed.data.interval_unit ?? null,
-    weekdays: parsed.data.weekdays ?? null,
-    month_day: parsed.data.month_day ?? null,
-    start_date: parsed.data.start_date,
-    end_date: parsed.data.end_date ?? null,
-  };
-
-  const dates = generateOccurrenceDates(rule, parsed.data.start_date, until);
-
-  if (dates.length > 0) {
-    const occurrences = dates.map((d) => ({
+  if (allDates.length > 0) {
+    const occurrences = allDates.map((d) => ({
       task_id: task.id,
       home_id: homeId,
       original_date: d,

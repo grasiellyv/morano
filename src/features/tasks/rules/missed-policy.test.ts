@@ -51,6 +51,13 @@ describe("applyRetroactivePolicy", () => {
     expect(r.ungeneratedCount).toBe(0);
   });
 
+  it("policy_day_before_window: date at today-31 is NOT in window", () => {
+    // today = 2026-11-18, today-30 = 2026-10-19, today-31 = 2026-10-18
+    const r = applyRetroactivePolicy(["2026-10-18"], today);
+    expect(r.toInsert).toEqual([]);
+    expect(r.ungeneratedCount).toBe(1);
+  });
+
   it("policy_first_open_old_start_date: mixed before+in-window with over-limit", () => {
     // 3 before window, 5 in window → toInsert = last 3 of in-window, count = 3+2 = 5
     const before = ["2026-09-01", "2026-09-15", "2026-10-01"];
