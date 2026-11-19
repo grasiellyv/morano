@@ -738,6 +738,7 @@ export type Database = {
           month_day: number | null;
           start_date: string;
           task_id: string;
+          ungenerated_count: number;
           updated_at: string;
           weekdays: number[];
         };
@@ -755,6 +756,7 @@ export type Database = {
           month_day?: number | null;
           start_date: string;
           task_id: string;
+          ungenerated_count?: number;
           updated_at?: string;
           weekdays?: number[];
         };
@@ -771,6 +773,7 @@ export type Database = {
           month_day?: number | null;
           start_date?: string;
           task_id?: string;
+          ungenerated_count?: number;
           updated_at?: string;
           weekdays?: number[];
         };
