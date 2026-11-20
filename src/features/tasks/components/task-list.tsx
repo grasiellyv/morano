@@ -91,6 +91,9 @@ export function TaskList({
   const displayOverdue = filterEssencial ? overdue.filter((o) => o.task.is_essential) : overdue;
   const displayUpcoming = filterEssencial ? upcoming.filter((o) => o.task.is_essential) : upcoming;
 
+  const todayPending = displayToday.filter((o) => o.status === "pending");
+  const todayDone = displayToday.filter((o) => o.status !== "pending");
+
   const dateParam = selectedDate !== currentDate ? `date=${selectedDate}&` : "";
   const filterToggleHref = filterEssencial
     ? selectedDate !== currentDate ? `?date=${selectedDate}` : "/rotina"
@@ -244,19 +247,36 @@ export function TaskList({
           <DailyProgressBar occurrences={displayToday} />
           <h2 className="mb-3 text-base font-semibold">
             {selectedDate === currentDate ? "Hoje" : formatSelectedDate(selectedDate)} —{" "}
-            {displayToday.length} {displayToday.length === 1 ? "tarefa" : "tarefas"}
+            {todayPending.length} {todayPending.length === 1 ? "pendente" : "pendentes"}
+            {todayDone.length > 0 ? `, ${todayDone.length} ${todayDone.length === 1 ? "concluída" : "concluídas"}` : ""}
           </h2>
-          {displayToday.length > 0 ? (
+          {todayPending.length > 0 ? (
             <div className="space-y-2">
-              {displayToday.map((o) => (
+              {todayPending.map((o) => (
                 <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} />
               ))}
             </div>
-          ) : (
+          ) : displayToday.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {filterEssencial ? "Nenhuma tarefa essencial para este dia." : "Nenhuma tarefa para este dia."}
             </p>
-          )}
+          ) : null}
+          {todayDone.length > 0 ? (
+            <details className="mt-4" open={todayPending.length === 0}>
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 select-none">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-xs font-semibold">
+                  {todayDone.length}
+                </span>
+                Concluídas
+                <svg className="ml-auto h-4 w-4 transition-transform [[open]_&]:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </summary>
+              <div className="mt-2 space-y-2 opacity-60">
+                {todayDone.map((o) => (
+                  <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </section>
 
         {/* Próximas 7 dias */}
