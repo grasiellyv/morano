@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
+import { getHomeMembers } from "@/features/members/queries";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { parseISO, format } from "date-fns";
@@ -28,6 +29,12 @@ import {
 } from "@/features/absence/queries";
 import { clearAbsence } from "@/features/absence/actions";
 import { AbsenceBanner } from "@/features/absence/components/absence-banner";
+import {
+  getRotations,
+  getAbsentMemberIds,
+  advanceRotationsIfDue,
+  buildRotationInfoMap,
+} from "@/features/tasks/queries-rotations";
 
 export const metadata: Metadata = { title: "Rotina" };
 
@@ -60,11 +67,19 @@ export default async function Page({
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
-  const [todayOcc, events, absence] = await Promise.all([
+  const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
+  await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
+
+  const [todayOcc, events, absence, rotations, homeMembers] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
     getMyAbsence(supabase, userId),
+    getRotations(supabase, home.id),
+    getHomeMembers(supabase),
   ]);
+
+  const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
+  const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
 
   const activeAbsenceRange: AbsenceRange =
     absence !== null &&
@@ -99,6 +114,10 @@ export default async function Page({
       deleteEventAction={deleteEvent}
       filterEssencial={filterEssencial}
       userId={userId}
+      rotationInfoMap={rotationInfoMap}
+      rotations={rotations}
+      homeMembers={homeMembers.map(m => ({ id: m.user_id, name: m.full_name }))}
     />
   );
 }
+

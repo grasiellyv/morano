@@ -15,6 +15,8 @@ import {
 } from "@/features/auth/components/form-parts";
 import { useValidatedSubmit } from "@/features/auth/components/use-validated-submit";
 import { Label } from "@/components/ui/label";
+import type { TaskRotation } from "@/features/tasks/queries-rotations";
+import { RotationPanel } from "./rotation-panel";
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 
@@ -39,6 +41,9 @@ export interface TaskFormProps {
     weekdays?: number[] | null;
     month_day?: number | null;
   };
+  rotations?: TaskRotation[];
+  homeMembers?: { id: string; name: string | null }[];
+  currentRotationId?: string | null;
   rooms: Array<{ id: string; name: string }>;
   formAction: (_: FormState, fd: FormData) => Promise<FormState>;
   onSuccess?: () => void;
@@ -51,6 +56,9 @@ export function TaskForm({
   rooms,
   formAction,
   onSuccess,
+  rotations,
+  homeMembers,
+  currentRotationId,
 }: TaskFormProps) {
   const [state, dispatchAction, pending] = useActionState(formAction, initialFormState);
 
@@ -106,6 +114,7 @@ export function TaskForm({
   }, [state.status]);
 
   return (
+    <>
     <form
       ref={formRef}
       action={dispatchAction}
@@ -308,10 +317,20 @@ export function TaskForm({
           error={errors.end_date?.message ?? state.fieldErrors?.end_date}
         />
       ) : null}
-
       <SubmitButton pending={pending} pendingLabel="Salvando…">
         {mode === "create" ? "Criar tarefa" : "Salvar alterações"}
       </SubmitButton>
     </form>
+    {mode === "edit" && taskId && rotations ? (
+      <div className="border-t border-border pt-5 mt-5">
+        <RotationPanel
+          taskId={taskId}
+          rotations={rotations}
+          currentRotationId={currentRotationId ?? null}
+          homeMembers={homeMembers ?? []}
+        />
+      </div>
+    ) : null}
+  </>
   );
 }

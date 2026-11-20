@@ -12,6 +12,7 @@ import {
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
+import type { RotationInfo } from "@/features/tasks/queries-rotations";
 
 function daysBetween(dateFrom: string, dateTo: string): number {
   const msPerDay = 86_400_000;
@@ -46,9 +47,10 @@ type Props = {
   occurrence: OccurrenceWithTask;
   today: string;
   userId?: string;
+  rotationInfo?: RotationInfo;
 };
 
-export function TaskOccurrenceRow({ occurrence, today, userId }: Props) {
+export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
 
@@ -119,6 +121,15 @@ export function TaskOccurrenceRow({ occurrence, today, userId }: Props) {
           >
             {occurrence.task.title}
           </span>
+          {rotationInfo && (
+            <span
+              title={`Rodízio: ${rotationInfo.name}${rotationInfo.currentMemberName ? ` · Responsável: ${rotationInfo.currentMemberName}` : ""}${rotationInfo.nextMemberName ? ` · Próximo: ${rotationInfo.nextMemberName}` : ""}`}
+              className="ml-1 text-xs text-muted-foreground"
+              aria-label="tarefa em rodízio"
+            >
+              {String.fromCodePoint(0x267B)}
+            </span>
+          )}
           <span
             className={`rounded px-1.5 py-0.5 text-xs font-medium ${priorityBadgeClass(pKey)}`}
           >
@@ -296,3 +307,5 @@ export function TaskOccurrenceRow({ occurrence, today, userId }: Props) {
     </div>
   );
 }
+
+
