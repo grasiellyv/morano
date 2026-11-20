@@ -76,6 +76,7 @@ export async function updateCategory(_: FormState, fd: FormData): Promise<FormSt
     id: textField(fd, "id"),
     name: textField(fd, "name"),
     icon: textField(fd, "icon") || undefined,
+    sort_order: textField(fd, "sort_order") || undefined,
   });
 
   if (!parsed.success) {
@@ -84,9 +85,15 @@ export async function updateCategory(_: FormState, fd: FormData): Promise<FormSt
 
   const { id, ...fields } = parsed.data;
 
+  const patch: { name: string; icon: string; sort_order?: number } = {
+    name: fields.name,
+    icon: fields.icon,
+  };
+  if (fields.sort_order !== undefined) patch.sort_order = fields.sort_order;
+
   const { data: updated, error } = await supabase
     .from("shopping_categories")
-    .update({ name: fields.name, icon: fields.icon })
+    .update(patch)
     .eq("id", id)
     .eq("home_id", homeId)
     .select("id");

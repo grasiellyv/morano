@@ -8,6 +8,7 @@ import { ShoppingItemRow } from "@/features/shopping/components/shopping-item-ro
 import { AddItemForm } from "@/features/shopping/components/add-item-form";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { NamedListsSection } from "@/features/shopping/components/named-lists-section";
+import { ManageCategoriesDialog } from "@/features/shopping/components/manage-categories-dialog";
 
 type Props = {
   pending: ShoppingItem[];
@@ -19,6 +20,7 @@ type Props = {
 
 export function ShoppingList({ pending, purchased, categories, rooms, lists }: Props) {
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const filteredPending = filterRoomId
     ? pending.filter((item) => item.room_id === filterRoomId)
@@ -60,14 +62,23 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
 
       {/* Pendentes */}
       <section>
-        <h2 className="mb-3 text-base font-semibold">
-          Pendentes
-          {filteredPending.length > 0 ? (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({filteredPending.length})
-            </span>
-          ) : null}
-        </h2>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-base font-semibold">
+            Pendentes
+            {filteredPending.length > 0 ? (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({filteredPending.length})
+              </span>
+            ) : null}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setCategoriesOpen(true)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            ⚙ Categorias
+          </button>
+        </div>
 
         <div className="mb-4 rounded-xl border border-border bg-card p-4">
           <AddItemForm categories={categories} rooms={rooms} />
@@ -109,6 +120,13 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
 
       {/* Named Lists */}
       <NamedListsSection lists={lists} categories={categories} />
+
+      {/* Category Management Dialog */}
+      <ManageCategoriesDialog
+        categories={categories}
+        open={categoriesOpen}
+        onClose={() => setCategoriesOpen(false)}
+      />
     </div>
   );
 }
