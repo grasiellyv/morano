@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
 import { updatePresence } from "@/lib/presence";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,5 +24,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   void updatePresence(user.id, profile?.last_seen_at ?? null, supabase);
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <PostHogProvider userId={user.id}>
+      <AppShell>{children}</AppShell>
+    </PostHogProvider>
+  );
 }
