@@ -3,23 +3,14 @@
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
 import type { ShoppingItem } from "@/features/shopping/queries";
+import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import { togglePurchased, editItem, deleteItem } from "@/features/shopping/actions";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
-type Category = ShoppingItem["category"];
 type Unit = ShoppingItem["unit"];
-
-const CATEGORY_LABELS: Record<Category, string> = {
-  limpeza: "Limpeza",
-  higiene: "Higiene",
-  cozinha: "Cozinha",
-  lavanderia: "Lavanderia",
-  alimentacao: "Alimentação",
-  outros: "Outros",
-};
 
 const UNIT_LABELS: Record<Unit, string> = {
   un: "un",
@@ -36,19 +27,21 @@ const selectClass =
 
 type Props = {
   item: ShoppingItem;
+  categories: ShoppingCategory[];
 };
 
-export function ShoppingItemRow({ item }: Props) {
+export function ShoppingItemRow({ item, categories }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
 
   // Controlled fields for edit mode
   const [editName, setEditName] = useState(item.name);
-  const [editCategory, setEditCategory] = useState<Category>(item.category);
+  const [editCategoryId, setEditCategoryId] = useState<string>(item.category?.id ?? "");
   const [editQuantity, setEditQuantity] = useState(String(item.quantity));
   const [editUnit, setEditUnit] = useState<Unit>(item.unit);
+  const [editNotes, setEditNotes] = useState<string>(item.notes ?? "");
 
-  // Finding 4: wrap toggle to surface errors via toast
+  // wrap toggle to surface errors via toast
   const wrappedToggle = async (prev: FormState, fd: FormData): Promise<FormState> => {
     const result = await togglePurchased(prev, fd);
     if (result.status === "error") toast.error(result.message ?? "Erro ao atualizar item");
@@ -56,7 +49,7 @@ export function ShoppingItemRow({ item }: Props) {
   };
   const [, toggleDispatch, togglePending] = useActionState(wrappedToggle, initialFormState);
 
-  // Finding 3: wrap edit to close only on success
+  // wrap edit to close only on success
   const wrappedEdit = async (prev: FormState, fd: FormData): Promise<FormState> => {
     const result = await editItem(prev, fd);
     if (result.status === "success") setEditing(false);
@@ -66,14 +59,13 @@ export function ShoppingItemRow({ item }: Props) {
 
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Finding 7 / Critical 1: delete handled via ConfirmDialog, not inline form
+  // delete handled via ConfirmDialog
   async function handleDelete() {
     setIsDeleting(true);
     try {
       const fd = new FormData();
       fd.append("id", item.id);
       const result = await deleteItem(initialFormState, fd);
-      // Finding 4: surface delete errors via toast
       if (result.status === "error") toast.error(result.message ?? "Erro ao excluir item");
       setMenuOpen(false);
     } finally {
@@ -85,9 +77,10 @@ export function ShoppingItemRow({ item }: Props) {
 
   function startEdit() {
     setEditName(item.name);
-    setEditCategory(item.category);
+    setEditCategoryId(item.category?.id ?? "");
     setEditQuantity(String(item.quantity));
     setEditUnit(item.unit);
+    setEditNotes(item.notes ?? "");
     setEditing(true);
     setMenuOpen(false);
   }
@@ -99,11 +92,8 @@ export function ShoppingItemRow({ item }: Props) {
   if (editing) {
     return (
       <div className="rounded-lg border border-border bg-card px-4 py-3">
-        {/* Finding 3: removed onSubmit optimistic close; wrappedEdit closes on success */}
-        <form
-          action={editDispatch}
-          className="space-y-2"
-        >
+        {/* wrappedEdit closes on success */}
+        <form action={editDispatch} className="space-y-2">
           <input type="hidden" name="id" value={item.id} />
 
           <Input
@@ -118,15 +108,16 @@ export function ShoppingItemRow({ item }: Props) {
 
           <div className="flex flex-wrap gap-2">
             <select
-              name="category"
-              value={editCategory}
-              onChange={(e) => setEditCategory(e.target.value as Category)}
+              name="category_id"
+              value={editCategoryId}
+              onChange={(e) => setEditCategoryId(e.target.value)}
               disabled={editPending}
               className={selectClass}
             >
-              {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_LABELS[cat]}
+              <option value="">Sem categoria</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.icon} {cat.name}
                 </option>
               ))}
             </select>
@@ -156,6 +147,15 @@ export function ShoppingItemRow({ item }: Props) {
               ))}
             </select>
           </div>
+
+          <Input
+            name="notes"
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            placeholder="Detalhes (ex: sem lactose, marca preferida)"
+            maxLength={200}
+            disabled={editPending}
+          />
 
           {editState.status === "error" ? (
             <p className="text-xs text-destructive">
@@ -232,13 +232,27 @@ export function ShoppingItemRow({ item }: Props) {
           >
             {item.name}
           </span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {CATEGORY_LABELS[item.category]}
-          </span>
+          {item.category ? (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              {item.category.icon} {item.category.name}
+            </span>
+          ) : (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              Sem categoria
+            </span>
+          )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {item.quantity} {UNIT_LABELS[item.unit]}
         </p>
+        {item.notes ? (
+          <p className="mt-0.5 text-xs text-muted-foreground">{item.notes}</p>
+        ) : null}
+        {item.room ? (
+          <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+            {item.room.name}
+          </span>
+        ) : null}
       </div>
 
       {/* Menu "⋯" */}
@@ -269,7 +283,7 @@ export function ShoppingItemRow({ item }: Props) {
               Editar
             </button>
 
-            {/* Finding 7 / Critical 1: ConfirmDialog wraps delete — no form inside dropdown */}
+            {/* ConfirmDialog wraps delete — no form inside dropdown */}
             <ConfirmDialog
               trigger={
                 <button
