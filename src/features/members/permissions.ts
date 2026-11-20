@@ -12,7 +12,6 @@ export type EffectivePermissions =
       can_purchase_shopping: boolean;
       can_manage_events: boolean;
       task_room_ids: string[];
-      shopping_categories: string[];
     };
 
 /**
@@ -35,7 +34,7 @@ export async function getMemberPermissions(
     return { bypass: true };
   }
 
-  const [{ data: perms }, { data: taskScopes }, { data: shopScopes }] =
+  const [{ data: perms }, { data: taskScopes }] =
     await Promise.all([
       supabase
         .from("home_member_permissions")
@@ -50,11 +49,6 @@ export async function getMemberPermissions(
         .select("room_id")
         .eq("home_id", homeId)
         .eq("user_id", userId),
-      supabase
-        .from("home_member_shopping_scopes")
-        .select("category")
-        .eq("home_id", homeId)
-        .eq("user_id", userId),
     ]);
 
   return {
@@ -65,6 +59,5 @@ export async function getMemberPermissions(
     can_purchase_shopping: perms?.can_purchase_shopping ?? true,
     can_manage_events: perms?.can_manage_events ?? true,
     task_room_ids: (taskScopes ?? []).map((s) => s.room_id),
-    shopping_categories: (shopScopes ?? []).map((s) => s.category),
   };
 }
