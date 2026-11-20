@@ -5,9 +5,11 @@ import { useEffect } from "react";
 type Props = {
   show: boolean;
   onDismiss: () => void;
+  title?: string;
+  message?: string;
 };
 
-export function CelebrationOverlay({ show, onDismiss }: Props) {
+export function CelebrationOverlay({ show, onDismiss, title, message }: Props) {
   useEffect(() => {
     if (!show) return;
     const timer = setTimeout(onDismiss, 4000);
@@ -19,8 +21,8 @@ export function CelebrationOverlay({ show, onDismiss }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-card rounded-xl p-6 shadow-lg text-center space-y-4">
-        <p className="text-xl font-semibold">Rotina completa!</p>
-        <p className="text-sm text-muted-foreground">Todas as tarefas do dia foram concluídas.</p>
+        <p className="text-xl font-semibold">{title ?? "Rotina completa!"}</p>
+        <p className="text-sm text-muted-foreground">{message ?? "Todas as tarefas do dia foram concluídas."}</p>
         <button
           type="button"
           onClick={onDismiss}

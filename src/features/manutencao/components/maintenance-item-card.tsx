@@ -1,0 +1,282 @@
+"use client";
+
+import { useActionState, useRef, useState } from "react";
+import { toast } from "sonner";
+import type { MaintenanceItem } from "@/features/manutencao/queries";
+import {
+  updateMaintenanceItem,
+  updateMaintenanceStatus,
+  deleteMaintenanceItem,
+} from "@/features/manutencao/actions";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+
+const selectClass =
+  "h-9 w-full rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
+const textareaClass =
+  "min-h-[64px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 resize-none";
+
+const STATUS_LABELS: Record<MaintenanceItem["status"], string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+};
+
+const STATUS_BADGE: Record<MaintenanceItem["status"], string> = {
+  pendente: "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  em_andamento: "rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  concluido: "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  cancelado: "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground",
+};
+
+type Props = {
+  item: MaintenanceItem;
+  onCompleted: (id: string) => void;
+};
+
+export function MaintenanceItemCard({ item, onCompleted }: Props) {
+  const [showEdit, setShowEdit] = useState(false);
+
+  // Track what status was submitted so we can trigger celebration on "concluido"
+  const submittedStatusRef = useRef<string | null>(null);
+
+  const wrappedUpdateStatus = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    submittedStatusRef.current = fd.get("status") as string;
+    const result = await updateMaintenanceStatus(prev, fd);
+    if (result.status === "success" && submittedStatusRef.current === "concluido") {
+      onCompleted(item.id);
+    }
+    if (result.status === "error") {
+      toast.error(result.message ?? "Erro ao atualizar status.");
+    }
+    return result;
+  };
+
+  const [, statusDispatch, statusPending] = useActionState(wrappedUpdateStatus, initialFormState);
+
+  // Edit form
+  const [editTitle, setEditTitle] = useState(item.title);
+  const [editDescription, setEditDescription] = useState(item.description ?? "");
+  const [editNotes, setEditNotes] = useState(item.notes ?? "");
+
+  const wrappedEdit = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    const result = await updateMaintenanceItem(prev, fd);
+    if (result.status === "success") {
+      setShowEdit(false);
+    }
+    return result;
+  };
+
+  const [editState, editDispatch, editPending] = useActionState(wrappedEdit, initialFormState);
+
+  // Delete
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      const fd = new FormData();
+      fd.append("id", item.id);
+      const result = await deleteMaintenanceItem(initialFormState, fd);
+      if (result.status === "error") {
+        toast.error(result.message ?? "Erro ao excluir item.");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const canEdit = item.status === "pendente" || item.status === "em_andamento";
+
+  if (showEdit) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-3">
+        <form action={editDispatch} className="space-y-3">
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="room_id" value={item.room_id ?? ""} />
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Título</label>
+            <Input
+              name="title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              required
+              autoFocus
+              disabled={editPending}
+              aria-invalid={!!editState.fieldErrors?.title}
+            />
+            {editState.fieldErrors?.title ? (
+              <p className="mt-1 text-xs text-destructive">{editState.fieldErrors.title}</p>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Descrição</label>
+            <textarea
+              name="description"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              disabled={editPending}
+              className={textareaClass}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Notas</label>
+            <textarea
+              name="notes"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              disabled={editPending}
+              className={textareaClass}
+            />
+          </div>
+
+          {editState.status === "error" && editState.message ? (
+            <p className="text-xs text-destructive">{editState.message}</p>
+          ) : null}
+
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" size="sm" disabled={editPending}>
+              {editPending ? "Salvando…" : "Salvar"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowEdit(false)}
+              disabled={editPending}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+        {/* Header: title + badge */}
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium leading-snug text-foreground">{item.title}</p>
+            {item.room ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">{item.room.name}</p>
+            ) : null}
+          </div>
+          <span className={STATUS_BADGE[item.status]}>{STATUS_LABELS[item.status]}</span>
+        </div>
+
+        {/* Description */}
+        {item.description ? (
+          <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
+        ) : null}
+
+        {/* Notes */}
+        {item.notes ? (
+          <p className="mt-1 text-xs text-muted-foreground italic">{item.notes}</p>
+        ) : null}
+
+        {/* Actions */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {/* Status transition buttons */}
+          {item.status === "pendente" ? (
+            <>
+              <form action={statusDispatch}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="status" value="em_andamento" />
+                <Button type="submit" size="sm" variant="outline" disabled={statusPending || isDeleting}>
+                  Iniciar
+                </Button>
+              </form>
+              <form action={statusDispatch}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="status" value="cancelado" />
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="ghost"
+                  disabled={statusPending || isDeleting}
+                  className="text-muted-foreground"
+                >
+                  Cancelar
+                </Button>
+              </form>
+            </>
+          ) : null}
+
+          {item.status === "em_andamento" ? (
+            <>
+              <form action={statusDispatch}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="status" value="concluido" />
+                <Button type="submit" size="sm" variant="outline" disabled={statusPending || isDeleting}>
+                  Concluir
+                </Button>
+              </form>
+              <form action={statusDispatch}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="status" value="cancelado" />
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="ghost"
+                  disabled={statusPending || isDeleting}
+                  className="text-muted-foreground"
+                >
+                  Cancelar
+                </Button>
+              </form>
+            </>
+          ) : null}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Edit button — hidden for concluido/cancelado */}
+          {canEdit ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setEditTitle(item.title);
+                setEditDescription(item.description ?? "");
+                setEditNotes(item.notes ?? "");
+                setShowEdit(true);
+              }}
+              disabled={statusPending || isDeleting}
+            >
+              Editar
+            </Button>
+          ) : null}
+
+          {/* Delete button — always visible */}
+          <ConfirmDialog
+            trigger={
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={statusPending || isDeleting}
+                className="text-destructive hover:text-destructive"
+              >
+                {isDeleting ? "Excluindo…" : "Excluir"}
+              </Button>
+            }
+            title="Excluir item"
+            description={`Tem certeza que deseja excluir "${item.title}"? Esta ação não pode ser desfeita.`}
+            confirmLabel="Excluir"
+            onConfirm={handleDelete}
+            destructive
+          />
+        </div>
+      </div>
+  );
+}
