@@ -14,6 +14,7 @@ import {
   deleteEventSchema,
 } from "@/features/events/schemas";
 import { getMemberPermissions } from "@/features/members/permissions";
+import { trackEvent } from "@/lib/telemetry";
 
 export async function createEvent(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -62,6 +63,7 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
+  await trackEvent(userId, homeId, "event_created");
   return { status: "success", message: "Evento criado." };
 }
 
@@ -157,5 +159,6 @@ export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
+  await trackEvent(userId, homeId, "event_deleted");
   return { status: "success", message: "Evento excluído." };
 }

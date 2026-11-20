@@ -14,6 +14,7 @@ import {
   updateStatusSchema,
   deleteMaintenanceSchema,
 } from "@/features/manutencao/schemas";
+import { trackEvent } from "@/lib/telemetry";
 
 async function getHomeId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
   const { data: profile } = await supabase
@@ -57,6 +58,7 @@ export async function createMaintenanceItem(
     return { status: "error", message: "Erro ao criar item. Tente novamente." };
   }
 
+  await trackEvent(userId, homeId, "maintenance_created");
   revalidatePath("/manutencao");
   return { status: "success", message: "Item criado." };
 }
@@ -155,6 +157,9 @@ export async function updateMaintenanceStatus(
     return { status: "error", message: "Transição de status inválida." };
   }
 
+  if (parsed.data.status === "concluido") {
+    await trackEvent(userId, homeId, "maintenance_completed");
+  }
   revalidatePath("/manutencao");
   return { status: "success" };
 }

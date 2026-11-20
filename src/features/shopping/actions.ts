@@ -15,6 +15,7 @@ import {
   deleteItemSchema,
 } from "@/features/shopping/schemas";
 import { getMemberPermissions } from "@/features/members/permissions";
+import { trackEvent } from "@/lib/telemetry";
 
 export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -61,6 +62,7 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   }
 
   revalidatePath("/compras");
+  await trackEvent(userId, homeId, "shopping_item_added");
   return { status: "success", message: "Item adicionado." };
 }
 
@@ -103,6 +105,9 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
   }
 
   revalidatePath("/compras");
+  if (parsed.data.is_purchased) {
+    await trackEvent(userId, homeId, "shopping_item_purchased");
+  }
   return { status: "success" };
 }
 

@@ -828,6 +828,7 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
     return { status: "error", message: "Erro ao excluir tarefa. Tente novamente." };
   }
 
+  await trackEvent(userId, deleteProfile.current_home_id, "task_deleted");
   revalidatePath("/rotina");
   return { status: "success", message: "Tarefa excluída." };
 }
