@@ -82,20 +82,6 @@ export async function updateMaintenanceItem(
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { data: existing } = await supabase
-    .from("maintenance_items")
-    .select("status")
-    .eq("id", parsed.data.id)
-    .eq("home_id", homeId)
-    .maybeSingle();
-
-  if (
-    existing?.status === "concluido" ||
-    existing?.status === "cancelado"
-  ) {
-    return { status: "error", message: "Item já foi concluído ou cancelado." };
-  }
-
   const { data: updated, error } = await supabase
     .from("maintenance_items")
     .update({
@@ -106,9 +92,24 @@ export async function updateMaintenanceItem(
     })
     .eq("id", parsed.data.id)
     .eq("home_id", homeId)
+    .in("status", ["pendente", "em_andamento"])
     .select("id");
 
-  if (error || !updated?.length) {
+  if (error) {
+    return { status: "error", message: "Item não encontrado." };
+  }
+
+  if (!updated?.length) {
+    // Distinguish "wrong status" from "not found"
+    const { data: exists } = await supabase
+      .from("maintenance_items")
+      .select("id")
+      .eq("id", parsed.data.id)
+      .eq("home_id", homeId)
+      .maybeSingle();
+    if (exists) {
+      return { status: "error", message: "Item já foi concluído ou cancelado." };
+    }
     return { status: "error", message: "Item não encontrado." };
   }
 
@@ -143,10 +144,15 @@ export async function updateMaintenanceStatus(
     .update({ status: parsed.data.status, resolved_at })
     .eq("id", parsed.data.id)
     .eq("home_id", homeId)
+    .in("status", ["pendente", "em_andamento"])
     .select("id");
 
-  if (error || !updated?.length) {
+  if (error) {
     return { status: "error", message: "Item não encontrado." };
+  }
+
+  if (!updated?.length) {
+    return { status: "error", message: "Transição de status inválida." };
   }
 
   revalidatePath("/manutencao");

@@ -331,14 +331,14 @@ isOneToOne: false
                   ]
                 },"maintenance_items": {
                   Row: {
-                    "created_at": string,"created_by": string,"description": string | null,"home_id": string,"id": string,"notes": string | null,"resolved_at": string | null,"room_id": string | null,"status": Database["public"]['Enums']["maintenance_item_status"],"title": string
+                    "created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"notes": string | null,"resolved_at": string | null,"room_id": string | null,"status": Database["public"]['Enums']["maintenance_item_status"],"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by": string,"description"?: string | null,"home_id": string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title": string
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id": string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title": string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string,"description"?: string | null,"home_id"?: string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title"?: string
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id"?: string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title"?: string
                   }
                   Relationships: [
                     {

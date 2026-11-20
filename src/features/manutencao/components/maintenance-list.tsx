@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import type { MaintenanceItem } from "@/features/manutencao/queries";
 import { AddMaintenanceForm } from "@/features/manutencao/components/add-maintenance-form";
 import { MaintenanceItemCard } from "@/features/manutencao/components/maintenance-item-card";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 
 type Props = {
   items: MaintenanceItem[];
@@ -9,6 +13,8 @@ type Props = {
 };
 
 export function MaintenanceList({ items, rooms }: Props) {
+  const [celebrationItemId, setCelebrationItemId] = useState<string | null>(null);
+
   const open = items.filter(
     (i) => i.status === "pendente" || i.status === "em_andamento",
   );
@@ -18,6 +24,13 @@ export function MaintenanceList({ items, rooms }: Props) {
 
   return (
     <div className="space-y-8">
+      <CelebrationOverlay
+        show={celebrationItemId !== null}
+        onDismiss={() => setCelebrationItemId(null)}
+        title="Item concluído! 🎉"
+        message="Registrado no histórico."
+      />
+
       {/* Add form */}
       <section>
         <div className="rounded-xl border border-border bg-card p-4">
@@ -44,7 +57,7 @@ export function MaintenanceList({ items, rooms }: Props) {
         ) : (
           <div className="space-y-2">
             {open.map((item) => (
-              <MaintenanceItemCard key={item.id} item={item} />
+              <MaintenanceItemCard key={item.id} item={item} onCompleted={(id) => setCelebrationItemId(id)} />
             ))}
           </div>
         )}
@@ -67,7 +80,7 @@ export function MaintenanceList({ items, rooms }: Props) {
           ) : (
             <div className="space-y-2">
               {history.map((item) => (
-                <MaintenanceItemCard key={item.id} item={item} />
+                <MaintenanceItemCard key={item.id} item={item} onCompleted={(id) => setCelebrationItemId(id)} />
               ))}
             </div>
           )}

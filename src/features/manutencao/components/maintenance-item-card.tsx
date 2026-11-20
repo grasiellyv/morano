@@ -8,7 +8,6 @@ import {
   updateMaintenanceStatus,
   deleteMaintenanceItem,
 } from "@/features/manutencao/actions";
-import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,11 +35,11 @@ const STATUS_BADGE: Record<MaintenanceItem["status"], string> = {
 
 type Props = {
   item: MaintenanceItem;
+  onCompleted: (id: string) => void;
 };
 
-export function MaintenanceItemCard({ item }: Props) {
+export function MaintenanceItemCard({ item, onCompleted }: Props) {
   const [showEdit, setShowEdit] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
 
   // Track what status was submitted so we can trigger celebration on "concluido"
   const submittedStatusRef = useRef<string | null>(null);
@@ -49,7 +48,7 @@ export function MaintenanceItemCard({ item }: Props) {
     submittedStatusRef.current = fd.get("status") as string;
     const result = await updateMaintenanceStatus(prev, fd);
     if (result.status === "success" && submittedStatusRef.current === "concluido") {
-      setShowCelebration(true);
+      onCompleted(item.id);
     }
     if (result.status === "error") {
       toast.error(result.message ?? "Erro ao atualizar status.");
@@ -162,15 +161,7 @@ export function MaintenanceItemCard({ item }: Props) {
   }
 
   return (
-    <>
-      <CelebrationOverlay
-        show={showCelebration}
-        onDismiss={() => setShowCelebration(false)}
-        title="Item concluído! 🎉"
-        message="Registrado no histórico."
-      />
-
-      <div className="rounded-xl border border-border bg-card px-4 py-3">
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
         {/* Header: title + badge */}
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -287,6 +278,5 @@ export function MaintenanceItemCard({ item }: Props) {
           />
         </div>
       </div>
-    </>
   );
 }
