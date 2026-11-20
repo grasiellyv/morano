@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getShoppingItems } from "@/features/shopping/queries";
 import { getCategories } from "@/features/shopping/queries-categories";
+import { getShoppingLists } from "@/features/shopping/queries-lists";
 import { ShoppingList } from "@/features/shopping/components/shopping-list";
 import { PageHeader } from "@/components/feedback/page-header";
 
@@ -18,12 +19,13 @@ export default async function Page() {
     .maybeSingle();
   const homeId = profile?.current_home_id ?? null;
 
-  const [items, categories, roomsResult] = await Promise.all([
+  const [items, categories, roomsResult, lists] = await Promise.all([
     homeId ? getShoppingItems(supabase, homeId) : Promise.resolve({ pending: [], purchased: [] }),
     homeId ? getCategories(supabase, homeId) : Promise.resolve([]),
     homeId
       ? supabase.from("rooms").select("id, name").eq("home_id", homeId).order("name")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    homeId ? getShoppingLists(supabase, homeId) : Promise.resolve([]),
   ]);
   const rooms = roomsResult.data ?? [];
 
@@ -35,6 +37,7 @@ export default async function Page() {
         purchased={items.purchased}
         categories={categories}
         rooms={rooms}
+        lists={lists}
       />
     </>
   );

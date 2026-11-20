@@ -3,18 +3,21 @@
 import { useState } from "react";
 import type { ShoppingItem } from "@/features/shopping/queries";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
+import type { ShoppingList } from "@/features/shopping/queries-lists";
 import { ShoppingItemRow } from "@/features/shopping/components/shopping-item-row";
 import { AddItemForm } from "@/features/shopping/components/add-item-form";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { NamedListsSection } from "@/features/shopping/components/named-lists-section";
 
 type Props = {
   pending: ShoppingItem[];
   purchased: ShoppingItem[];
   categories: ShoppingCategory[];
   rooms: { id: string; name: string }[];
+  lists: ShoppingList[];
 };
 
-export function ShoppingList({ pending, purchased, categories, rooms }: Props) {
+export function ShoppingList({ pending, purchased, categories, rooms, lists }: Props) {
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
 
   const filteredPending = filterRoomId
@@ -103,6 +106,9 @@ export function ShoppingList({ pending, purchased, categories, rooms }: Props) {
           description="Adicione itens acima para começar sua lista."
         />
       ) : null}
+
+      {/* Named Lists */}
+      <NamedListsSection lists={lists} categories={categories} />
     </div>
   );
 }
