@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
@@ -28,6 +28,12 @@ import {
 } from "@/features/absence/queries";
 import { clearAbsence } from "@/features/absence/actions";
 import { AbsenceBanner } from "@/features/absence/components/absence-banner";
+import {
+  getRotations,
+  getAbsentMemberIds,
+  advanceRotationsIfDue,
+  buildRotationInfoMap,
+} from "@/features/tasks/queries-rotations";
 
 export const metadata: Metadata = { title: "Rotina" };
 
@@ -60,11 +66,17 @@ export default async function Page({
   extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
 
-  const [todayOcc, events, absence] = await Promise.all([
+  const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
+  await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
+
+  const [todayOcc, events, absence, rotations] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
     getMyAbsence(supabase, userId),
+    getRotations(supabase, home.id),
   ]);
+
+  const rotationInfoMap = buildRotationInfoMap(rotations, absentIds);
 
   const activeAbsenceRange: AbsenceRange =
     absence !== null &&
@@ -99,6 +111,8 @@ export default async function Page({
       deleteEventAction={deleteEvent}
       filterEssencial={filterEssencial}
       userId={userId}
+      rotationInfoMap={rotationInfoMap}
     />
   );
 }
+
