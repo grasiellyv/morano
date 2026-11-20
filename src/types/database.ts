@@ -633,16 +633,62 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"tasks": {
+                },"task_rotation_members": {
                   Row: {
-                    "appliance_id": string | null,"created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"instructions": string | null,"is_essential": boolean,"priority": Database["public"]['Enums']["task_priority"],"room_id": string | null,"source": Database["public"]['Enums']["task_source"],"status": Database["public"]['Enums']["task_status"],"title": string,"updated_at": string
+                    "id": string,"profile_id": string,"rotation_id": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id": string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title": string,"updated_at"?: string
+                    "id"?: string,"profile_id": string,"rotation_id": string,"sort_order"?: number
                   }
                   Update: {
-                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id"?: string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title"?: string,"updated_at"?: string
+                    "id"?: string,"profile_id"?: string,"rotation_id"?: string,"sort_order"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "task_rotation_members_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "task_rotation_members_rotation_id_fkey"
+      columns: ["rotation_id"]
+isOneToOne: false
+      referencedRelation: "task_rotations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"task_rotations": {
+                  Row: {
+                    "created_at": string,"current_member_index": number,"home_id": string,"id": string,"last_rotated_at": string | null,"name": string,"rotation_day": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"current_member_index"?: number,"home_id": string,"id"?: string,"last_rotated_at"?: string | null,"name": string,"rotation_day": number
+                  }
+                  Update: {
+                    "created_at"?: string,"current_member_index"?: number,"home_id"?: string,"id"?: string,"last_rotated_at"?: string | null,"name"?: string,"rotation_day"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "task_rotations_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tasks": {
+                  Row: {
+                    "appliance_id": string | null,"created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"instructions": string | null,"is_essential": boolean,"priority": Database["public"]['Enums']["task_priority"],"room_id": string | null,"rotation_id": string | null,"source": Database["public"]['Enums']["task_source"],"status": Database["public"]['Enums']["task_status"],"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id": string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"rotation_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "appliance_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"home_id"?: string,"id"?: string,"instructions"?: string | null,"is_essential"?: boolean,"priority"?: Database["public"]['Enums']["task_priority"],"room_id"?: string | null,"rotation_id"?: string | null,"source"?: Database["public"]['Enums']["task_source"],"status"?: Database["public"]['Enums']["task_status"],"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -668,6 +714,12 @@ isOneToOne: false
       columns: ["room_id"]
 isOneToOne: false
       referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_rotation_id_fkey"
+      columns: ["rotation_id"]
+isOneToOne: false
+      referencedRelation: "task_rotations"
       referencedColumns: ["id"]
     }
                   ]
