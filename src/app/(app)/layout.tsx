@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
+import { updatePresence } from "@/lib/presence";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient();
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("onboarding_completed")
+    .select("onboarding_completed, last_seen_at")
     .eq("id", user.id)
     .single();
 
@@ -19,6 +20,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!error && profile && !profile.onboarding_completed) {
     redirect("/onboarding");
   }
+
+  void updatePresence(user.id, profile?.last_seen_at ?? null, supabase);
 
   return <AppShell>{children}</AppShell>;
 }
