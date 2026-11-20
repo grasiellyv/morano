@@ -537,19 +537,45 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
-                },"shopping_items": {
+                },"shopping_categories": {
                   Row: {
-                    "category": Database["public"]['Enums']["shopping_category"],"created_at": string,"created_by": string | null,"home_id": string,"id": string,"is_purchased": boolean,"issue_id": string | null,"name": string,"purchased_at": string | null,"purchased_by": string | null,"quantity": number,"unit": Database["public"]['Enums']["shopping_unit"],"updated_at": string
+                    "created_at": string,"default_slug": string | null,"home_id": string,"icon": string,"id": string,"name": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "category"?: Database["public"]['Enums']["shopping_category"],"created_at"?: string,"created_by"?: string | null,"home_id": string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name": string,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                    "created_at"?: string,"default_slug"?: string | null,"home_id": string,"icon"?: string,"id"?: string,"name": string,"sort_order"?: number
                   }
                   Update: {
-                    "category"?: Database["public"]['Enums']["shopping_category"],"created_at"?: string,"created_by"?: string | null,"home_id"?: string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name"?: string,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                    "created_at"?: string,"default_slug"?: string | null,"home_id"?: string,"icon"?: string,"id"?: string,"name"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "shopping_categories_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shopping_items": {
+                  Row: {
+                    "category_id": string | null,"created_at": string,"created_by": string | null,"home_id": string,"id": string,"is_purchased": boolean,"issue_id": string | null,"name": string,"notes": string | null,"purchased_at": string | null,"purchased_by": string | null,"quantity": number,"room_id": string | null,"unit": Database["public"]['Enums']["shopping_unit"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id": string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name": string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                  }
+                  Update: {
+                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id"?: string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name"?: string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shopping_items_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "shopping_categories"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "shopping_items_created_by_fkey"
       columns: ["created_by"]
 isOneToOne: false
@@ -572,6 +598,58 @@ isOneToOne: false
       columns: ["purchased_by"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shopping_items_room_id_fkey"
+      columns: ["room_id"]
+isOneToOne: false
+      referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shopping_list_items": {
+                  Row: {
+                    "category_id": string | null,"created_at": string,"id": string,"last_added_at": string | null,"list_id": string,"name": string,"notes": string | null,"quantity": number,"reorder_months": number | null,"unit": Database["public"]['Enums']["shopping_unit"]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category_id"?: string | null,"created_at"?: string,"id"?: string,"last_added_at"?: string | null,"list_id": string,"name": string,"notes"?: string | null,"quantity"?: number,"reorder_months"?: number | null,"unit"?: Database["public"]['Enums']["shopping_unit"]
+                  }
+                  Update: {
+                    "category_id"?: string | null,"created_at"?: string,"id"?: string,"last_added_at"?: string | null,"list_id"?: string,"name"?: string,"notes"?: string | null,"quantity"?: number,"reorder_months"?: number | null,"unit"?: Database["public"]['Enums']["shopping_unit"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shopping_list_items_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "shopping_categories"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shopping_list_items_list_id_fkey"
+      columns: ["list_id"]
+isOneToOne: false
+      referencedRelation: "shopping_lists"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shopping_lists": {
+                  Row: {
+                    "created_at": string,"home_id": string,"id": string,"name": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"home_id": string,"id"?: string,"name": string
+                  }
+                  Update: {
+                    "created_at"?: string,"home_id"?: string,"id"?: string,"name"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shopping_lists_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
       referencedColumns: ["id"]
     }
                   ]

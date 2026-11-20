@@ -34,27 +34,25 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
 
   const parsed = addItemSchema.safeParse({
     name: textField(fd, "name"),
-    category: textField(fd, "category") || undefined,
+    category_id: textField(fd, "category_id") || undefined,
     quantity: textField(fd, "quantity") || undefined,
     unit: textField(fd, "unit") || undefined,
+    notes: textField(fd, "notes") || undefined,
+    room_id: textField(fd, "room_id") || undefined,
   });
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  if (!addPerms.bypass && addPerms.shopping_categories.length > 0) {
-    if (!addPerms.shopping_categories.includes(parsed.data.category)) {
-      return { status: "error", message: "Sem acesso a esta categoria." };
-    }
-  }
-
   const { error } = await supabase.from("shopping_items").insert({
     home_id: homeId,
     name: parsed.data.name,
-    category: parsed.data.category,
+    category_id: parsed.data.category_id ?? null,
     quantity: parsed.data.quantity,
     unit: parsed.data.unit,
+    notes: parsed.data.notes ?? null,
+    room_id: parsed.data.room_id ?? null,
     is_purchased: false,
   });
 
@@ -127,28 +125,15 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = editItemSchema.safeParse({
     id: textField(fd, "id"),
     name: textField(fd, "name"),
-    category: textField(fd, "category"),
+    category_id: textField(fd, "category_id") || undefined,
     quantity: textField(fd, "quantity"),
     unit: textField(fd, "unit"),
+    notes: textField(fd, "notes") || undefined,
+    room_id: textField(fd, "room_id") || undefined,
   });
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
-  }
-
-  if (!editPerms.bypass && editPerms.shopping_categories.length > 0) {
-    const { data: existingItem } = await supabase
-      .from("shopping_items")
-      .select("category")
-      .eq("id", parsed.data.id)
-      .eq("home_id", homeId)
-      .maybeSingle();
-    if (existingItem?.category && !editPerms.shopping_categories.includes(existingItem.category)) {
-      return { status: "error", message: "Sem acesso a esta categoria." };
-    }
-    if (!editPerms.shopping_categories.includes(parsed.data.category)) {
-      return { status: "error", message: "Sem acesso à categoria de destino." };
-    }
   }
 
   // Finding 5: select("id") detects 0-row matches that return error:null
@@ -156,9 +141,10 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
     .from("shopping_items")
     .update({
       name: parsed.data.name,
-      category: parsed.data.category,
+      category_id: parsed.data.category_id ?? null,
       quantity: parsed.data.quantity,
       unit: parsed.data.unit,
+      notes: parsed.data.notes ?? null,
     })
     .eq("id", parsed.data.id)
     .eq("home_id", homeId)
@@ -194,18 +180,6 @@ export async function deleteItem(_: FormState, fd: FormData): Promise<FormState>
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
-  }
-
-  if (!deletePerms.bypass && deletePerms.shopping_categories.length > 0) {
-    const { data: itemToDelete } = await supabase
-      .from("shopping_items")
-      .select("category")
-      .eq("id", parsed.data.id)
-      .eq("home_id", homeId)
-      .maybeSingle();
-    if (itemToDelete?.category && !deletePerms.shopping_categories.includes(itemToDelete.category)) {
-      return { status: "error", message: "Sem acesso a esta categoria." };
-    }
   }
 
   // Finding 5: select("id") detects 0-row matches that return error:null
