@@ -1,6 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
+import { getHomeMembers } from "@/features/members/queries";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { parseISO, format } from "date-fns";
@@ -69,11 +70,12 @@ export default async function Page({
   const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
   await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
 
-  const [todayOcc, events, absence, rotations] = await Promise.all([
+  const [todayOcc, events, absence, rotations, homeMembers] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
     getMyAbsence(supabase, userId),
     getRotations(supabase, home.id),
+    getHomeMembers(supabase),
   ]);
 
   const rotationInfoMap = buildRotationInfoMap(rotations, absentIds);
@@ -112,6 +114,8 @@ export default async function Page({
       filterEssencial={filterEssencial}
       userId={userId}
       rotationInfoMap={rotationInfoMap}
+      rotations={rotations}
+      homeMembers={homeMembers.map(m => ({ id: m.user_id, name: m.full_name }))}
     />
   );
 }

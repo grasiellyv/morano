@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DailyProgressBar, calcProgress } from "@/features/tasks/components/daily-progress-bar";
 import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 import { EventChip } from "@/features/events/components/event-chip";
-import type { RotationInfo } from "@/features/tasks/queries-rotations";
+import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
 import { EventForm } from "@/features/events/components/event-form";
 
 const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
@@ -43,6 +43,8 @@ type Props = {
   filterEssencial?: boolean;
   userId?: string;
   rotationInfoMap?: Record<string, RotationInfo>;
+  rotations?: TaskRotation[];
+  homeMembers?: { id: string; name: string | null }[];
 };
 
 export function TaskList({
@@ -62,6 +64,8 @@ export function TaskList({
   filterEssencial = false,
   userId,
   rotationInfoMap,
+  rotations,
+  homeMembers,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -145,6 +149,8 @@ export function TaskList({
             formAction={createTaskAction}
             initialValues={{ start_date: selectedDate }}
             onSuccess={() => setShowCreate(false)}
+            rotations={rotations}
+            homeMembers={homeMembers}
           />
         </div>
       ) : null}
