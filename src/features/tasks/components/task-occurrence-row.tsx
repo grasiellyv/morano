@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useActionState, useState } from "react";
 import {
@@ -123,9 +123,9 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo }: P
           </span>
           {rotationInfo && (
             <span
-              title={`Rodizio: ${rotationInfo.name}${rotationInfo.nextMemberName ? ` · Proximo: ${rotationInfo.nextMemberName}` : ""}`}
+              title={`Rodízio: ${rotationInfo.name}${rotationInfo.nextMemberName ? ` · Próximo: ${rotationInfo.nextMemberName}` : ""}`}
               className="ml-1 text-xs text-muted-foreground"
-              aria-label="tarefa em rodizio"
+              aria-label="tarefa em rodízio"
             >
               {String.fromCodePoint(0x267B)}
             </span>
