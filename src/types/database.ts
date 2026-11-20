@@ -329,6 +329,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"maintenance_items": {
+                  Row: {
+                    "created_at": string,"created_by": string,"description": string | null,"home_id": string,"id": string,"notes": string | null,"resolved_at": string | null,"room_id": string | null,"status": Database["public"]['Enums']["maintenance_item_status"],"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"description"?: string | null,"home_id": string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"description"?: string | null,"home_id"?: string,"id"?: string,"notes"?: string | null,"resolved_at"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["maintenance_item_status"],"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "maintenance_items_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "maintenance_items_home_id_fkey"
+      columns: ["home_id"]
+isOneToOne: false
+      referencedRelation: "homes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "maintenance_items_room_id_fkey"
+      columns: ["room_id"]
+isOneToOne: false
+      referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"maintenance_records": {
                   Row: {
                     "appliance_id": string | null,"completed_at": string | null,"cost_cents": number | null,"created_at": string,"created_by": string | null,"description": string | null,"home_id": string,"id": string,"issue_id": string | null,"notes": string | null,"provider_name": string | null,"room_id": string | null,"scheduled_for": string | null,"status": Database["public"]['Enums']["maintenance_status"],"title": string,"updated_at": string
@@ -714,7 +746,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "appliance_category": "geladeira"|"maquina_lavar"|"ar_condicionado"|"micro_ondas"|"fogao"|"televisao"|"lava_loucas"|"outro","attachment_kind": "photo"|"document","event_type": "aniversario"|"viagem"|"jantar"|"consulta_medica"|"visita"|"manutencao"|"feriado"|"outros","frequency_type": "once"|"daily"|"weekly"|"biweekly"|"monthly"|"custom","home_role": "owner"|"admin"|"member","household_type": "sozinho"|"casal"|"familia"|"compartilhada"|"outro","interval_unit": "day"|"week"|"month","invite_status": "pending"|"accepted"|"revoked"|"expired","issue_event_type": "created"|"status_changed"|"note"|"maintenance_linked","issue_status": "open"|"in_progress"|"resolved","maintenance_status": "scheduled"|"completed"|"cancelled","occurrence_status": "pending"|"completed"|"skipped"|"missed","ownership_type": "proprio"|"alugado"|"outro","property_type": "apartamento"|"casa"|"sobrado"|"studio_kitnet"|"outro","room_type": "sala"|"cozinha"|"quarto"|"banheiro"|"lavanderia"|"escritorio"|"varanda"|"garagem"|"outro","routine_level": "leve"|"equilibrada"|"detalhada","shopping_category": "limpeza"|"higiene"|"cozinha"|"lavanderia"|"alimentacao"|"outros","shopping_unit": "un"|"kg"|"g"|"l"|"ml"|"pacote"|"caixa","subscription_plan": "free"|"pro","subscription_provider": "none"|"beta_grant"|"stripe"|"mercadopago","subscription_status": "active"|"trialing"|"past_due"|"canceled","task_priority": "baixa"|"media"|"alta","task_source": "manual"|"onboarding","task_status": "active"|"paused"|"archived"
+            "appliance_category": "geladeira"|"maquina_lavar"|"ar_condicionado"|"micro_ondas"|"fogao"|"televisao"|"lava_loucas"|"outro","attachment_kind": "photo"|"document","event_type": "aniversario"|"viagem"|"jantar"|"consulta_medica"|"visita"|"manutencao"|"feriado"|"outros","frequency_type": "once"|"daily"|"weekly"|"biweekly"|"monthly"|"custom","home_role": "owner"|"admin"|"member","household_type": "sozinho"|"casal"|"familia"|"compartilhada"|"outro","interval_unit": "day"|"week"|"month","invite_status": "pending"|"accepted"|"revoked"|"expired","issue_event_type": "created"|"status_changed"|"note"|"maintenance_linked","issue_status": "open"|"in_progress"|"resolved","maintenance_item_status": "pendente"|"em_andamento"|"concluido"|"cancelado","maintenance_status": "scheduled"|"completed"|"cancelled","occurrence_status": "pending"|"completed"|"skipped"|"missed","ownership_type": "proprio"|"alugado"|"outro","property_type": "apartamento"|"casa"|"sobrado"|"studio_kitnet"|"outro","room_type": "sala"|"cozinha"|"quarto"|"banheiro"|"lavanderia"|"escritorio"|"varanda"|"garagem"|"outro","routine_level": "leve"|"equilibrada"|"detalhada","shopping_category": "limpeza"|"higiene"|"cozinha"|"lavanderia"|"alimentacao"|"outros","shopping_unit": "un"|"kg"|"g"|"l"|"ml"|"pacote"|"caixa","subscription_plan": "free"|"pro","subscription_provider": "none"|"beta_grant"|"stripe"|"mercadopago","subscription_status": "active"|"trialing"|"past_due"|"canceled","task_priority": "baixa"|"media"|"alta","task_source": "manual"|"onboarding","task_status": "active"|"paused"|"archived"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -834,7 +866,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "appliance_category": ["geladeira", "maquina_lavar", "ar_condicionado", "micro_ondas", "fogao", "televisao", "lava_loucas", "outro"],"attachment_kind": ["photo", "document"],"event_type": ["aniversario", "viagem", "jantar", "consulta_medica", "visita", "manutencao", "feriado", "outros"],"frequency_type": ["once", "daily", "weekly", "biweekly", "monthly", "custom"],"home_role": ["owner", "admin", "member"],"household_type": ["sozinho", "casal", "familia", "compartilhada", "outro"],"interval_unit": ["day", "week", "month"],"invite_status": ["pending", "accepted", "revoked", "expired"],"issue_event_type": ["created", "status_changed", "note", "maintenance_linked"],"issue_status": ["open", "in_progress", "resolved"],"maintenance_status": ["scheduled", "completed", "cancelled"],"occurrence_status": ["pending", "completed", "skipped", "missed"],"ownership_type": ["proprio", "alugado", "outro"],"property_type": ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],"room_type": ["sala", "cozinha", "quarto", "banheiro", "lavanderia", "escritorio", "varanda", "garagem", "outro"],"routine_level": ["leve", "equilibrada", "detalhada"],"shopping_category": ["limpeza", "higiene", "cozinha", "lavanderia", "alimentacao", "outros"],"shopping_unit": ["un", "kg", "g", "l", "ml", "pacote", "caixa"],"subscription_plan": ["free", "pro"],"subscription_provider": ["none", "beta_grant", "stripe", "mercadopago"],"subscription_status": ["active", "trialing", "past_due", "canceled"],"task_priority": ["baixa", "media", "alta"],"task_source": ["manual", "onboarding"],"task_status": ["active", "paused", "archived"]
+            "appliance_category": ["geladeira", "maquina_lavar", "ar_condicionado", "micro_ondas", "fogao", "televisao", "lava_loucas", "outro"],"attachment_kind": ["photo", "document"],"event_type": ["aniversario", "viagem", "jantar", "consulta_medica", "visita", "manutencao", "feriado", "outros"],"frequency_type": ["once", "daily", "weekly", "biweekly", "monthly", "custom"],"home_role": ["owner", "admin", "member"],"household_type": ["sozinho", "casal", "familia", "compartilhada", "outro"],"interval_unit": ["day", "week", "month"],"invite_status": ["pending", "accepted", "revoked", "expired"],"issue_event_type": ["created", "status_changed", "note", "maintenance_linked"],"issue_status": ["open", "in_progress", "resolved"],"maintenance_item_status": ["pendente", "em_andamento", "concluido", "cancelado"],"maintenance_status": ["scheduled", "completed", "cancelled"],"occurrence_status": ["pending", "completed", "skipped", "missed"],"ownership_type": ["proprio", "alugado", "outro"],"property_type": ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],"room_type": ["sala", "cozinha", "quarto", "banheiro", "lavanderia", "escritorio", "varanda", "garagem", "outro"],"routine_level": ["leve", "equilibrada", "detalhada"],"shopping_category": ["limpeza", "higiene", "cozinha", "lavanderia", "alimentacao", "outros"],"shopping_unit": ["un", "kg", "g", "l", "ml", "pacote", "caixa"],"subscription_plan": ["free", "pro"],"subscription_provider": ["none", "beta_grant", "stripe", "mercadopago"],"subscription_status": ["active", "trialing", "past_due", "canceled"],"task_priority": ["baixa", "media", "alta"],"task_source": ["manual", "onboarding"],"task_status": ["active", "paused", "archived"]
           }
         }
 } as const
