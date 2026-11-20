@@ -156,6 +156,14 @@ export async function removeRotationMember(_: FormState, fd: FormData): Promise<
   });
   if (!parsed.success) return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
 
+  const { data: rotationCheckRemove } = await supabase
+    .from("task_rotations")
+    .select("id")
+    .eq("id", parsed.data.rotation_id)
+    .eq("home_id", homeId)
+    .maybeSingle();
+  if (!rotationCheckRemove) return { status: "error", message: "Rodizio nao encontrado." };
+
   const { error } = await supabase
     .from("task_rotation_members")
     .delete()
@@ -180,6 +188,14 @@ export async function reorderRotationMember(_: FormState, fd: FormData): Promise
     sort_order: textField(fd, "sort_order"),
   });
   if (!parsed.success) return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+
+  const { data: rotationCheckReorder } = await supabase
+    .from("task_rotations")
+    .select("id")
+    .eq("id", parsed.data.rotation_id)
+    .eq("home_id", homeId)
+    .maybeSingle();
+  if (!rotationCheckReorder) return { status: "error", message: "Rodizio nao encontrado." };
 
   const { error } = await supabase
     .from("task_rotation_members")
@@ -219,9 +235,11 @@ export async function setTaskRotation(_: FormState, fd: FormData): Promise<FormS
   const { error } = await supabase
     .from("tasks")
     .update({ rotation_id: parsed.data.rotation_id })
-    .eq("id", parsed.data.task_id);
+    .eq("id", parsed.data.task_id)
+    .eq("home_id", homeId);
   if (error) return { status: "error", message: "Erro ao associar rodízio." };
 
   revalidatePath("/rotina");
   return { status: "success" };
 }
+
