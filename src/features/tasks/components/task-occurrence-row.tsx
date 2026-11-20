@@ -123,7 +123,7 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo }: P
           </span>
           {rotationInfo && (
             <span
-              title={`Rodízio: ${rotationInfo.name}${rotationInfo.nextMemberName ? ` · Próximo: ${rotationInfo.nextMemberName}` : ""}`}
+              title={`Rodízio: ${rotationInfo.name}${rotationInfo.currentMemberName ? ` · Responsável: ${rotationInfo.currentMemberName}` : ""}${rotationInfo.nextMemberName ? ` · Próximo: ${rotationInfo.nextMemberName}` : ""}`}
               className="ml-1 text-xs text-muted-foreground"
               aria-label="tarefa em rodízio"
             >

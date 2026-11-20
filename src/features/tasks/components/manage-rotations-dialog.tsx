@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState, useTransition, useEffect } from "react";
 import type { TaskRotation } from "@/features/tasks/queries-rotations";
 import {
   createRotation,
@@ -34,6 +34,10 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
   const [updateState, updateDispatch, updatePending] = useActionState(updateRotation, initialFormState);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    if (updateState.status === "success") setEditingId(null);
+  }, [updateState]);
+
   if (!open) return null;
 
   function startEdit(rot: TaskRotation) {
@@ -59,13 +63,23 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
     });
   }
 
-  function handleReorder(rotationId: string, profileId: string, newSortOrder: number) {
+  function handleMove(rotationId: string, memberIdx: number, direction: "up" | "down") {
+    const rot = rotations.find((r) => r.id === rotationId);
+    if (!rot) return;
+    const otherIdx = direction === "up" ? memberIdx - 1 : memberIdx + 1;
+    const member = rot.members[memberIdx];
+    const otherMember = rot.members[otherIdx];
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("rotation_id", rotationId);
-      fd.set("profile_id", profileId);
-      fd.set("sort_order", String(newSortOrder));
-      await reorderRotationMember(initialFormState, fd);
+      const fd1 = new FormData();
+      fd1.set("rotation_id", rotationId);
+      fd1.set("profile_id", member.profile_id);
+      fd1.set("sort_order", String(otherMember.sort_order));
+      await reorderRotationMember(initialFormState, fd1);
+      const fd2 = new FormData();
+      fd2.set("rotation_id", rotationId);
+      fd2.set("profile_id", otherMember.profile_id);
+      fd2.set("sort_order", String(member.sort_order));
+      await reorderRotationMember(initialFormState, fd2);
     });
   }
 
@@ -165,7 +179,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                       <p className="text-xs font-medium text-muted-foreground">Participantes</p>
                       {rot.members.map((member, idx) => (
                         <div key={member.profile_id} className="flex items-center justify-between rounded px-2 py-1 hover:bg-muted/50">
-                          <span className="text-sm">{member.name ?? member.profile_id}</span>
+                          <span className="text-sm">{homeMembers.find((m) => m.id === member.profile_id)?.name ?? member.profile_id}</span>
                           <div className="flex gap-1">
                             <Button
                               type="button"
@@ -173,7 +187,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                               size="sm"
                               disabled={idx === 0 || isPending}
                               aria-label="Mover para cima"
-                              onClick={() => handleReorder(rot.id, member.profile_id, rot.members[idx - 1].sort_order - 1)}
+                              onClick={() => handleMove(rot.id, idx, "up")}
                             >
                               ↑
                             </Button>
@@ -183,7 +197,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                               size="sm"
                               disabled={idx === rot.members.length - 1 || isPending}
                               aria-label="Mover para baixo"
-                              onClick={() => handleReorder(rot.id, member.profile_id, rot.members[idx + 1].sort_order + 1)}
+                              onClick={() => handleMove(rot.id, idx, "down")}
                             >
                               ↓
                             </Button>

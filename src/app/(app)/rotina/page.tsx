@@ -78,7 +78,8 @@ export default async function Page({
     getHomeMembers(supabase),
   ]);
 
-  const rotationInfoMap = buildRotationInfoMap(rotations, absentIds);
+  const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
+  const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
 
   const activeAbsenceRange: AbsenceRange =
     absence !== null &&

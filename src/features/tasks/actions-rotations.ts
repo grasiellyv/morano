@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import "server-only";
 
 import { revalidatePath } from "next/cache";
@@ -132,6 +132,14 @@ export async function addRotationMember(_: FormState, fd: FormData): Promise<For
     .maybeSingle();
   if (!rotation) return { status: "error", message: "Rodízio não encontrado." };
 
+  const { data: homeMember } = await supabase
+    .from("home_members")
+    .select("user_id")
+    .eq("home_id", homeId)
+    .eq("user_id", parsed.data.profile_id)
+    .maybeSingle();
+  if (!homeMember) return { status: "error", message: "Usuário não é membro desta casa." };
+
   const { error } = await supabase.from("task_rotation_members").insert({
     rotation_id: parsed.data.rotation_id,
     profile_id: parsed.data.profile_id,
@@ -162,7 +170,7 @@ export async function removeRotationMember(_: FormState, fd: FormData): Promise<
     .eq("id", parsed.data.rotation_id)
     .eq("home_id", homeId)
     .maybeSingle();
-  if (!rotationCheckRemove) return { status: "error", message: "Rodizio nao encontrado." };
+  if (!rotationCheckRemove) return { status: "error", message: "Rodízio não encontrado." };
 
   const { error } = await supabase
     .from("task_rotation_members")
@@ -195,7 +203,7 @@ export async function reorderRotationMember(_: FormState, fd: FormData): Promise
     .eq("id", parsed.data.rotation_id)
     .eq("home_id", homeId)
     .maybeSingle();
-  if (!rotationCheckReorder) return { status: "error", message: "Rodizio nao encontrado." };
+  if (!rotationCheckReorder) return { status: "error", message: "Rodízio não encontrado." };
 
   const { error } = await supabase
     .from("task_rotation_members")
@@ -232,12 +240,15 @@ export async function setTaskRotation(_: FormState, fd: FormData): Promise<FormS
     if (!rotation) return { status: "error", message: "Rodízio não encontrado." };
   }
 
-  const { error } = await supabase
+  const { data: updatedTask, error } = await supabase
     .from("tasks")
     .update({ rotation_id: parsed.data.rotation_id })
     .eq("id", parsed.data.task_id)
-    .eq("home_id", homeId);
+    .eq("home_id", homeId)
+    .select("id")
+    .maybeSingle();
   if (error) return { status: "error", message: "Erro ao associar rodízio." };
+  if (!updatedTask) return { status: "error", message: "Tarefa não encontrada." };
 
   revalidatePath("/rotina");
   return { status: "success" };

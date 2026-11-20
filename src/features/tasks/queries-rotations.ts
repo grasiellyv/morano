@@ -1,4 +1,4 @@
-﻿import "server-only";
+import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCurrentMember } from "./schemas-rotations";
 
@@ -93,6 +93,8 @@ export async function advanceRotationsIfDue(
 ): Promise<void> {
   const rotations = await getRotations(supabase, homeId);
 
+  const advancedAt = today + "T00:00:00Z";
+
   for (const rotation of rotations) {
     const lastRotationDate = mostRecentRotationDay(rotation.rotation_day, today);
     const isDue =
@@ -101,38 +103,32 @@ export async function advanceRotationsIfDue(
 
     if (!isDue) continue;
 
-    const newMemberId = resolveCurrentMember(
-      rotation.members,
-      rotation.current_member_index + 1,
-      absentIds
-    );
+    const memberCount = rotation.members.length;
+    const newIndex =
+      memberCount > 0
+        ? (rotation.current_member_index + 1) % memberCount
+        : 0;
 
-    if (newMemberId === null && rotation.members.length === 0) {
+    if (rotation.last_rotated_at === null) {
       await supabase
         .from("task_rotations")
-        .update({ last_rotated_at: new Date().toISOString() })
-        .eq("id", rotation.id);
-      continue;
+        .update({ current_member_index: newIndex, last_rotated_at: advancedAt })
+        .eq("id", rotation.id)
+        .is("last_rotated_at", null);
+    } else {
+      await supabase
+        .from("task_rotations")
+        .update({ current_member_index: newIndex, last_rotated_at: advancedAt })
+        .eq("id", rotation.id)
+        .eq("last_rotated_at", rotation.last_rotated_at);
     }
-
-    const newIndex =
-      newMemberId !== null
-        ? rotation.members.findIndex((m) => m.profile_id === newMemberId)
-        : (rotation.current_member_index + 1) % Math.max(rotation.members.length, 1);
-
-    await supabase
-      .from("task_rotations")
-      .update({
-        current_member_index: newIndex,
-        last_rotated_at: new Date().toISOString(),
-      })
-      .eq("id", rotation.id);
   }
 }
 
 export function buildRotationInfoMap(
   rotations: TaskRotation[],
-  absentIds: Set<string>
+  absentIds: Set<string>,
+  homeMemberNames?: Map<string, string | null>
 ): Record<string, RotationInfo> {
   const map: Record<string, RotationInfo> = {};
 
@@ -160,8 +156,8 @@ export function buildRotationInfoMap(
     map[rotation.id] = {
       name: rotation.name,
       currentMemberId: currentMemberId,
-      currentMemberName: currentMember?.name ?? null,
-      nextMemberName: nextMember?.name ?? null,
+      currentMemberName: (homeMemberNames?.get(currentMemberId ?? "") ?? currentMember?.name) ?? null,
+      nextMemberName: (homeMemberNames?.get(nextMemberId ?? "") ?? nextMember?.name) ?? null,
     };
   }
 

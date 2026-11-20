@@ -13,6 +13,7 @@ import { DailyProgressBar, calcProgress } from "@/features/tasks/components/dail
 import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
 import { EventChip } from "@/features/events/components/event-chip";
 import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
+import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotations-dialog";
 import { EventForm } from "@/features/events/components/event-form";
 
 const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
@@ -68,6 +69,7 @@ export function TaskList({
   homeMembers,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [showManageRotations, setShowManageRotations] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
@@ -130,6 +132,15 @@ export function TaskList({
           >
             {filterEssencial ? "Ver todas" : "Essenciais"}
           </Link>
+          {rotations != null ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowManageRotations(true)}
+            >
+              Rodízios
+            </Button>
+          ) : null}
           <Button
             type="button"
             onClick={() => setShowCreate((v) => !v)}
@@ -300,6 +311,14 @@ export function TaskList({
           </section>
         ) : null}
       </div>
+    {rotations != null && homeMembers != null ? (
+        <ManageRotationsDialog
+          rotations={rotations}
+          homeMembers={homeMembers}
+          open={showManageRotations}
+          onClose={() => setShowManageRotations(false)}
+        />
+      ) : null}
     </>
   );
 }

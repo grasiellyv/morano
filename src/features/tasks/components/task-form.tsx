@@ -114,6 +114,7 @@ export function TaskForm({
   }, [state.status]);
 
   return (
+    <>
     <form
       ref={formRef}
       action={dispatchAction}
@@ -316,21 +317,20 @@ export function TaskForm({
           error={errors.end_date?.message ?? state.fieldErrors?.end_date}
         />
       ) : null}
-      {mode === "edit" && taskId && rotations ? (
-        <div className="border-t border-border pt-5">
-          <RotationPanel
-            taskId={taskId}
-            rotations={rotations}
-            currentRotationId={currentRotationId ?? null}
-            homeMembers={homeMembers ?? []}
-          />
-        </div>
-      ) : null}
-
-
       <SubmitButton pending={pending} pendingLabel="Salvando…">
         {mode === "create" ? "Criar tarefa" : "Salvar alterações"}
       </SubmitButton>
     </form>
+    {mode === "edit" && taskId && rotations ? (
+      <div className="border-t border-border pt-5 mt-5">
+        <RotationPanel
+          taskId={taskId}
+          rotations={rotations}
+          currentRotationId={currentRotationId ?? null}
+          homeMembers={homeMembers ?? []}
+        />
+      </div>
+    ) : null}
+  </>
   );
 }
