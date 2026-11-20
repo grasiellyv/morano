@@ -2,17 +2,15 @@ import { z } from "zod";
 
 export const addItemSchema = z.object({
   name: z.string().trim().min(1, { error: "Nome obrigatório" }).max(120),
-  category: z.enum(["limpeza", "higiene", "cozinha", "lavanderia", "alimentacao", "outros"]).default("outros"),
+  category_id: z.string().uuid().optional(),
   quantity: z.coerce.number({ error: "Quantidade inválida" }).positive({ error: "Quantidade deve ser positiva" }).default(1),
   unit: z.enum(["un", "kg", "g", "l", "ml", "pacote", "caixa"]).default("un"),
+  notes: z.string().trim().max(200, { error: "Máximo 200 caracteres" }).optional(),
+  room_id: z.string().uuid().optional(),
 });
 
-export const editItemSchema = z.object({
+export const editItemSchema = addItemSchema.extend({
   id: z.string().uuid(),
-  name: z.string().trim().min(1, { error: "Nome obrigatório" }).max(120),
-  category: z.enum(["limpeza", "higiene", "cozinha", "lavanderia", "alimentacao", "outros"]),
-  quantity: z.coerce.number({ error: "Quantidade inválida" }).positive({ error: "Quantidade deve ser positiva" }),
-  unit: z.enum(["un", "kg", "g", "l", "ml", "pacote", "caixa"]),
 });
 
 export const togglePurchasedSchema = z.object({

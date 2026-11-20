@@ -19,23 +19,19 @@ describe("addItemSchema", () => {
   it("rejects negative quantity", () => {
     expect(addItemSchema.safeParse({ name: "Sabão", quantity: -1 }).success).toBe(false);
   });
-  it("applies defaults: category outros, quantity 1, unit un", () => {
+  it("applies defaults: quantity 1, unit un", () => {
     const r = addItemSchema.safeParse({ name: "Sabão" });
     expect(r.success).toBe(true);
     if (r.success) {
-      expect(r.data.category).toBe("outros");
       expect(r.data.quantity).toBe(1);
       expect(r.data.unit).toBe("un");
     }
-  });
-  it("rejects invalid category", () => {
-    expect(addItemSchema.safeParse({ name: "Sabão", category: "eletronicos" }).success).toBe(false);
   });
   it("rejects invalid unit", () => {
     expect(addItemSchema.safeParse({ name: "Sabão", unit: "litros" }).success).toBe(false);
   });
   it("accepts valid item with all fields", () => {
-    const r = addItemSchema.safeParse({ name: "Arroz", category: "alimentacao", quantity: 2, unit: "kg" });
+    const r = addItemSchema.safeParse({ name: "Arroz", quantity: 2, unit: "kg" });
     expect(r.success).toBe(true);
   });
   it("coerces quantity from string", () => {
@@ -43,14 +39,23 @@ describe("addItemSchema", () => {
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.quantity).toBe(2.5);
   });
+  it("accepts item without category_id", () => {
+    expect(addItemSchema.safeParse({ name: "Arroz" }).success).toBe(true);
+  });
+  it("accepts notes", () => {
+    expect(addItemSchema.safeParse({ name: "Leite", notes: "sem lactose" }).success).toBe(true);
+  });
+  it("rejects notes > 200 chars", () => {
+    expect(addItemSchema.safeParse({ name: "X", notes: "a".repeat(201) }).success).toBe(false);
+  });
 });
 
 describe("editItemSchema", () => {
   it("requires uuid id", () => {
-    expect(editItemSchema.safeParse({ id: "not-a-uuid", name: "Arroz", category: "alimentacao", quantity: 1, unit: "un" }).success).toBe(false);
+    expect(editItemSchema.safeParse({ id: "not-a-uuid", name: "Arroz", quantity: 1, unit: "un" }).success).toBe(false);
   });
   it("requires name", () => {
-    expect(editItemSchema.safeParse({ id: "00000000-0000-1000-8000-000000000001", name: "", category: "outros", quantity: 1, unit: "un" }).success).toBe(false);
+    expect(editItemSchema.safeParse({ id: "00000000-0000-1000-8000-000000000001", name: "", quantity: 1, unit: "un" }).success).toBe(false);
   });
 });
 
