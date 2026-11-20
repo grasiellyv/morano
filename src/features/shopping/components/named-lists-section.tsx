@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import type { ShoppingList, ShoppingListItem } from "@/features/shopping/queries-lists";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import { SHOPPING_CATALOG } from "@/features/shopping/catalog";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -398,20 +399,27 @@ function ListItemRow({
         >
           ✏
         </button>
-        <form action={delDispatch}>
-          <input type="hidden" name="id" value={item.id} />
-          <button
-            type="submit"
-            disabled={delPending}
-            onClick={(e) => {
-              if (!window.confirm(`Remover "${item.name}"?`)) e.preventDefault();
-            }}
-            className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-            aria-label="Remover item"
-          >
-            ✕
-          </button>
-        </form>
+        <ConfirmDialog
+          trigger={
+            <button
+              type="button"
+              disabled={delPending}
+              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+              aria-label="Remover item"
+            >
+              ✕
+            </button>
+          }
+          title="Remover item"
+          description={`Remover "${item.name}" da lista?`}
+          confirmLabel="Remover"
+          destructive
+          onConfirm={() => {
+            const fd = new FormData();
+            fd.set("id", item.id);
+            delDispatch(fd);
+          }}
+        />
         {delState.status === "error" && delState.message ? (
           <p className="text-xs text-destructive">{delState.message}</p>
         ) : null}
@@ -532,20 +540,27 @@ function NamedListCard({
             </button>
           ) : null}
 
-          <form action={delDispatch}>
-            <input type="hidden" name="id" value={list.id} />
-            <button
-              type="submit"
-              disabled={delPending}
-              onClick={(e) => {
-                if (!window.confirm(`Excluir a lista "${list.name}"?`)) e.preventDefault();
-              }}
-              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-              aria-label="Excluir lista"
-            >
-              ✕
-            </button>
-          </form>
+          <ConfirmDialog
+            trigger={
+              <button
+                type="button"
+                disabled={delPending}
+                className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                aria-label="Excluir lista"
+              >
+                ✕
+              </button>
+            }
+            title="Excluir lista"
+            description={`Excluir a lista "${list.name}"? Esta ação não pode ser desfeita.`}
+            confirmLabel="Excluir"
+            destructive
+            onConfirm={() => {
+              const fd = new FormData();
+              fd.set("id", list.id);
+              delDispatch(fd);
+            }}
+          />
         </span>
       </summary>
 
