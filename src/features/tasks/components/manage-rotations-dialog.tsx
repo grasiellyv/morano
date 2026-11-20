@@ -32,7 +32,6 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
 
   const [createState, createDispatch, createPending] = useActionState(createRotation, initialFormState);
   const [updateState, updateDispatch, updatePending] = useActionState(updateRotation, initialFormState);
-  const [, , ] = useActionState(deleteRotation, initialFormState);
   const [isPending, startTransition] = useTransition();
 
   if (!open) return null;
@@ -105,7 +104,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
           {rotations.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum rodízio criado ainda.</p>
           ) : (
-            rotations.map((rot, rotIdx) => {
+            rotations.map((rot) => {
               const memberIds = new Set(rot.members.map(m => m.profile_id));
               const available = homeMembers.filter(m => !memberIds.has(m.id));
 
