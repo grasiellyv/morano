@@ -1,19 +1,19 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import Link from "next/link";
 import type { FormState } from "@/features/auth/form-state";
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import type { OccurrenceWithTask } from "@/features/tasks/queries";
 
 type Props = {
-  task: OccurrenceWithTask["task"];
+  task: { id: string; title: string; priority: "baixa" | "media" | "alta"; is_essential: boolean; instructions: string | null; room_id: string | null };
   rooms: Array<{ id: string; name: string }>;
   updateTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
 const selectClass =
@@ -29,7 +29,7 @@ export function TaskEditPanel({
   const [state, dispatch, pending] = useActionState(updateTaskAction, initialFormState);
 
   useEffect(() => {
-    if (state.status === "success") onSuccess();
+    if (state.status === "success") onSuccess?.();
   }, [state.status]);
 
   return (
@@ -114,10 +114,25 @@ export function TaskEditPanel({
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? "Salvando…" : "Salvar"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-          Cancelar
-        </Button>
+        {onCancel ? (
+          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+            Cancelar
+          </Button>
+        ) : null}
       </div>
+      {state.status === "success" && !onSuccess ? (
+        <p className="text-sm text-green-600">{state.message}</p>
+      ) : null}
+      {onCancel ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <Link
+            href={`/rotina/tarefas/${task.id}/editar`}
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Editar agendamento →
+          </Link>
+        </div>
+      ) : null}
     </form>
   );
 }

@@ -264,3 +264,39 @@ export async function getHistory(
   return data as unknown as OccurrenceWithTask[];
 }
 
+export type TaskWithRoutine = {
+  id: string;
+  title: string;
+  priority: "baixa" | "media" | "alta";
+  is_essential: boolean;
+  instructions: string | null;
+  room_id: string | null;
+  rotation_id: string | null;
+  status: "active" | "paused" | "archived";
+  routine: {
+    frequency_type: "once" | "daily" | "weekly" | "biweekly" | "monthly" | "custom";
+    interval_value: number;
+    interval_unit: "day" | "week" | "month" | null;
+    weekdays: number[];
+    month_day: number | null;
+    start_date: string;
+    end_date: string | null;
+  } | null;
+};
+
+export async function getTaskWithRoutine(
+  supabase: SupabaseClient,
+  taskId: string,
+): Promise<TaskWithRoutine | null> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(
+      "id, title, priority, is_essential, instructions, room_id, rotation_id, status, routine:routines(frequency_type, interval_value, interval_unit, weekdays, month_day, start_date, end_date)",
+    )
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as unknown as TaskWithRoutine;
+}
+
