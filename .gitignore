@@ -47,6 +47,7 @@ next-env.d.ts
 
 # claude code worktrees (managed by claude code cli)
 .claude/worktrees/
+.claire/
 
 # playwright
 /test-results
