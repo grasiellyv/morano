@@ -161,6 +161,12 @@ export function TaskList({
         <h1 className="text-2xl font-semibold tracking-tight">Rotina</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link
+            href="/rotina/tarefas"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Gerenciar
+          </Link>
+          <Link
             href="/rotina/calendario"
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >

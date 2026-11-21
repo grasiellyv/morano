@@ -292,6 +292,38 @@ export type TaskWithRoutine = {
   } | null;
 };
 
+export type TaskRow = {
+  id: string;
+  title: string;
+  priority: "baixa" | "media" | "alta";
+  is_essential: boolean;
+  status: "active" | "paused";
+  room_id: string | null;
+  room: { name: string } | null;
+};
+
+export async function getActiveTasks(
+  supabase: SupabaseClient,
+  homeId: string,
+): Promise<TaskRow[]> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id, title, priority, is_essential, status, room_id, room:rooms(name)")
+    .eq("home_id", homeId)
+    .in("status", ["active", "paused"]);
+
+  if (error || !data) return [];
+
+  const rows = data as unknown as TaskRow[];
+  rows.sort((a, b) => {
+    if (a.is_essential !== b.is_essential) return a.is_essential ? -1 : 1;
+    const pd = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    if (pd !== 0) return pd;
+    return a.title.localeCompare(b.title, "pt");
+  });
+  return rows;
+}
+
 export async function getTaskWithRoutine(
   supabase: SupabaseClient,
   taskId: string,
