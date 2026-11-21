@@ -63,6 +63,7 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
+  revalidatePath("/inicio");
   await trackEvent(userId, homeId, "event_created");
   return { status: "success", message: "Evento criado." };
 }
@@ -119,6 +120,7 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
+  revalidatePath("/inicio");
   return { status: "success", message: "Evento atualizado." };
 }
 
@@ -159,6 +161,7 @@ export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
+  revalidatePath("/inicio");
   await trackEvent(userId, homeId, "event_deleted");
   return { status: "success", message: "Evento excluído." };
 }

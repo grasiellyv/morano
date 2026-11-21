@@ -370,5 +370,6 @@ export async function reorderItem(_: FormState, fd: FormData): Promise<FormState
     .eq("id", listItemId);
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   return { status: "success", message: `${listItem.name} adicionado.` };
 }
