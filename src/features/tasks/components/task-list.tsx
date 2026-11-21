@@ -28,6 +28,15 @@ function formatSelectedDate(dateStr: string): string {
   return `${DAY_ABBR[d.getDay()]}, ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
 }
 
+function formatUpcomingDate(dateStr: string, currentDate: string): string {
+  const d = new Date(currentDate + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  const tomorrow = d.toISOString().slice(0, 10);
+  if (dateStr === tomorrow) return "Amanhã";
+  const parsed = parseISO(dateStr);
+  return `${DAY_ABBR[parsed.getDay()]}, ${parsed.getDate()} ${MONTH_ABBR[parsed.getMonth()]}`;
+}
+
 type Props = {
   today: OccurrenceWithTask[];
   overdue?: OccurrenceWithTask[];
@@ -106,6 +115,13 @@ export function TaskList({
 
   const todayPending = displayToday.filter((o) => o.status === "pending");
   const todayDone = displayToday.filter((o) => o.status !== "pending");
+
+  const upcomingByDate = displayUpcoming.reduce<Map<string, typeof displayUpcoming>>((acc, o) => {
+    const existing = acc.get(o.scheduled_for) ?? [];
+    existing.push(o);
+    acc.set(o.scheduled_for, existing);
+    return acc;
+  }, new Map());
 
   const dateParam = selectedDate !== currentDate ? `date=${selectedDate}&` : "";
   const filterToggleHref = filterEssencial
@@ -314,8 +330,17 @@ export function TaskList({
         {displayUpcoming.length > 0 ? (
           <section>
             <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
-            <div className="space-y-2">
-              {displayUpcoming.map(renderOccurrence)}
+            <div className="space-y-6">
+              {Array.from(upcomingByDate.entries()).map(([date, occs]) => (
+                <div key={date}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {formatUpcomingDate(date, currentDate)}
+                  </p>
+                  <div className="space-y-2">
+                    {occs.map(renderOccurrence)}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         ) : null}
