@@ -141,7 +141,7 @@ export default async function Page() {
                 ? `${reorderCount} para repor`
                 : reorderCount > 0
                   ? `${shoppingPending} item${shoppingPending !== 1 ? "ns" : ""} · ${reorderCount} repor`
-                  : `item${shoppingPending !== 1 ? "ns" : ""}`
+                  : `${shoppingPending} item${shoppingPending !== 1 ? "ns" : ""}`
           }
           accent={reorderCount > 0 ? "yellow" : "default"}
         />

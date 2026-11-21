@@ -324,6 +324,7 @@ export async function applyList(_: FormState, fd: FormData): Promise<FormState> 
     .eq("list_id", listId);
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   return { status: "success", message: `${items.length} itens adicionados à lista de compras.` };
 }
 

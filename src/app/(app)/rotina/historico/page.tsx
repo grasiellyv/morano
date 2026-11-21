@@ -24,6 +24,7 @@ function FilterChip({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={`rounded-full px-3 py-1 text-sm transition-colors ${
         active
           ? "bg-graphite text-offwhite font-medium"
