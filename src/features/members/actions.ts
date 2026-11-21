@@ -158,6 +158,7 @@ export async function removeMember(
     return { status: "error", message: extractErrorMessage(error) };
   }
 
+  revalidatePath("/casa");
   revalidatePath("/casa/membros");
   return { status: "success", message: "Membro removido" };
 }
