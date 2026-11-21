@@ -264,19 +264,6 @@ export function TaskList({
           ) : null}
         </div>
       ) : null}
-      {createEventAction && events.length === 0 && !showCreateEvent ? (
-        <div className="mb-6 flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCreateEvent(true)}
-          >
-            Novo evento
-          </Button>
-        </div>
-      ) : null}
-
       <div className="space-y-8">
         {/* Atrasadas */}
         {displayOverdue.length > 0 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ShoppingItem } from "@/features/shopping/queries";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
@@ -33,6 +33,23 @@ type Props = {
 export function ShoppingItemRow({ item, categories }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handlePointer(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [menuOpen]);
 
   // Controlled fields for edit mode
   const [editName, setEditName] = useState(item.name);
@@ -256,7 +273,7 @@ export function ShoppingItemRow({ item, categories }: Props) {
       </div>
 
       {/* Menu "⋯" */}
-      <div className="relative shrink-0">
+      <div ref={menuRef} className="relative shrink-0">
         <Button
           type="button"
           variant="ghost"
