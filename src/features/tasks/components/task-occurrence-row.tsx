@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   completeOccurrence,
   undoComplete,
@@ -81,6 +81,24 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
   );
 
   const [showInstructions, setShowInstructions] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeMenu();
+    }
+    function handlePointer(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+    }
+    document.addEventListener("keydown", handleKey);
+    document.addEventListener("pointerdown", handlePointer);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.removeEventListener("pointerdown", handlePointer);
+    };
+  }, [menuOpen]);
+
   const isCompleted = occurrence.status === "completed";
   const isOverdue = occurrence.scheduled_for < today;
   const daysOverdue = isOverdue ? daysBetween(occurrence.scheduled_for, today) : 0;
@@ -238,7 +256,7 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
       </div>
 
       {/* Menu "⋯" */}
-      <div className="relative shrink-0">
+      <div ref={menuRef} className="relative shrink-0">
         <Button
           type="button"
           variant="ghost"
