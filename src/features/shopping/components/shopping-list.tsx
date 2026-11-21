@@ -23,14 +23,19 @@ type Props = {
 
 export function ShoppingList({ pending, purchased, categories, rooms, lists }: Props) {
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
-  const filteredPending = filterRoomId
-    ? pending.filter((item) => item.room_id === filterRoomId)
-    : pending;
-  const filteredPurchased = filterRoomId
-    ? purchased.filter((item) => item.room_id === filterRoomId)
-    : purchased;
+  const filteredPending = pending
+    .filter((item) => !filterRoomId || item.room_id === filterRoomId)
+    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId);
+  const filteredPurchased = purchased
+    .filter((item) => !filterRoomId || item.room_id === filterRoomId)
+    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId);
+
+  const activeCategories = categories.filter((cat) =>
+    [...pending, ...purchased].some((item) => item.category_id === cat.id),
+  );
 
   const isEmpty = filteredPending.length === 0 && filteredPurchased.length === 0;
 
@@ -58,6 +63,29 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
               className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
             >
               {room.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Category filter chips */}
+      {activeCategories.length > 1 ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterCategoryId(null)}
+            className={`${chipBase} ${filterCategoryId === null ? chipActive : chipInactive}`}
+          >
+            Todas
+          </button>
+          {activeCategories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)}
+              className={`${chipBase} ${filterCategoryId === cat.id ? chipActive : chipInactive}`}
+            >
+              {cat.icon} {cat.name}
             </button>
           ))}
         </div>
