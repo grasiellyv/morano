@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useDeferredValue } from "react";
 import type { ShoppingItem } from "@/features/shopping/queries";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import type { ShoppingList } from "@/features/shopping/queries-lists";
 import { ShoppingItemRow } from "@/features/shopping/components/shopping-item-row";
 import { AddItemForm } from "@/features/shopping/components/add-item-form";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { NamedListsSection } from "@/features/shopping/components/named-lists-section";
 import { ManageCategoriesDialog } from "@/features/shopping/components/manage-categories-dialog";
@@ -25,6 +26,8 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const deferredQuery = useDeferredValue(searchQuery);
 
   const personalSuggestions = Array.from(
     new Map(
@@ -32,12 +35,19 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
     ).values()
   );
 
+  function matchesSearch(item: ShoppingItem) {
+    if (!deferredQuery) return true;
+    return item.name.toLowerCase().includes(deferredQuery.toLowerCase());
+  }
+
   const filteredPending = pending
     .filter((item) => !filterRoomId || item.room_id === filterRoomId)
-    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId);
+    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId)
+    .filter(matchesSearch);
   const filteredPurchased = purchased
     .filter((item) => !filterRoomId || item.room_id === filterRoomId)
-    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId);
+    .filter((item) => !filterCategoryId || item.category_id === filterCategoryId)
+    .filter(matchesSearch);
 
   const activeCategories = categories.filter((cat) =>
     [...pending, ...purchased].some((item) => item.category_id === cat.id),
@@ -71,6 +81,30 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
               {room.name}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {/* Search */}
+      {(pending.length + purchased.length) > 5 ? (
+        <div className="relative">
+          <Input
+            type="search"
+            placeholder="Buscar item…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Buscar item na lista"
+            className="pl-3"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Limpar busca"
+            >
+              ×
+            </button>
+          ) : null}
         </div>
       ) : null}
 
