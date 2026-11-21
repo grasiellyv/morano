@@ -228,6 +228,15 @@ function CategoryRow({
 
 // ---- Main Dialog ----
 export function ManageCategoriesDialog({ categories, open, onClose }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (

@@ -12,6 +12,7 @@ import { FormFeedback, SubmitButton } from "@/features/auth/components/form-part
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import type { RoomType } from "@/features/onboarding/catalog";
 
 const ROOM_TYPE_LABELS: Record<RoomType, string> = {
@@ -188,35 +189,36 @@ function EditRoomForm({ room, onCancel }: EditRoomFormProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Delete Room Form
+// Delete Room Button
 // ---------------------------------------------------------------------------
 
-const deleteClientSchema = z.object({});
-type DeleteClientSchema = z.infer<typeof deleteClientSchema>;
-
-function DeleteRoomForm({ roomId }: { roomId: string }) {
-  const [state, formAction, pending] = useActionState(deleteRoom, initialFormState);
-
-  const form = useForm<DeleteClientSchema>({
-    resolver: zodResolver(deleteClientSchema),
-  });
-
-  const { formRef, onSubmit } = useValidatedSubmit(form, formAction);
+function DeleteRoomButton({ room }: { room: Room }) {
+  const [state, dispatch, pending] = useActionState(deleteRoom, initialFormState);
 
   return (
     <div>
-      <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate>
-        <input type="hidden" name="id" value={roomId} />
-        <Button
-          type="submit"
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          className="text-destructive hover:text-destructive"
-        >
-          {pending ? "Removendo…" : "Remover"}
-        </Button>
-      </form>
+      <ConfirmDialog
+        trigger={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            className="text-destructive hover:text-destructive"
+          >
+            {pending ? "Removendo…" : "Remover"}
+          </Button>
+        }
+        title="Remover cômodo"
+        description={`Remover o cômodo "${room.name}"? As tarefas associadas perderão este cômodo.`}
+        confirmLabel="Remover"
+        destructive
+        onConfirm={() => {
+          const fd = new FormData();
+          fd.set("id", room.id);
+          dispatch(fd);
+        }}
+      />
       {state.status === "error" && state.message && (
         <p className="text-destructive text-xs mt-1">{state.message}</p>
       )}
@@ -254,7 +256,7 @@ function RoomRow({ room }: { room: Room }) {
         >
           Editar
         </Button>
-        <DeleteRoomForm roomId={room.id} />
+        <DeleteRoomButton room={room} />
       </div>
     </li>
   );
