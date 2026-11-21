@@ -44,8 +44,8 @@ export function resolveCurrentMember(
   const start = currentIndex % members.length;
   for (let i = 0; i < members.length; i++) {
     const idx = (start + i) % members.length;
-    if (!absentProfileIds.has(members[idx].profile_id)) {
-      return members[idx].profile_id;
+    if (!absentProfileIds.has(members[idx]!.profile_id)) {
+      return members[idx]!.profile_id;
     }
   }
   return null;

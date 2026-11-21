@@ -17,7 +17,7 @@ export function PostHogProvider({
       person_profiles: "identified_only",
       ip: false,
       capture_pageview: true,
-      session_recording: { maskAllInputs: true, maskAllText: true },
+      session_recording: { maskAllInputs: true },
       loaded(ph) {
         ph.identify(userId);
       },

@@ -18,6 +18,7 @@ const BASE_OCC: OccurrenceWithTask = {
     is_essential: false,
     instructions: null,
     room_id: null,
+    rotation_id: null,
     status: "active",
   },
 };

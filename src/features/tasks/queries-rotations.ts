@@ -52,7 +52,8 @@ export async function getRotations(
     created_at: r.created_at,
     members: (r.task_rotation_members ?? [])
       .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
-      .map((m: { profile_id: string; sort_order: number; profiles: { full_name: string | null; avatar_url: string | null } | null }) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((m: any) => ({
         profile_id: m.profile_id,
         sort_order: m.sort_order,
         name: m.profiles?.full_name ?? null,

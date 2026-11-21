@@ -15,17 +15,17 @@ const makeRotation = (overrides: Partial<TaskRotation> = {}): TaskRotation => ({
 describe("buildRotationInfoMap", () => {
   it("resolves current and next member", () => {
     const map = buildRotationInfoMap([makeRotation()], new Set());
-    expect(map["r1"].currentMemberId).toBe("u1");
-    expect(map["r1"].currentMemberName).toBe("Ana");
-    expect(map["r1"].nextMemberName).toBe("Ben");
+    expect(map["r1"]!.currentMemberId).toBe("u1");
+    expect(map["r1"]!.currentMemberName).toBe("Ana");
+    expect(map["r1"]!.nextMemberName).toBe("Ben");
   });
   it("skips absent current member", () => {
     const map = buildRotationInfoMap([makeRotation()], new Set(["u1"]));
-    expect(map["r1"].currentMemberId).toBe("u2");
+    expect(map["r1"]!.currentMemberId).toBe("u2");
   });
   it("returns null when all absent", () => {
     const map = buildRotationInfoMap([makeRotation()], new Set(["u1", "u2"]));
-    expect(map["r1"].currentMemberId).toBeNull();
+    expect(map["r1"]!.currentMemberId).toBeNull();
   });
   it("last_rotated_at null does not throw", () => {
     expect(() => buildRotationInfoMap([makeRotation({ last_rotated_at: null })], new Set())).not.toThrow();

@@ -67,8 +67,8 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
     const rot = rotations.find((r) => r.id === rotationId);
     if (!rot) return;
     const otherIdx = direction === "up" ? memberIdx - 1 : memberIdx + 1;
-    const member = rot.members[memberIdx];
-    const otherMember = rot.members[otherIdx];
+    const member = rot.members[memberIdx]!;
+    const otherMember = rot.members[otherIdx]!;
     startTransition(async () => {
       const fd1 = new FormData();
       fd1.set("rotation_id", rotationId);

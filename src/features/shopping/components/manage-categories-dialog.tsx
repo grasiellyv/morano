@@ -86,7 +86,7 @@ function CategoryRow({
 
   function moveUp() {
     if (isFirst) return;
-    const prev = categories[index - 1];
+    const prev = categories[index - 1]!;
     startReorder(async () => {
       const fdA = new FormData();
       fdA.set("id", cat.id);
@@ -106,7 +106,7 @@ function CategoryRow({
 
   function moveDown() {
     if (isLast) return;
-    const next = categories[index + 1];
+    const next = categories[index + 1]!;
     startReorder(async () => {
       const fdA = new FormData();
       fdA.set("id", cat.id);
