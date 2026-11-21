@@ -7,6 +7,7 @@ import type { FormState } from "@/features/auth/form-state";
 import { removeMember, transferOwnership } from "@/features/members/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Proprietário",
@@ -129,39 +130,48 @@ function MemberRow({
           ) : null}
 
           {canTransfer ? (
-            <form action={transferAction} className="inline">
-              <input type="hidden" name="new_owner_id" value={member.user_id} />
-              <button
-                type="submit"
-                disabled={transferPending}
-                className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
-                onClick={(e) => {
-                  if (!confirm(`Transferir propriedade para ${member.full_name ?? "este membro"}?`)) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                {transferPending ? "Transferindo..." : "Transferir propriedade"}
-              </button>
-            </form>
+            <ConfirmDialog
+              trigger={
+                <button
+                  type="button"
+                  disabled={transferPending}
+                  className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+                >
+                  {transferPending ? "Transferindo..." : "Transferir propriedade"}
+                </button>
+              }
+              title="Transferir propriedade"
+              description={`Transferir a propriedade da residência para ${member.full_name ?? "este membro"}? Você deixará de ser o proprietário.`}
+              confirmLabel="Transferir"
+              onConfirm={() => {
+                const fd = new FormData();
+                fd.set("new_owner_id", member.user_id);
+                transferAction(fd);
+              }}
+            />
           ) : null}
 
           {canRemove ? (
-            <form action={removeAction} className="inline">
-              <input type="hidden" name="user_id" value={member.user_id} />
-              <button
-                type="submit"
-                disabled={removePending}
-                className="text-xs text-destructive hover:text-destructive/80 underline disabled:opacity-50"
-                onClick={(e) => {
-                  if (!confirm(`Remover ${member.full_name ?? "este membro"} da residência?`)) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                {removePending ? "Removendo..." : "Remover"}
-              </button>
-            </form>
+            <ConfirmDialog
+              trigger={
+                <button
+                  type="button"
+                  disabled={removePending}
+                  className="text-xs text-destructive hover:text-destructive/80 underline disabled:opacity-50"
+                >
+                  {removePending ? "Removendo..." : "Remover"}
+                </button>
+              }
+              title="Remover membro"
+              description={`Remover ${member.full_name ?? "este membro"} da residência?`}
+              confirmLabel="Remover"
+              destructive
+              onConfirm={() => {
+                const fd = new FormData();
+                fd.set("user_id", member.user_id);
+                removeAction(fd);
+              }}
+            />
           ) : null}
         </td>
       ) : null}
