@@ -101,6 +101,7 @@ export default async function Page() {
   ).length;
 
   const topTasks = todayOcc.filter((o) => o.status === "pending").slice(0, 5);
+  const roomMap = new Map(home.rooms.map((r) => [r.id, r.name]));
 
   const dateLabel = format(parseISO(today), "EEEE, d 'de' MMMM", { locale: ptBR });
   const dateLabelCapitalized = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
@@ -202,12 +203,52 @@ export default async function Page() {
                 <div
                   className={`h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[o.task.priority] ?? "bg-muted-foreground"}`}
                 />
-                <p className="min-w-0 flex-1 truncate text-sm">{o.task.title}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm">{o.task.title}</p>
+                  {o.task.room_id && roomMap.has(o.task.room_id) ? (
+                    <p className="text-xs text-muted-foreground">{roomMap.get(o.task.room_id)}</p>
+                  ) : null}
+                </div>
                 {o.task.is_essential && (
                   <span className="shrink-0 text-xs font-medium text-amber-600">Essencial</span>
                 )}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {reorderSuggestions.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Para repor
+            </h2>
+            <Link href="/compras" className="text-xs text-primary hover:underline">
+              Ver compras →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {reorderSuggestions.slice(0, 4).map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <div className={`h-2 w-2 shrink-0 rounded-full ${s.overdue ? "bg-red-500" : "bg-amber-400"}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">{s.list_name}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {s.quantity} {s.unit}
+                </span>
+              </div>
+            ))}
+            {reorderSuggestions.length > 4 && (
+              <p className="text-center text-xs text-muted-foreground">
+                +{reorderSuggestions.length - 4} mais
+              </p>
+            )}
           </div>
         </section>
       )}

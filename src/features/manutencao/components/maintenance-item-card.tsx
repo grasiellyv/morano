@@ -2,6 +2,8 @@
 
 import { useActionState, useRef, useState } from "react";
 import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { MaintenanceItem } from "@/features/manutencao/queries";
 import {
   updateMaintenanceItem,
@@ -184,6 +186,15 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
         {item.notes ? (
           <p className="mt-1 text-xs text-muted-foreground italic">{item.notes}</p>
         ) : null}
+
+        {/* Date */}
+        <p className="mt-1 text-xs text-muted-foreground">
+          {canEdit
+            ? `Aberto em ${format(parseISO(item.created_at), "d 'de' MMM", { locale: ptBR })}`
+            : item.resolved_at
+              ? `${item.status === "concluido" ? "Concluído" : "Cancelado"} em ${format(parseISO(item.resolved_at), "d 'de' MMM", { locale: ptBR })}`
+              : `Aberto em ${format(parseISO(item.created_at), "d 'de' MMM", { locale: ptBR })}`}
+        </p>
 
         {/* Actions */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
