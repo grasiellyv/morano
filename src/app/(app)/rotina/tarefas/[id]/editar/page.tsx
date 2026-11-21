@@ -7,10 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getTaskWithRoutine } from "@/features/tasks/queries";
 import { getRotations } from "@/features/tasks/queries-rotations";
 import { getHomeMembers } from "@/features/members/queries";
-import { updateTask, editTaskRule } from "@/features/tasks/actions";
+import { updateTask, editTaskRule, archiveTask } from "@/features/tasks/actions";
 import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
 import { ScheduleEditPanel } from "@/features/tasks/components/schedule-edit-panel";
 import { RotationPanel } from "@/features/tasks/components/rotation-panel";
+import { ArchiveTaskButton } from "@/features/tasks/components/archive-task-button";
 
 export const metadata: Metadata = { title: "Editar tarefa" };
 
@@ -76,6 +77,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           />
         </section>
       ) : null}
+
+      {/* Danger zone */}
+      <section className="rounded-xl border border-destructive/30 bg-card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-destructive">Zona de risco</h2>
+        <ArchiveTaskButton taskId={task.id} archiveTaskAction={archiveTask} />
+      </section>
     </div>
   );
 }
