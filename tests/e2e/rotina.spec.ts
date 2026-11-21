@@ -274,28 +274,23 @@ test("tarefa arquivada some de /rotina e aparece em /historico como arquivada", 
   const title = `Tarefa Arquivar ${Date.now()}`;
   await createTaskViaUI(page, title, { frequency: "daily" });
 
-  // Concluir 1 ocorrência para que o archiveTask preserva histórico em vez de deletar
+  // Concluir 1 ocorrência para que o archiveTask preserve histórico em vez de deletar
   await page.goto("/rotina");
   const row = page.locator("div").filter({ hasText: title }).first();
   await row.getByRole("button", { name: "Marcar como concluída" }).click();
   await expect(row.getByLabel("Concluída")).toBeVisible({ timeout: 10_000 });
 
-  // Arquivar via admin (a UI de arquivamento ainda não está exposta no frontend)
-  const homeId = await getHomeId(email);
-  const admin = createTestAdminClient();
-  const { data: tasks } = await admin
-    .from("tasks")
-    .select("id, title")
-    .eq("home_id", homeId)
-    .eq("title", title)
-    .limit(1);
-  const taskId = tasks?.[0]?.id;
-  expect(taskId).toBeTruthy();
-  await admin.from("tasks").update({ status: "archived" }).eq("id", taskId);
+  // Arquivar via UI: ⋯ → Editar → "Editar agendamento →" → Arquivar → Confirmar
+  await row.getByRole("button", { name: "Mais opções" }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  await page.getByRole("link", { name: /Editar agendamento/i }).click();
+  await expect(page).toHaveURL(/\/rotina\/tarefas\/.+\/editar$/, { timeout: 10_000 });
+  await page.getByRole("button", { name: "Arquivar tarefa" }).click();
+  await expect(page.getByRole("button", { name: "Confirmar" })).toBeVisible({ timeout: 5_000 });
+  await page.getByRole("button", { name: "Confirmar" }).click();
 
   // Recarregar /rotina — tarefa arquivada não deve aparecer como pendente
   await page.goto("/rotina");
-  // Não deve haver botão "Marcar como concluída" para essa tarefa
   const pendingRows = page.locator("div").filter({ hasText: title });
   const completeBtns = pendingRows.getByRole("button", { name: "Marcar como concluída" });
   await expect(completeBtns).toHaveCount(0, { timeout: 10_000 });
