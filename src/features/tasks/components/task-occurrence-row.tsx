@@ -212,6 +212,7 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
               defaultValue={occurrence.notes ?? ""}
               maxLength={2000}
               rows={2}
+              autoFocus
               placeholder="Adicione uma nota..."
               className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-sm"
             />
