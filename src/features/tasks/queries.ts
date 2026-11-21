@@ -247,17 +247,25 @@ export async function getOccurrencesForWeek(
 export async function getHistory(
   supabase: SupabaseClient,
   homeId: string,
-  limit = 50,
+  limit = 100,
+  statusFilter?: "completed" | "skipped" | "missed",
 ): Promise<OccurrenceWithTask[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("task_occurrences")
     .select(
       "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
     )
     .eq("home_id", homeId)
-    .in("status", ["completed", "skipped", "missed"])
     .order("scheduled_for", { ascending: false })
     .limit(limit);
+
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  } else {
+    query = query.in("status", ["completed", "skipped", "missed"]);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) return [];
 
