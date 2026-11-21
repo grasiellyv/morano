@@ -50,8 +50,8 @@ export function EventForm({
       ? (createAction ?? noopAction)
       : (updateAction ?? noopAction);
 
-  const [state, dispatch] = useActionState(mainAction, initialFormState);
-  const [deleteState, deleteDispatch] = useActionState(
+  const [state, dispatch, pending] = useActionState(mainAction, initialFormState);
+  const [deleteState, deleteDispatch, deletePending] = useActionState(
     deleteAction ?? noopAction,
     initialFormState,
   );
@@ -243,7 +243,11 @@ export function EventForm({
       <div className="flex gap-2 justify-between mt-4">
         {mode === "edit" && initialValues?.id ? (
           <ConfirmDialog
-            trigger={<Button type="button" variant="destructive" size="sm">Excluir</Button>}
+            trigger={
+              <Button type="button" variant="destructive" size="sm" disabled={pending || deletePending}>
+                Excluir
+              </Button>
+            }
             title="Excluir evento"
             description={`Excluir o evento "${initialValues.title ?? "este evento"}"?`}
             confirmLabel="Excluir"
@@ -260,8 +264,9 @@ export function EventForm({
           form="event-main-form"
           size="sm"
           className="ml-auto"
+          disabled={pending || deletePending}
         >
-          {mode === "create" ? "Criar evento" : "Salvar"}
+          {pending ? "Salvando…" : mode === "create" ? "Criar evento" : "Salvar"}
         </Button>
       </div>
     </>
