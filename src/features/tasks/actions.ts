@@ -154,7 +154,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   if (profileError || !profile?.current_home_id) {
     return { status: "error", message: "Casa não encontrada. Tente novamente." };
@@ -166,7 +166,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     .from("homes")
     .select("timezone")
     .eq("id", homeId)
-    .single();
+    .maybeSingle();
 
   if (homeError || !home) {
     return { status: "error", message: "Casa não encontrada. Tente novamente." };
@@ -221,7 +221,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
       status: "active",
     })
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (taskError || !task) {
     return { status: "error", message: "Erro ao criar tarefa. Tente novamente." };
@@ -317,7 +317,7 @@ export async function completeOccurrence(
     .from("task_occurrences")
     .select("id, home_id, status, task_id")
     .eq("id", occurrenceId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
@@ -371,7 +371,7 @@ export async function undoComplete(
     .from("task_occurrences")
     .select("id, home_id, status, completed_at, task_id")
     .eq("id", occurrenceId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
@@ -391,7 +391,7 @@ export async function undoComplete(
     .from("homes")
     .select("timezone")
     .eq("id", occurrence.home_id)
-    .single();
+    .maybeSingle();
 
   if (homeError || !home) {
     return { status: "error", message: "Casa não encontrada." };
@@ -495,7 +495,7 @@ export async function postponeOccurrence(
     .from("task_occurrences")
     .select("id, home_id, task_id, scheduled_for, status")
     .eq("id", occurrenceId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !occurrence) {
     return { status: "error", message: "Ocorrência não encontrada." };
@@ -521,7 +521,7 @@ export async function postponeOccurrence(
     .from("homes")
     .select("timezone")
     .eq("id", occurrence.home_id)
-    .single();
+    .maybeSingle();
 
   if (homeError || !home) {
     return { status: "error", message: "Casa não encontrada." };
@@ -674,7 +674,7 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
     .from("routines")
     .select("id, home_id")
     .eq("task_id", parsed.data.id)
-    .single();
+    .maybeSingle();
 
   if (routineError || !routine) {
     return { status: "error", message: "Rotina não encontrada." };
@@ -689,7 +689,7 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
     .from("homes")
     .select("timezone")
     .eq("id", routine.home_id)
-    .single();
+    .maybeSingle();
 
   if (homeError || !home) {
     return { status: "error", message: "Casa não encontrada." };

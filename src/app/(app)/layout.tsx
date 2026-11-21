@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .from("profiles")
     .select("onboarding_completed, last_seen_at")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   // Only redirect to onboarding when we have a confirmed incomplete profile.
   // A DB error leaves the user where they are rather than dropping them into the wizard.

@@ -21,7 +21,7 @@ async function getHomeId(supabase: Awaited<ReturnType<typeof createClient>>, use
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   return profile?.current_home_id ?? null;
 }
 

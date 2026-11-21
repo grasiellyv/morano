@@ -22,7 +22,7 @@ async function getHomeId(userId: string): Promise<string | null> {
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (error || !data?.current_home_id) return null;
   return data.current_home_id;
 }
@@ -88,7 +88,7 @@ export async function addRoom(_: FormState, formData: FormData): Promise<FormSta
     .eq("home_id", homeId)
     .order("position", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   const position = (maxRow?.position ?? 0) + 1;
 
