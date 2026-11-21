@@ -95,6 +95,7 @@ export default async function Page({
 
   const filteredOccurrences = filterAbsenceOccurrences(todayOcc, activeAbsenceRange);
   const filteredOverdue = filterAbsenceOccurrences(overdueOcc, activeAbsenceRange);
+  const filteredUpcoming = filterAbsenceOccurrences(upcomingOcc, activeAbsenceRange);
 
   const isAbsent =
     absence !== null &&
@@ -109,7 +110,7 @@ export default async function Page({
     <TaskList
       today={filteredOccurrences}
       overdue={filteredOverdue}
-      upcoming={upcomingOcc}
+      upcoming={filteredUpcoming}
       currentDate={currentDate}
       selectedDate={selectedDate}
       createTaskAction={createTask}
