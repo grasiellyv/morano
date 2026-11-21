@@ -62,6 +62,7 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   }
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   await trackEvent(userId, homeId, "shopping_item_added");
   return { status: "success", message: "Item adicionado." };
 }
@@ -105,6 +106,7 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
   }
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   if (parsed.data.is_purchased) {
     await trackEvent(userId, homeId, "shopping_item_purchased");
   }
@@ -160,6 +162,7 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
   }
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   return { status: "success", message: "Item atualizado." };
 }
 
@@ -200,5 +203,6 @@ export async function deleteItem(_: FormState, fd: FormData): Promise<FormState>
   }
 
   revalidatePath("/compras");
+  revalidatePath("/inicio");
   return { status: "success", message: "Item excluído." };
 }

@@ -353,6 +353,7 @@ export async function completeOccurrence(
 
   await trackEvent(userId, occurrence.home_id, "occurrence_completed");
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
 
   return { status: "success" };
 }
@@ -424,6 +425,7 @@ export async function undoComplete(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
   return { status: "success" };
 }
 
@@ -472,6 +474,7 @@ export async function skipOccurrence(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
   return { status: "success" };
 }
 
@@ -578,6 +581,7 @@ export async function postponeOccurrence(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
   return { status: "success" };
 }
 
@@ -800,6 +804,7 @@ export async function archiveTask(_: FormState, fd: FormData): Promise<FormState
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
   return { status: "success", message: "Tarefa arquivada." };
 }
 
@@ -830,6 +835,7 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, deleteProfile.current_home_id, "task_deleted");
   revalidatePath("/rotina");
+  revalidatePath("/inicio");
   return { status: "success", message: "Tarefa excluída." };
 }
 

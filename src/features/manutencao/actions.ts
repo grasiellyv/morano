@@ -60,6 +60,7 @@ export async function createMaintenanceItem(
 
   await trackEvent(userId, homeId, "maintenance_created");
   revalidatePath("/manutencao");
+  revalidatePath("/inicio");
   return { status: "success", message: "Item criado." };
 }
 
@@ -161,6 +162,7 @@ export async function updateMaintenanceStatus(
     await trackEvent(userId, homeId, "maintenance_completed");
   }
   revalidatePath("/manutencao");
+  revalidatePath("/inicio");
   return { status: "success" };
 }
 
@@ -193,5 +195,6 @@ export async function deleteMaintenanceItem(
   }
 
   revalidatePath("/manutencao");
+  revalidatePath("/inicio");
   return { status: "success", message: "Item excluído." };
 }
