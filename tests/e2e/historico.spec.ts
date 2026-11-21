@@ -99,3 +99,51 @@ test("2. tarefa concluída aparece no histórico", async ({ page }) => {
   // O ícone ✓ (Concluída) deve estar visível na lista
   await expect(page.getByRole("list").locator("[aria-label='Concluída']").first()).toBeVisible({ timeout: 10_000 });
 });
+
+// ---------------------------------------------------------------------------
+// 3. Filtros de status (chips) funcionam
+// ---------------------------------------------------------------------------
+test("3. filtros de status filtram corretamente o histórico", async ({ page }) => {
+  const email = uniqueEmail("hist-3-filter");
+  await ensureConfirmedUser(email, PASSWORD);
+  await signIn(page, email, PASSWORD);
+  await completeOnboarding(page);
+
+  // Concluir uma tarefa e pular outra
+  await page.goto("/rotina");
+
+  const completeBtns = page.getByRole("button", { name: "Marcar como concluída" });
+  await expect(completeBtns.first()).toBeVisible({ timeout: 10_000 });
+
+  // Concluir a primeira
+  await completeBtns.first().click();
+  await expect(page.getByLabel("Concluída").first()).toBeVisible({ timeout: 10_000 });
+
+  // Pular a segunda (se existir)
+  const skipable = page.getByRole("button", { name: "Mais opções" }).first();
+  if (await skipable.isVisible()) {
+    await skipable.click();
+    const skipItem = page.getByRole("menuitem", { name: "Pular" });
+    if (await skipItem.isVisible()) {
+      await skipItem.click();
+    } else {
+      await page.keyboard.press("Escape");
+    }
+  }
+
+  // Verificar filtro "Concluídas"
+  await page.goto("/rotina/historico?filter=completed");
+  await expect(page.getByRole("heading", { name: "Histórico" })).toBeVisible({ timeout: 10_000 });
+  // Chips presentes
+  await expect(page.getByRole("link", { name: "Concluídas" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Puladas" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Perdidas" })).toBeVisible();
+
+  // Com filtro "completed", ícones ✗ (perdidas) não devem aparecer
+  await expect(page.getByLabel("Perdida")).not.toBeVisible();
+
+  // Verificar filtro "Tudo" (sem filtro) volta para a lista completa
+  await page.getByRole("link", { name: "Tudo" }).click();
+  await expect(page).toHaveURL(/\/rotina\/historico$/, { timeout: 5_000 });
+  await expect(page.getByRole("heading", { name: "Histórico" })).toBeVisible();
+});
