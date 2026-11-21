@@ -6,22 +6,33 @@ import { getMyAbsence } from "@/features/absence/queries";
 import { setAbsence, clearAbsence } from "@/features/absence/actions";
 import { AbsenceForm } from "@/features/absence/components/absence-form";
 import { ChangePasswordForm } from "@/features/auth/components/change-password-form";
+import { UpdateNameForm } from "@/features/auth/components/update-name-form";
 
 export const metadata: Metadata = { title: "Configurações" };
 
 export default async function Page() {
   const user = await requireUser();
   const supabase = await createClient();
-  const currentAbsence = await getMyAbsence(supabase, user.id);
+
+  const [currentAbsence, profileResult] = await Promise.all([
+    getMyAbsence(supabase, user.id),
+    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+  ]);
+  const fullName = profileResult.data?.full_name ?? null;
 
   return (
     <>
       <PageHeader title="Configurações" />
 
-      <section className="mb-8">
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium">E-mail:</span> {user.email}
-        </p>
+      <section className="mb-8 space-y-3">
+        <div className="text-sm">
+          <span className="text-muted-foreground">E-mail: </span>
+          <span className="font-medium">{user.email}</span>
+        </div>
+        <div className="text-sm">
+          <span className="text-muted-foreground">Nome: </span>
+          <UpdateNameForm currentName={fullName} />
+        </div>
       </section>
 
       <section>

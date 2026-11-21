@@ -143,6 +143,33 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   return { status: "success", message: "Senha atualizada com sucesso." };
 }
 
+export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { requireUser } = await import("@/lib/auth/require-user");
+  const { id: userId } = await requireUser();
+
+  const name = textField(formData, "full_name").trim();
+  if (!name || name.length < 2) {
+    return { status: "error", fieldErrors: { full_name: "Nome deve ter pelo menos 2 caracteres." } };
+  }
+  if (name.length > 100) {
+    return { status: "error", fieldErrors: { full_name: "Nome muito longo (máx. 100 caracteres)." } };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: name })
+    .eq("id", userId);
+
+  if (error) {
+    return { status: "error", message: "Não foi possível atualizar o nome." };
+  }
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/configuracoes");
+  return { status: "success", message: "Nome atualizado." };
+}
+
 // Assinatura sem parâmetros: compatível com useActionState (estado e FormData são ignorados).
 export async function signOut(): Promise<FormState> {
   const supabase = await createClient();
