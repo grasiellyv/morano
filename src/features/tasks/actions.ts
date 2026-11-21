@@ -293,6 +293,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, homeId, "task_created");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
   revalidatePath("/casa");
 
@@ -354,6 +355,7 @@ export async function completeOccurrence(
 
   await trackEvent(userId, occurrence.home_id, "occurrence_completed");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
 
@@ -427,6 +429,7 @@ export async function undoComplete(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   return { status: "success" };
@@ -477,6 +480,7 @@ export async function skipOccurrence(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   return { status: "success" };
@@ -585,6 +589,7 @@ export async function postponeOccurrence(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
   return { status: "success" };
 }
@@ -655,6 +660,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   return { status: "success", message: "Tarefa atualizada." };
 }
 
@@ -752,6 +758,7 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
   await extendWindowForHome(routine.home_id, homeTimezone);
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   return { status: "success", message: "Regra de recorrência atualizada." };
 }
 
@@ -808,6 +815,7 @@ export async function archiveTask(_: FormState, fd: FormData): Promise<FormState
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   revalidatePath("/casa");
@@ -841,6 +849,7 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, deleteProfile.current_home_id, "task_deleted");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   revalidatePath("/casa");
