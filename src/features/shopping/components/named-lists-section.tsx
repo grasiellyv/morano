@@ -455,15 +455,21 @@ function NamedListCard({
 
   async function handleApply() {
     setApplyingListId(list.id);
-    const fd = new FormData();
-    fd.set("list_id", list.id);
-    const result = await applyList(initialFormState, fd);
-    setApplyingListId(null);
-    setToast({
-      message: result.message ?? (result.status === "success" ? "Itens adicionados." : "Erro."),
-      kind: result.status === "success" ? "success" : "error",
-    });
-    setTimeout(() => setToast(null), 4000);
+    try {
+      const fd = new FormData();
+      fd.set("list_id", list.id);
+      const result = await applyList(initialFormState, fd);
+      setToast({
+        message: result.message ?? (result.status === "success" ? "Itens adicionados." : "Erro."),
+        kind: result.status === "success" ? "success" : "error",
+      });
+      setTimeout(() => setToast(null), 4000);
+    } catch {
+      setToast({ message: "Erro ao adicionar itens.", kind: "error" });
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setApplyingListId(null);
+    }
   }
 
   const applying = applyingListId === list.id;
