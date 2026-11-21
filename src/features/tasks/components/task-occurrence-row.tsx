@@ -13,34 +13,13 @@ import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { RotationInfo } from "@/features/tasks/queries-rotations";
+import { PRIORITY_LABEL, PRIORITY_BADGE_CLASS } from "@/features/tasks/labels";
 
 function daysBetween(dateFrom: string, dateTo: string): number {
   const msPerDay = 86_400_000;
   const a = new Date(dateFrom + "T00:00:00Z").getTime();
   const b = new Date(dateTo + "T00:00:00Z").getTime();
   return Math.round((b - a) / msPerDay);
-}
-
-function priorityBadgeClass(priority: "alta" | "media" | "baixa"): string {
-  switch (priority) {
-    case "alta":
-      return "bg-red-100 text-red-700";
-    case "media":
-      return "bg-yellow-100 text-yellow-700";
-    case "baixa":
-      return "bg-muted text-muted-foreground";
-  }
-}
-
-function priorityLabel(priority: "alta" | "media" | "baixa"): string {
-  switch (priority) {
-    case "alta":
-      return "Alta";
-    case "media":
-      return "Média";
-    case "baixa":
-      return "Baixa";
-  }
 }
 
 type Props = {
@@ -170,9 +149,9 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
             </span>
           )}
           <span
-            className={`rounded px-1.5 py-0.5 text-xs font-medium ${priorityBadgeClass(pKey)}`}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${PRIORITY_BADGE_CLASS[pKey]}`}
           >
-            {priorityLabel(pKey)}
+            {PRIORITY_LABEL[pKey]}
           </span>
           {occurrence.task.is_essential ? (
             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">

@@ -7,6 +7,7 @@ import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PRIORITY_OPTIONS } from "@/features/tasks/labels";
 
 type Props = {
   task: { id: string; title: string; priority: "baixa" | "media" | "alta"; is_essential: boolean; instructions: string | null; room_id: string | null };
@@ -58,9 +59,9 @@ export function TaskEditPanel({
           defaultValue={task.priority}
           className={selectClass}
         >
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
+          {PRIORITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
       </div>
 

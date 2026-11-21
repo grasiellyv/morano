@@ -1,6 +1,7 @@
 ﻿import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDaysStr } from "@/lib/dates";
+import { PRIORITY_ORDER } from "@/features/tasks/labels";
 
 export type OccurrenceWithTask = {
   id: string;
@@ -23,7 +24,6 @@ export type OccurrenceWithTask = {
   };
 };
 
-const PRIORITY_ORDER: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
 
 /**
  * Marks all pending occurrences with scheduled_for < today as 'missed',

@@ -17,6 +17,7 @@ import { useValidatedSubmit } from "@/features/auth/components/use-validated-sub
 import { Label } from "@/components/ui/label";
 import type { TaskRotation } from "@/features/tasks/queries-rotations";
 import { RotationPanel } from "./rotation-panel";
+import { PRIORITY_OPTIONS } from "@/features/tasks/labels";
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 
@@ -144,9 +145,9 @@ export function TaskForm({
           aria-invalid={errors.priority ? true : undefined}
           {...form.register("priority")}
         >
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
+          {PRIORITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
         {errors.priority?.message ?? state.fieldErrors?.priority ? (
           <p className="text-destructive text-sm">
