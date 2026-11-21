@@ -14,13 +14,23 @@ type Props = {
 
 export function MaintenanceList({ items, rooms }: Props) {
   const [celebrationItemId, setCelebrationItemId] = useState<string | null>(null);
+  const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
 
-  const open = items.filter(
+  const allOpen = items.filter(
     (i) => i.status === "pendente" || i.status === "em_andamento",
   );
-  const history = items.filter(
+  const allHistory = items.filter(
     (i) => i.status === "concluido" || i.status === "cancelado",
   );
+
+  const open = filterRoomId ? allOpen.filter((i) => i.room_id === filterRoomId) : allOpen;
+  const history = filterRoomId ? allHistory.filter((i) => i.room_id === filterRoomId) : allHistory;
+
+  const roomsWithItems = rooms.filter((r) => items.some((i) => i.room_id === r.id));
+
+  const chipBase = "rounded-full border px-3 py-1 text-xs transition-colors";
+  const chipActive = "border-foreground bg-foreground text-background";
+  const chipInactive = "border-border bg-card text-muted-foreground hover:bg-muted";
 
   return (
     <div className="space-y-8">
@@ -37,6 +47,29 @@ export function MaintenanceList({ items, rooms }: Props) {
           <AddMaintenanceForm rooms={rooms} />
         </div>
       </section>
+
+      {/* Room filter chips */}
+      {roomsWithItems.length > 1 ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterRoomId(null)}
+            className={`${chipBase} ${filterRoomId === null ? chipActive : chipInactive}`}
+          >
+            Todos
+          </button>
+          {roomsWithItems.map((room) => (
+            <button
+              key={room.id}
+              type="button"
+              onClick={() => setFilterRoomId(filterRoomId === room.id ? null : room.id)}
+              className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
+            >
+              {room.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Open items */}
       <section>
@@ -63,9 +96,9 @@ export function MaintenanceList({ items, rooms }: Props) {
         )}
       </section>
 
-      {/* History — always rendered; open by default if non-empty */}
+      {/* History — closed by default */}
       <section>
-        <details open={history.length > 0}>
+        <details>
           <summary className="mb-3 cursor-pointer select-none text-base font-semibold">
             Histórico
             {history.length > 0 ? (
