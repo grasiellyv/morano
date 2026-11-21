@@ -808,6 +808,7 @@ export async function archiveTask(_: FormState, fd: FormData): Promise<FormState
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   revalidatePath("/casa");
   return { status: "success", message: "Tarefa arquivada." };
@@ -840,6 +841,7 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, deleteProfile.current_home_id, "task_deleted");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   revalidatePath("/casa");
   return { status: "success", message: "Tarefa excluída." };
