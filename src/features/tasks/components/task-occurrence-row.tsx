@@ -29,9 +29,11 @@ type Props = {
   userId?: string;
   rotationInfo?: RotationInfo;
   onEdit?: () => void;
+  rooms?: Array<{ id: string; name: string }>;
 };
 
-export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onEdit }: Props) {
+export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onEdit, rooms }: Props) {
+  const roomName = rooms?.find((r) => r.id === occurrence.task.room_id)?.name ?? null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
 
@@ -170,6 +172,10 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
             </span>
           ) : null}
         </div>
+
+        {roomName ? (
+          <p className="mt-0.5 text-xs text-muted-foreground">{roomName}</p>
+        ) : null}
 
         <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
           {isOverdue && !isCompleted ? (

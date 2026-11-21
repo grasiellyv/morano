@@ -81,6 +81,7 @@ export function TaskList({
   updateTaskAction,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [showManageRotations, setShowManageRotations] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -109,9 +110,14 @@ export function TaskList({
 
   const handleCelebrateDismiss = useCallback(() => setCelebrate(false), []);
 
-  const displayToday = filterEssencial ? today.filter((o) => o.task.is_essential) : today;
-  const displayOverdue = filterEssencial ? overdue.filter((o) => o.task.is_essential) : overdue;
-  const displayUpcoming = filterEssencial ? upcoming.filter((o) => o.task.is_essential) : upcoming;
+  const byEssential = (occs: OccurrenceWithTask[]) =>
+    filterEssencial ? occs.filter((o) => o.task.is_essential) : occs;
+  const byRoom = (occs: OccurrenceWithTask[]) =>
+    filterRoomId ? occs.filter((o) => o.task.room_id === filterRoomId) : occs;
+
+  const displayToday = byRoom(byEssential(today));
+  const displayOverdue = byRoom(byEssential(overdue));
+  const displayUpcoming = byRoom(byEssential(upcoming));
 
   const todayPending = displayToday.filter((o) => o.status === "pending");
   const todayDone = displayToday.filter((o) => o.status !== "pending");
@@ -137,6 +143,7 @@ export function TaskList({
           userId={userId}
           rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
           onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
+          rooms={rooms}
         />
         {editingTaskId === o.task.id && updateTaskAction ? (
           <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -223,6 +230,37 @@ export function TaskList({
       {absenceBanner}
 
       {weekNav}
+
+      {/* Room filter chips — only when there are 2+ rooms with tasks */}
+      {rooms.length > 1 ? (() => {
+        const allOccs = [...today, ...overdue, ...upcoming];
+        const roomsWithTasks = rooms.filter((r) => allOccs.some((o) => o.task.room_id === r.id));
+        if (roomsWithTasks.length < 2) return null;
+        const chipBase = "rounded-full border px-3 py-1 text-xs transition-colors";
+        const chipActive = "border-foreground bg-foreground text-background";
+        const chipInactive = "border-border bg-card text-muted-foreground hover:bg-muted";
+        return (
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setFilterRoomId(null)}
+              className={`${chipBase} ${filterRoomId === null ? chipActive : chipInactive}`}
+            >
+              Todos
+            </button>
+            {roomsWithTasks.map((room) => (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => setFilterRoomId(filterRoomId === room.id ? null : room.id)}
+                className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
+              >
+                {room.name}
+              </button>
+            ))}
+          </div>
+        );
+      })() : null}
 
       {(events.length > 0 || showCreateEvent || createEventAction) ? (
         <div className="mb-6">
