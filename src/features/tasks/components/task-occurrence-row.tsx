@@ -208,6 +208,7 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
             <input type="hidden" name="occurrence_id" value={occurrence.id} />
             <textarea
               name="notes"
+              aria-label="Nota da ocorrência"
               defaultValue={occurrence.notes ?? ""}
               maxLength={2000}
               rows={2}
