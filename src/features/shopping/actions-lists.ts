@@ -326,3 +326,49 @@ export async function applyList(_: FormState, fd: FormData): Promise<FormState> 
   revalidatePath("/compras");
   return { status: "success", message: `${items.length} itens adicionados à lista de compras.` };
 }
+
+export async function reorderItem(_: FormState, fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+  const homeId = await getHomeId(supabase, userId);
+  if (!homeId) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+
+  const perms = await getMemberPermissions(supabase, userId, homeId);
+  if (!perms.bypass && !perms.can_manage_shopping) {
+    return { status: "error", message: "Sem permissão para gerenciar compras." };
+  }
+
+  const listItemId = textField(fd, "list_item_id");
+  if (!listItemId) return { status: "error", message: "Item inválido." };
+
+  const { data: listItem } = await supabase
+    .from("shopping_list_items")
+    .select("id, name, category_id, quantity, unit, notes, shopping_lists!inner(home_id)")
+    .eq("id", listItemId)
+    .maybeSingle();
+
+  const parentList = listItem?.shopping_lists as { home_id: string } | null;
+  if (!listItem || parentList?.home_id !== homeId) {
+    return { status: "error", message: "Item não encontrado." };
+  }
+
+  const { error: insertError } = await supabase.from("shopping_items").insert({
+    home_id: homeId,
+    name: listItem.name,
+    category_id: listItem.category_id ?? null,
+    quantity: listItem.quantity,
+    unit: listItem.unit,
+    notes: listItem.notes ?? null,
+    is_purchased: false,
+  });
+
+  if (insertError) return { status: "error", message: "Erro ao adicionar. Tente novamente." };
+
+  await supabase
+    .from("shopping_list_items")
+    .update({ last_added_at: new Date().toISOString() })
+    .eq("id", listItemId);
+
+  revalidatePath("/compras");
+  return { status: "success", message: `${listItem.name} adicionado.` };
+}

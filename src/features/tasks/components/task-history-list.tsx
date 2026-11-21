@@ -69,6 +69,11 @@ export function TaskHistoryList({ occurrences }: Props) {
                 locale: ptBR,
               })}
             </div>
+            {occ.notes ? (
+              <div className="mt-0.5 text-xs text-muted-foreground italic">
+                &ldquo;{occ.notes}&rdquo;
+              </div>
+            ) : null}
           </div>
         </li>
       ))}

@@ -8,6 +8,7 @@ import {
   postponeOccurrence,
   claimOccurrence,
   unclaimOccurrence,
+  updateOccurrenceNotes,
 } from "@/features/tasks/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,13 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
   );
 
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const [notesState, notesDispatch, notesPending] = useActionState(
+    updateOccurrenceNotes,
+    initialFormState,
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -97,6 +104,10 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
       document.removeEventListener("pointerdown", handlePointer);
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (notesState.status === "success") setShowNoteEditor(false);
+  }, [notesState.status]);
 
   const isCompleted = occurrence.status === "completed";
   const isOverdue = occurrence.scheduled_for < today;
@@ -182,6 +193,44 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
           <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
             {occurrence.task.instructions}
           </p>
+        ) : null}
+
+        {/* Note display */}
+        {occurrence.notes && !showNoteEditor ? (
+          <p className="mt-1 text-xs text-muted-foreground italic">
+            &ldquo;{occurrence.notes}&rdquo;
+          </p>
+        ) : null}
+
+        {/* Note editor */}
+        {showNoteEditor ? (
+          <form action={notesDispatch} className="mt-2">
+            <input type="hidden" name="occurrence_id" value={occurrence.id} />
+            <textarea
+              name="notes"
+              defaultValue={occurrence.notes ?? ""}
+              maxLength={2000}
+              rows={2}
+              placeholder="Adicione uma nota..."
+              className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-sm"
+            />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <Button type="submit" size="sm" disabled={notesPending}>
+                {notesPending ? "Salvando…" : "Salvar nota"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowNoteEditor(false)}
+              >
+                Cancelar
+              </Button>
+              {notesState.status === "error" ? (
+                <span className="text-xs text-destructive">{notesState.message}</span>
+              ) : null}
+            </div>
+          </form>
         ) : null}
 
         {/* Assignment */}
@@ -319,6 +368,19 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
                 </button>
               </form>
             ) : null}
+
+            {/* Nota — always available */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setShowNoteEditor(true);
+                closeMenu();
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
+            >
+              {occurrence.notes ? "Editar nota" : "Adicionar nota"}
+            </button>
 
             {/* Desfazer — only when completed */}
             {isCompleted ? (

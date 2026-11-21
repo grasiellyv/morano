@@ -893,3 +893,43 @@ export async function unclaimOccurrence(_: FormState, fd: FormData): Promise<For
   revalidatePath("/rotina");
   return { status: "success", message: "" };
 }
+
+export async function updateOccurrenceNotes(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const notes = (textField(fd, "notes") ?? "").trim() || null;
+  if (notes !== null && notes.length > 2000) {
+    return { status: "error", message: "Nota muito longa (máx. 2000 caracteres)." };
+  }
+
+  const { data: occ, error: fetchError } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id")
+    .eq("id", occurrenceId)
+    .maybeSingle();
+
+  if (fetchError || !occ) return { status: "error", message: "Ocorrência não encontrada." };
+
+  const perms = await getMemberPermissions(supabase, userId, occ.home_id);
+  if (!perms.bypass && !perms.can_complete_tasks) {
+    return { status: "error", message: "Sem permissão." };
+  }
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ notes })
+    .eq("id", occurrenceId);
+
+  if (error) return { status: "error", message: "Erro ao salvar nota." };
+
+  revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
+  return { status: "success", message: "Nota salva." };
+}
