@@ -202,7 +202,7 @@ export function TaskList({
 
       {weekNav}
 
-      {(events.length > 0 || showCreateEvent) ? (
+      {(events.length > 0 || showCreateEvent || createEventAction) ? (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold">Eventos</h2>
