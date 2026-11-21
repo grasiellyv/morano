@@ -23,7 +23,7 @@ export async function createCategory(_: FormState, fd: FormData): Promise<FormSt
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
@@ -63,7 +63,7 @@ export async function updateCategory(_: FormState, fd: FormData): Promise<FormSt
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
@@ -113,7 +113,7 @@ export async function deleteCategory(_: FormState, fd: FormData): Promise<FormSt
     .from("profiles")
     .select("current_home_id")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
