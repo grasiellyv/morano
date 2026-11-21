@@ -9,6 +9,9 @@ import { AddItemForm } from "@/features/shopping/components/add-item-form";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { NamedListsSection } from "@/features/shopping/components/named-lists-section";
 import { ManageCategoriesDialog } from "@/features/shopping/components/manage-categories-dialog";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { clearPurchased } from "@/features/shopping/actions";
+import { initialFormState } from "@/features/auth/form-state";
 
 type Props = {
   pending: ShoppingItem[];
@@ -96,12 +99,34 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
       {/* Comprados */}
       {filteredPurchased.length > 0 ? (
         <section>
-          <h2 className="mb-3 text-base font-semibold">
-            Comprados
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({filteredPurchased.length})
-            </span>
-          </h2>
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-base font-semibold">
+              Comprados
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({filteredPurchased.length})
+              </span>
+            </h2>
+            <ConfirmDialog
+              trigger={
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Limpar todos
+                </button>
+              }
+              title="Limpar itens comprados"
+              description="Remove todos os itens marcados como comprados da lista. Esta ação não pode ser desfeita."
+              confirmLabel="Limpar"
+              destructive
+              onConfirm={async () => {
+                const result = await clearPurchased(initialFormState, new FormData());
+                if (result.status === "error") {
+                  throw new Error(result.message ?? "Erro ao limpar comprados.");
+                }
+              }}
+            />
+          </div>
           <div className="space-y-2">
             {filteredPurchased.map((item) => (
               <ShoppingItemRow key={item.id} item={item} categories={categories} />

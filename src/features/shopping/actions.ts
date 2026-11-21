@@ -206,3 +206,34 @@ export async function deleteItem(_: FormState, fd: FormData): Promise<FormState>
   revalidatePath("/inicio");
   return { status: "success", message: "Item excluído." };
 }
+
+export async function clearPurchased(_: FormState, _fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_home_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada." };
+  const homeId = profile.current_home_id;
+
+  const perms = await getMemberPermissions(supabase, userId, homeId);
+  if (!perms.bypass && !perms.can_manage_shopping) {
+    return { status: "error", message: "Sem permissão para gerenciar compras." };
+  }
+
+  const { error } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("home_id", homeId)
+    .eq("is_purchased", true);
+
+  if (error) {
+    return { status: "error", message: "Erro ao limpar itens. Tente novamente." };
+  }
+
+  revalidatePath("/compras");
+  revalidatePath("/inicio");
+  return { status: "success" };
+}
