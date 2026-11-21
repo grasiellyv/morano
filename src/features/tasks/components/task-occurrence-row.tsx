@@ -85,8 +85,28 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
 
   useEffect(() => {
     if (!menuOpen) return;
+
+    const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]');
+    firstItem?.focus();
+
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeMenu();
+      if (e.key === "Escape") {
+        closeMenu();
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const items = Array.from(
+          menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+        );
+        if (items.length === 0) return;
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        const next =
+          e.key === "ArrowDown"
+            ? (idx + 1) % items.length
+            : (idx - 1 + items.length) % items.length;
+        items[next]?.focus();
+      }
     }
     function handlePointer(e: PointerEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
