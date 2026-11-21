@@ -30,10 +30,14 @@ type Props = {
   rotationInfo?: RotationInfo;
   onEdit?: () => void;
   rooms?: Array<{ id: string; name: string }>;
+  homeMembers?: Array<{ id: string; name: string | null }>;
 };
 
-export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onEdit, rooms }: Props) {
+export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onEdit, rooms, homeMembers }: Props) {
   const roomName = rooms?.find((r) => r.id === occurrence.task.room_id)?.name ?? null;
+  const assignedMemberName = occurrence.assigned_to && homeMembers
+    ? (homeMembers.find((m) => m.id === occurrence.assigned_to)?.name ?? null)
+    : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
 
@@ -262,7 +266,9 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
                 </form>
               </>
             ) : (
-              <span className="text-xs text-muted-foreground">Atribuída a outro membro</span>
+              <span className="text-xs text-muted-foreground">
+                {assignedMemberName ? `Atribuída a ${assignedMemberName}` : "Atribuída a outro membro"}
+              </span>
             )}
             {claimState.status === "error" && claimState.message ? (
               <p className="text-xs text-destructive">{claimState.message}</p>

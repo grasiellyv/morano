@@ -144,6 +144,7 @@ export function TaskList({
           rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
           onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
           rooms={rooms}
+          homeMembers={homeMembers}
         />
         {editingTaskId === o.task.id && updateTaskAction ? (
           <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
