@@ -38,6 +38,15 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
     if (updateState.status === "success") setEditingId(null);
   }, [updateState]);
 
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   function startEdit(rot: TaskRotation) {
