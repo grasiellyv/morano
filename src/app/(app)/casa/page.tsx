@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms, getRoutinesCount } from "@/features/homes/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getHomeMembers } from "@/features/members/queries";
 import { PageHeader } from "@/components/feedback/page-header";
 import { Button } from "@/components/ui/button";
 
@@ -38,7 +40,11 @@ export default async function Page() {
     redirect("/onboarding");
   }
 
-  const routinesCount = await getRoutinesCount(home.id);
+  const supabase = await createClient();
+  const [routinesCount, members] = await Promise.all([
+    getRoutinesCount(home.id),
+    getHomeMembers(supabase),
+  ]);
 
   return (
     <>
@@ -96,6 +102,7 @@ export default async function Page() {
         {/* Membros */}
         <div className="border rounded-xl p-4 space-y-1">
           <p className="text-muted-foreground text-xs uppercase tracking-wide">Membros</p>
+          <p className="text-2xl font-semibold">{members.length}</p>
           <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs">
             <Link href="/casa/membros">Ver membros →</Link>
           </Button>

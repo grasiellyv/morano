@@ -15,6 +15,7 @@ import {
   getOverdueOccurrences,
 } from "@/features/tasks/queries";
 import { getShoppingItems } from "@/features/shopping/queries";
+import { getReorderSuggestions } from "@/features/shopping/queries-lists";
 import { getMaintenanceItems } from "@/features/manutencao/queries";
 import { getEventsForRange } from "@/features/events/queries";
 
@@ -80,12 +81,13 @@ export default async function Page() {
   await extendWindowForHome(home.id, home.timezone).catch(() => {});
   await markMissedOccurrences(supabase, home.id, today).catch(() => {});
 
-  const [todayOcc, overdueOcc, shopping, maintenance, events] = await Promise.all([
+  const [todayOcc, overdueOcc, shopping, maintenance, events, reorderSuggestions] = await Promise.all([
     getTodayOccurrences(supabase, home.id, today),
     getOverdueOccurrences(supabase, home.id, today),
     getShoppingItems(supabase, home.id),
     getMaintenanceItems(supabase, home.id),
     getEventsForRange(supabase, home.id, today, today),
+    getReorderSuggestions(supabase, home.id, today),
   ]);
 
   const completedToday = todayOcc.filter((o) => o.status === "completed").length;
@@ -93,6 +95,7 @@ export default async function Page() {
   const pendingToday = totalToday - completedToday;
   const overdueCount = overdueOcc.length;
   const shoppingPending = shopping.pending.length;
+  const reorderCount = reorderSuggestions.length;
   const maintenanceActive = maintenance.filter(
     (m) => m.status === "pendente" || m.status === "em_andamento",
   ).length;
@@ -131,8 +134,16 @@ export default async function Page() {
           href="/compras"
           label="Compras"
           value={shoppingPending === 0 ? "—" : String(shoppingPending)}
-          subtitle={shoppingPending === 0 ? "Lista vazia" : `item${shoppingPending !== 1 ? "ns" : ""}`}
-          accent="default"
+          subtitle={
+            shoppingPending === 0 && reorderCount === 0
+              ? "Lista vazia"
+              : shoppingPending === 0
+                ? `${reorderCount} para repor`
+                : reorderCount > 0
+                  ? `${shoppingPending} item${shoppingPending !== 1 ? "ns" : ""} · ${reorderCount} repor`
+                  : `item${shoppingPending !== 1 ? "ns" : ""}`
+          }
+          accent={reorderCount > 0 ? "yellow" : "default"}
         />
         <SummaryCard
           href="/manutencao"
