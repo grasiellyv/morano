@@ -7,6 +7,7 @@ import {
   initialFormState,
 } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 const EVENT_TYPES: Array<{ value: Event["event_type"]; label: string }> = [
   { value: "aniversario", label: "Aniversário" },
@@ -235,19 +236,24 @@ export function EventForm({
         ) : null}
       </form>
 
+      {deleteState.message && deleteState.status === "error" ? (
+        <p className="mt-2 text-xs text-destructive">{deleteState.message}</p>
+      ) : null}
+
       <div className="flex gap-2 justify-between mt-4">
         {mode === "edit" && initialValues?.id ? (
-          <form action={deleteDispatch}>
-            <input type="hidden" name="id" value={initialValues.id} />
-            {deleteState.message && deleteState.status === "error" ? (
-              <p className="text-xs text-destructive mb-1">
-                {deleteState.message}
-              </p>
-            ) : null}
-            <Button type="submit" variant="destructive" size="sm">
-              Excluir
-            </Button>
-          </form>
+          <ConfirmDialog
+            trigger={<Button type="button" variant="destructive" size="sm">Excluir</Button>}
+            title="Excluir evento"
+            description={`Excluir o evento "${initialValues.title ?? "este evento"}"?`}
+            confirmLabel="Excluir"
+            destructive
+            onConfirm={() => {
+              const fd = new FormData();
+              fd.set("id", initialValues.id!);
+              deleteDispatch(fd);
+            }}
+          />
         ) : null}
         <Button
           type="submit"
