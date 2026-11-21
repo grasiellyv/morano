@@ -11,19 +11,24 @@ import { SHOPPING_CATALOG } from "@/features/shopping/catalog";
 const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
+type PersonalSuggestion = { name: string; category_id: string | null };
+
 type Props = {
   categories: ShoppingCategory[];
   rooms: { id: string; name: string }[];
+  personalSuggestions?: PersonalSuggestion[];
 };
 
-export function AddItemForm({ categories, rooms }: Props) {
+export function AddItemForm({ categories, rooms, personalSuggestions = [] }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [showExtras, setShowExtras] = useState(false);
   // Controlled input so React 19 auto-reset doesn't clear value on error
   const [nameValue, setNameValue] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [suggestions, setSuggestions] = useState<typeof SHOPPING_CATALOG>([]);
+  const [suggestions, setSuggestions] = useState<{ name: string; categoryId: string | null; isPersonal: boolean }[]>([]);
+
+  const personalNames = new Set(personalSuggestions.map((s) => s.name.toLowerCase()));
 
   // wrappedAdd resets extra state on success
   const wrappedAdd = async (prev: FormState, fd: FormData): Promise<FormState> => {
@@ -51,22 +56,27 @@ export function AddItemForm({ categories, rooms }: Props) {
     setNameValue(val);
     if (val.length >= 2) {
       const lower = val.toLowerCase();
-      const filtered = SHOPPING_CATALOG.filter((item) =>
-        item.name.toLowerCase().includes(lower),
-      ).slice(0, 8);
-      setSuggestions(filtered);
+      const personal = personalSuggestions
+        .filter((s) => s.name.toLowerCase().includes(lower))
+        .map((s) => ({ name: s.name, categoryId: s.category_id, isPersonal: true }));
+      const catalog = SHOPPING_CATALOG
+        .filter((s) => s.name.toLowerCase().includes(lower) && !personalNames.has(s.name.toLowerCase()))
+        .map((s) => ({
+          name: s.name,
+          categoryId: categories.find((c) => c.default_slug === s.category_slug)?.id ?? null,
+          isPersonal: false,
+        }));
+      setSuggestions([...personal, ...catalog].slice(0, 8));
     } else {
       setSuggestions([]);
     }
   }
 
-  function selectSuggestion(item: (typeof SHOPPING_CATALOG)[number]) {
+  function selectSuggestion(item: { name: string; categoryId: string | null }) {
     setNameValue(item.name);
     setSuggestions([]);
-    // Auto-fill category by matching category_slug → ShoppingCategory.default_slug
-    const matched = categories.find((cat) => cat.default_slug === item.category_slug);
-    if (matched) {
-      setCategoryId(matched.id);
+    if (item.categoryId) {
+      setCategoryId(item.categoryId);
     }
     nameRef.current?.focus();
   }
@@ -103,9 +113,12 @@ export function AddItemForm({ categories, rooms }: Props) {
                       e.preventDefault();
                       selectSuggestion(s);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                   >
-                    {s.name}
+                    <span className="flex-1">{s.name}</span>
+                    {s.isPersonal ? (
+                      <span className="shrink-0 text-xs text-muted-foreground">★</span>
+                    ) : null}
                   </button>
                 </li>
               ))}

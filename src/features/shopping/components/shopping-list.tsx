@@ -26,6 +26,12 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
+  const personalSuggestions = Array.from(
+    new Map(
+      lists.flatMap((l) => l.items).map((item) => [item.name.toLowerCase(), { name: item.name, category_id: item.category_id }])
+    ).values()
+  );
+
   const filteredPending = pending
     .filter((item) => !filterRoomId || item.room_id === filterRoomId)
     .filter((item) => !filterCategoryId || item.category_id === filterCategoryId);
@@ -112,7 +118,7 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
         </div>
 
         <div className="mb-4 rounded-xl border border-border bg-card p-4">
-          <AddItemForm categories={categories} rooms={rooms} />
+          <AddItemForm categories={categories} rooms={rooms} personalSuggestions={personalSuggestions} />
         </div>
 
         {filteredPending.length > 0 ? (
