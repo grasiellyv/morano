@@ -123,6 +123,26 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
   redirect("/inicio");
 }
 
+export async function changePassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { requireUser } = await import("@/lib/auth/require-user");
+  await requireUser();
+
+  const parsed = resetPasswordSchema.safeParse({
+    password: textField(formData, "password"),
+    confirmPassword: textField(formData, "confirmPassword"),
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    logAuthError("changePassword", error);
+    return { status: "error", message: authErrorMessage(error.code) };
+  }
+
+  return { status: "success", message: "Senha atualizada com sucesso." };
+}
+
 // Assinatura sem parâmetros: compatível com useActionState (estado e FormData são ignorados).
 export async function signOut(): Promise<FormState> {
   const supabase = await createClient();

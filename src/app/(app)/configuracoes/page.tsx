@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMyAbsence } from "@/features/absence/queries";
 import { setAbsence, clearAbsence } from "@/features/absence/actions";
 import { AbsenceForm } from "@/features/absence/components/absence-form";
+import { ChangePasswordForm } from "@/features/auth/components/change-password-form";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -30,6 +31,13 @@ export default async function Page() {
           setAbsenceAction={setAbsence}
           clearAbsenceAction={clearAbsence}
         />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-4 text-base font-semibold">Alterar senha</h2>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <ChangePasswordForm />
+        </div>
       </section>
     </>
   );
