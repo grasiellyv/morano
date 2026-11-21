@@ -166,6 +166,35 @@ export async function updateMaintenanceStatus(
   return { status: "success" };
 }
 
+export async function reopenMaintenanceItem(
+  _: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+  const homeId = await getHomeId(supabase, userId);
+  if (!homeId) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+
+  const id = textField(fd, "id");
+  if (!id) return { status: "error", message: "ID inválido." };
+
+  const { data: updated, error } = await supabase
+    .from("maintenance_items")
+    .update({ status: "pendente", resolved_at: null })
+    .eq("id", id)
+    .eq("home_id", homeId)
+    .in("status", ["concluido", "cancelado"])
+    .select("id");
+
+  if (error || !updated?.length) {
+    return { status: "error", message: "Não foi possível reabrir o item." };
+  }
+
+  revalidatePath("/manutencao");
+  revalidatePath("/inicio");
+  return { status: "success" };
+}
+
 export async function deleteMaintenanceItem(
   _: FormState,
   fd: FormData,

@@ -6,6 +6,7 @@ import type { MaintenanceItem } from "@/features/manutencao/queries";
 import {
   updateMaintenanceItem,
   updateMaintenanceStatus,
+  reopenMaintenanceItem,
   deleteMaintenanceItem,
 } from "@/features/manutencao/actions";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
@@ -57,6 +58,7 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
   };
 
   const [, statusDispatch, statusPending] = useActionState(wrappedUpdateStatus, initialFormState);
+  const [, reopenDispatch, reopenPending] = useActionState(reopenMaintenanceItem, initialFormState);
 
   // Edit form
   const [editTitle, setEditTitle] = useState(item.title);
@@ -238,6 +240,22 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
 
           {/* Spacer */}
           <div className="flex-1" />
+
+          {/* Reopen button — for concluido/cancelado */}
+          {!canEdit && item.status !== "pendente" ? (
+            <form action={reopenDispatch}>
+              <input type="hidden" name="id" value={item.id} />
+              <Button
+                type="submit"
+                size="sm"
+                variant="ghost"
+                disabled={reopenPending || isDeleting}
+                className="text-muted-foreground"
+              >
+                {reopenPending ? "Reabrindo…" : "Reabrir"}
+              </Button>
+            </form>
+          ) : null}
 
           {/* Edit button — hidden for concluido/cancelado */}
           {canEdit ? (
