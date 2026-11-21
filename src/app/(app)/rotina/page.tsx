@@ -14,6 +14,7 @@ import {
 import {
   markMissedOccurrences,
   getTodayOccurrences,
+  getOverdueOccurrences,
 } from "@/features/tasks/queries";
 import { TaskList } from "@/features/tasks/components/task-list";
 import { WeekNav } from "@/features/tasks/components/week-nav";
@@ -71,8 +72,9 @@ export default async function Page({
   const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
   await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
 
-  const [todayOcc, events, absence, rotations, homeMembers] = await Promise.all([
+  const [todayOcc, overdueOcc, events, absence, rotations, homeMembers] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
+    selectedDate === currentDate ? getOverdueOccurrences(supabase, home.id, currentDate) : Promise.resolve([]),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
     getMyAbsence(supabase, userId),
     getRotations(supabase, home.id),
@@ -90,6 +92,7 @@ export default async function Page({
       : null;
 
   const filteredOccurrences = filterAbsenceOccurrences(todayOcc, activeAbsenceRange);
+  const filteredOverdue = filterAbsenceOccurrences(overdueOcc, activeAbsenceRange);
 
   const isAbsent =
     absence !== null &&
@@ -103,6 +106,7 @@ export default async function Page({
   return (
     <TaskList
       today={filteredOccurrences}
+      overdue={filteredOverdue}
       currentDate={currentDate}
       selectedDate={selectedDate}
       createTaskAction={createTask}
