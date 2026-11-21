@@ -30,7 +30,6 @@ async function completeOnboarding(page: Page) {
 
   await expect(page).toHaveURL(/\/onboarding\/rotina$/);
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByLabel("Minutos disponíveis por semana").fill("60");
   await page.getByRole("button", { name: "Ver sugestões →" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
