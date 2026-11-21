@@ -244,17 +244,21 @@ export async function getOccurrencesForWeek(
  * Returns completed, skipped, and missed occurrences, ordered by scheduled_for DESC.
  * Includes archived tasks (no filter on tasks.status).
  */
+export type OccurrenceWithRoom = OccurrenceWithTask & {
+  task: OccurrenceWithTask["task"] & { room: { name: string } | null };
+};
+
 export async function getHistory(
   supabase: SupabaseClient,
   homeId: string,
   limit = 50,
   statusFilter?: "completed" | "skipped" | "missed",
   offset = 0,
-): Promise<OccurrenceWithTask[]> {
+): Promise<OccurrenceWithRoom[]> {
   let query = supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status, room:rooms(name))",
     )
     .eq("home_id", homeId)
     .order("scheduled_for", { ascending: false })
@@ -270,7 +274,7 @@ export async function getHistory(
 
   if (error || !data) return [];
 
-  return data as unknown as OccurrenceWithTask[];
+  return data as unknown as OccurrenceWithRoom[];
 }
 
 export type TaskWithRoutine = {

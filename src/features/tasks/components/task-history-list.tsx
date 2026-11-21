@@ -2,13 +2,13 @@
 
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { OccurrenceWithTask } from "@/features/tasks/queries";
+import type { OccurrenceWithRoom } from "@/features/tasks/queries";
 
 type Props = {
-  occurrences: OccurrenceWithTask[];
+  occurrences: OccurrenceWithRoom[];
 };
 
-function StatusIcon({ status }: { status: OccurrenceWithTask["status"] }) {
+function StatusIcon({ status }: { status: OccurrenceWithRoom["status"] }) {
   switch (status) {
     case "completed":
       return (
@@ -65,9 +65,10 @@ export function TaskHistoryList({ occurrences }: Props) {
               )}
             </div>
             <div className="text-xs text-sage-ink mt-0.5">
-              {format(parseISO(occ.scheduled_for), "d 'de' MMMM", {
-                locale: ptBR,
-              })}
+              {format(parseISO(occ.scheduled_for), "d 'de' MMMM", { locale: ptBR })}
+              {occ.task.room ? (
+                <span className="ml-1 text-stone">· {occ.task.room.name}</span>
+              ) : null}
             </div>
             {occ.notes ? (
               <div className="mt-0.5 text-xs text-muted-foreground italic">
