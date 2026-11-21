@@ -9,6 +9,7 @@ import { TaskHistoryList } from "@/features/tasks/components/task-history-list";
 
 export const metadata: Metadata = { title: "Histórico" };
 
+const PAGE_SIZE = 50;
 const VALID_FILTERS = ["completed", "skipped", "missed"] as const;
 type StatusFilter = (typeof VALID_FILTERS)[number];
 
@@ -39,7 +40,7 @@ function FilterChip({
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; page?: string }>;
 }) {
   const { id: userId } = await requireUser();
   const home = await getHomeWithRooms(userId);
@@ -54,14 +55,29 @@ export default async function Page({
     ? (rawFilter as StatusFilter)
     : undefined;
 
+  const page = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
+  const offset = page * PAGE_SIZE;
+
   const supabase = await createClient();
-  const occurrences = await getHistory(supabase, home.id, 100, statusFilter);
+  const occurrences = await getHistory(supabase, home.id, PAGE_SIZE + 1, statusFilter, offset);
+  const hasMore = occurrences.length > PAGE_SIZE;
+  const displayOccurrences = hasMore ? occurrences.slice(0, PAGE_SIZE) : occurrences;
 
   const filterLabel = {
     completed: "Concluídas",
     skipped: "Puladas",
     missed: "Perdidas",
   };
+
+  function buildHref(overrides: { filter?: string | null; page?: number }) {
+    const p = new URLSearchParams();
+    const f = "filter" in overrides ? overrides.filter : rawFilter;
+    if (f) p.set("filter", f);
+    const pg = "page" in overrides ? overrides.page : page;
+    if (pg && pg > 0) p.set("page", String(pg));
+    const qs = p.toString();
+    return qs ? `?${qs}` : "/rotina/historico";
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -72,13 +88,13 @@ export default async function Page({
 
         {/* Filter chips */}
         <div className="flex flex-wrap gap-2 mb-6">
-          <FilterChip href="/rotina/historico" active={!statusFilter} label="Tudo" />
-          <FilterChip href="?filter=completed" active={statusFilter === "completed"} label="Concluídas" />
-          <FilterChip href="?filter=skipped" active={statusFilter === "skipped"} label="Puladas" />
-          <FilterChip href="?filter=missed" active={statusFilter === "missed"} label="Perdidas" />
+          <FilterChip href={buildHref({ filter: null, page: 0 })} active={!statusFilter} label="Tudo" />
+          <FilterChip href={buildHref({ filter: "completed", page: 0 })} active={statusFilter === "completed"} label="Concluídas" />
+          <FilterChip href={buildHref({ filter: "skipped", page: 0 })} active={statusFilter === "skipped"} label="Puladas" />
+          <FilterChip href={buildHref({ filter: "missed", page: 0 })} active={statusFilter === "missed"} label="Perdidas" />
         </div>
 
-        {occurrences.length === 0 ? (
+        {displayOccurrences.length === 0 ? (
           <div className="rounded-xl border border-sand bg-card py-12 text-center">
             <p className="text-sm text-sage-ink">
               {statusFilter
@@ -87,9 +103,36 @@ export default async function Page({
             </p>
           </div>
         ) : (
-          <div className="bg-card rounded-xl border border-sand overflow-hidden">
-            <TaskHistoryList occurrences={occurrences} />
-          </div>
+          <>
+            <div className="bg-card rounded-xl border border-sand overflow-hidden">
+              <TaskHistoryList occurrences={displayOccurrences} />
+            </div>
+
+            {/* Pagination */}
+            {(page > 0 || hasMore) ? (
+              <div className="mt-4 flex items-center justify-between gap-2">
+                {page > 0 ? (
+                  <Link
+                    href={buildHref({ page: page - 1 })}
+                    className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
+                  >
+                    ← Mais recentes
+                  </Link>
+                ) : <span />}
+                <span className="text-xs text-muted-foreground">
+                  Página {page + 1}
+                </span>
+                {hasMore ? (
+                  <Link
+                    href={buildHref({ page: page + 1 })}
+                    className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
+                  >
+                    Mais antigas →
+                  </Link>
+                ) : <span />}
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>

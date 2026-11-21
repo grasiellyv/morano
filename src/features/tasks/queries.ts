@@ -247,8 +247,9 @@ export async function getOccurrencesForWeek(
 export async function getHistory(
   supabase: SupabaseClient,
   homeId: string,
-  limit = 100,
+  limit = 50,
   statusFilter?: "completed" | "skipped" | "missed",
+  offset = 0,
 ): Promise<OccurrenceWithTask[]> {
   let query = supabase
     .from("task_occurrences")
@@ -257,7 +258,7 @@ export async function getHistory(
     )
     .eq("home_id", homeId)
     .order("scheduled_for", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (statusFilter) {
     query = query.eq("status", statusFilter);
@@ -300,6 +301,12 @@ export type TaskRow = {
   status: "active" | "paused";
   room_id: string | null;
   room: { name: string } | null;
+  routine: {
+    frequency_type: "once" | "daily" | "weekly" | "biweekly" | "monthly" | "custom";
+    interval_value: number;
+    interval_unit: "day" | "week" | "month" | null;
+    weekdays: number[] | null;
+  } | null;
 };
 
 export async function getActiveTasks(
@@ -308,7 +315,7 @@ export async function getActiveTasks(
 ): Promise<TaskRow[]> {
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, title, priority, is_essential, status, room_id, room:rooms(name)")
+    .select("id, title, priority, is_essential, status, room_id, room:rooms(name), routine:routines(frequency_type, interval_value, interval_unit, weekdays)")
     .eq("home_id", homeId)
     .in("status", ["active", "paused"]);
 

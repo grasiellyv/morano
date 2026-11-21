@@ -4,10 +4,32 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveTasks } from "@/features/tasks/queries";
+import { getActiveTasks, type TaskRow } from "@/features/tasks/queries";
 import { PageHeader } from "@/components/feedback/page-header";
 import { Button } from "@/components/ui/button";
 import { PRIORITY_LABEL, PRIORITY_BADGE_CLASS } from "@/features/tasks/labels";
+
+const WEEKDAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
+
+function frequencyLabel(routine: TaskRow["routine"]): string | null {
+  if (!routine) return null;
+  switch (routine.frequency_type) {
+    case "once": return "Uma vez";
+    case "daily": return "Diário";
+    case "weekly": {
+      if (!routine.weekdays || routine.weekdays.length === 0) return "Semanal";
+      return routine.weekdays.map((d) => WEEKDAY_ABBR[d]).join(" · ");
+    }
+    case "biweekly": return "Quinzenal";
+    case "monthly": return "Mensal";
+    case "custom": {
+      const unitMap: Record<string, string> = { day: "dias", week: "semanas", month: "meses" };
+      const unit = unitMap[routine.interval_unit ?? "day"] ?? "dias";
+      return `A cada ${routine.interval_value} ${unit}`;
+    }
+    default: return null;
+  }
+}
 
 export const metadata: Metadata = { title: "Todas as tarefas" };
 
@@ -72,6 +94,9 @@ function TaskCard({
 }: {
   task: Awaited<ReturnType<typeof getActiveTasks>>[number];
 }) {
+  const freq = frequencyLabel(task.routine);
+  const meta = [task.room?.name, freq].filter(Boolean).join(" · ");
+
   return (
     <Link
       href={`/rotina/tarefas/${task.id}/editar`}
@@ -91,8 +116,8 @@ function TaskCard({
             {PRIORITY_LABEL[task.priority]}
           </span>
         </div>
-        {task.room ? (
-          <p className="mt-0.5 text-xs text-muted-foreground">{task.room.name}</p>
+        {meta ? (
+          <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>
         ) : null}
       </div>
       <span className="shrink-0 text-xs text-muted-foreground">Editar →</span>
