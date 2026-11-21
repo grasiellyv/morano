@@ -48,9 +48,10 @@ type Props = {
   today: string;
   userId?: string;
   rotationInfo?: RotationInfo;
+  onEdit?: () => void;
 };
 
-export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo }: Props) {
+export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onEdit }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
 
@@ -257,6 +258,21 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo }: P
             role="menu"
             className="absolute right-0 top-full z-10 mt-1 min-w-[140px] overflow-hidden rounded-lg border border-border bg-card shadow-sm"
           >
+            {/* Editar — always available */}
+            {onEdit ? (
+              <button
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  onEdit();
+                  closeMenu();
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
+              >
+                Editar
+              </button>
+            ) : null}
+
             {/* Adiar — only when not completed */}
             {!isCompleted ? (
               <button

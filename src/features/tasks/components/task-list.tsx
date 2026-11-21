@@ -15,6 +15,7 @@ import { EventChip } from "@/features/events/components/event-chip";
 import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
 import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotations-dialog";
 import { EventForm } from "@/features/events/components/event-form";
+import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
 
 const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 const MONTH_ABBR = [
@@ -46,6 +47,7 @@ type Props = {
   rotationInfoMap?: Record<string, RotationInfo>;
   rotations?: TaskRotation[];
   homeMembers?: { id: string; name: string | null }[];
+  updateTaskAction?: (_: FormState, fd: FormData) => Promise<FormState>;
 };
 
 export function TaskList({
@@ -67,8 +69,10 @@ export function TaskList({
   rotationInfoMap,
   rotations,
   homeMembers,
+  updateTaskAction,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [showManageRotations, setShowManageRotations] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -107,6 +111,32 @@ export function TaskList({
   const filterToggleHref = filterEssencial
     ? selectedDate !== currentDate ? `?date=${selectedDate}` : "/rotina"
     : `?${dateParam}filter=essenciais`;
+
+  function renderOccurrence(o: OccurrenceWithTask) {
+    return (
+      <div key={o.id}>
+        <TaskOccurrenceRow
+          occurrence={o}
+          today={currentDate}
+          userId={userId}
+          rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
+          onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
+        />
+        {editingTaskId === o.task.id && updateTaskAction ? (
+          <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold">Editar tarefa</h3>
+            <TaskEditPanel
+              task={o.task}
+              rooms={rooms}
+              updateTaskAction={updateTaskAction}
+              onSuccess={() => setEditingTaskId(null)}
+              onCancel={() => setEditingTaskId(null)}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -255,9 +285,7 @@ export function TaskList({
               Atrasadas ({displayOverdue.length})
             </h2>
             <div className="space-y-2">
-              {displayOverdue.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]} />
-              ))}
+              {displayOverdue.map(renderOccurrence)}
             </div>
           </section>
         ) : null}
@@ -272,9 +300,7 @@ export function TaskList({
           </h2>
           {todayPending.length > 0 ? (
             <div className="space-y-2">
-              {todayPending.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]} />
-              ))}
+              {todayPending.map(renderOccurrence)}
             </div>
           ) : displayToday.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -291,9 +317,7 @@ export function TaskList({
                 <svg className="ml-auto h-4 w-4 transition-transform [[open]_&]:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </summary>
               <div className="mt-2 space-y-2 opacity-60">
-                {todayDone.map((o) => (
-                  <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]} />
-                ))}
+                {todayDone.map(renderOccurrence)}
               </div>
             </details>
           ) : null}
@@ -304,9 +328,7 @@ export function TaskList({
           <section>
             <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
             <div className="space-y-2">
-              {displayUpcoming.map((o) => (
-                <TaskOccurrenceRow key={o.id} occurrence={o} today={currentDate} userId={userId} rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]} />
-              ))}
+              {displayUpcoming.map(renderOccurrence)}
             </div>
           </section>
         ) : null}

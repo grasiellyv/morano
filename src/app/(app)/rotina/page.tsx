@@ -9,6 +9,7 @@ import { getLocalDateString } from "@/lib/dates";
 import {
   extendWindowForHome,
   createTask,
+  updateTask,
 } from "@/features/tasks/actions";
 import {
   markMissedOccurrences,
@@ -117,6 +118,7 @@ export default async function Page({
       rotationInfoMap={rotationInfoMap}
       rotations={rotations}
       homeMembers={homeMembers.map(m => ({ id: m.user_id, name: m.full_name }))}
+      updateTaskAction={updateTask}
     />
   );
 }
