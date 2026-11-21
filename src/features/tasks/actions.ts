@@ -354,6 +354,7 @@ export async function completeOccurrence(
 
   await trackEvent(userId, occurrence.home_id, "occurrence_completed");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
 
   return { status: "success" };
@@ -426,6 +427,7 @@ export async function undoComplete(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   return { status: "success" };
 }
@@ -475,6 +477,7 @@ export async function skipOccurrence(
   }
 
   revalidatePath("/rotina");
+  revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
   return { status: "success" };
 }
