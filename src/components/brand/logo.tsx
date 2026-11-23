@@ -19,7 +19,7 @@ export function Logo({
       )}
       style={{ fontSize: SIZES[size] }}
     >
-      morano<span className="text-caramel">.</span>
+      morano<span style={{ color: "#D98A2B" }}>.</span>
     </span>
   );
 }

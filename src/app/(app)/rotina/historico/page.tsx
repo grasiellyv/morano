@@ -28,8 +28,8 @@ function FilterChip({
       aria-current={active ? "page" : undefined}
       className={`rounded-full px-3 py-1 text-sm transition-colors ${
         active
-          ? "bg-graphite text-offwhite font-medium"
-          : "bg-sand text-graphite hover:bg-stone/20"
+          ? "bg-primary text-primary-foreground font-medium"
+          : "bg-secondary text-foreground hover:bg-muted"
       }`}
     >
       {label}
@@ -82,7 +82,7 @@ export default async function Page({
   return (
     <div className="max-w-2xl mx-auto">
       <div className="px-4 py-6 md:px-6">
-        <h1 className="text-xl font-semibold text-graphite mb-4 font-heading">
+        <h1 className="text-xl font-semibold mb-4 font-heading">
           Histórico
         </h1>
 
@@ -95,8 +95,8 @@ export default async function Page({
         </div>
 
         {displayOccurrences.length === 0 ? (
-          <div className="rounded-xl border border-sand bg-card py-12 text-center">
-            <p className="text-sm text-sage-ink">
+          <div className="rounded-xl border border-border bg-card py-12 text-center">
+            <p className="text-sm text-muted-foreground">
               {statusFilter
                 ? `Nenhuma ocorrência ${filterLabel[statusFilter].toLowerCase()} ainda.`
                 : "Nenhuma tarefa no histórico ainda."}
@@ -104,7 +104,7 @@ export default async function Page({
           </div>
         ) : (
           <>
-            <div className="bg-card rounded-xl border border-sand overflow-hidden">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
               <TaskHistoryList occurrences={displayOccurrences} />
             </div>
 
