@@ -4,6 +4,8 @@ export type FormState = {
   status: "idle" | "error" | "success";
   message?: string;
   fieldErrors?: Record<string, string>;
+  /** Dados de retorno não-erro da action (ex: token gerado, id criado). */
+  meta?: Record<string, string>;
 };
 
 export const initialFormState: FormState = { status: "idle" };

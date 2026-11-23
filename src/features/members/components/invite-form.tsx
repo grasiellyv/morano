@@ -12,7 +12,7 @@ type Props = {
 export function InviteForm({ inviteMemberAction }: Props) {
   const [state, action, pending] = useActionState(inviteMemberAction, initialFormState);
 
-  const token = state.fieldErrors?.token;
+  const token = state.meta?.token;
   const inviteUrl = token
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/convite/${token}`
     : null;

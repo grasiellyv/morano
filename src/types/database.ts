@@ -846,6 +846,11 @@ isOneToOne: false
               "absence_end": string,"absence_start": string,"avatar_url": string,"full_name": string,"joined_at": string,"role": Database["public"]['Enums']["home_role"],"user_id": string
             }[]
                            },
+"get_invite_by_token":
+{ Args: { "p_token": string }; Returns: {
+              "expires_at": string,"home_name": string,"role": Database["public"]['Enums']["home_role"],"status": Database["public"]['Enums']["invite_status"]
+            }[]
+                           },
 "get_member_permissions":
 { Args: { "p_target_user_id": string }; Returns: {
               "can_complete_tasks": boolean,"can_manage_events": boolean,"can_manage_shopping": boolean,"can_manage_tasks": boolean,"can_purchase_shopping": boolean,"shopping_categories": (Database["public"]['Enums']["shopping_category"])[],"task_room_ids": (string)[]

@@ -85,7 +85,7 @@ export async function inviteMember(
   return {
     status: "success",
     message: `Convite enviado para ${parsed.data.email}`,
-    fieldErrors: { token: invite?.token ?? "" },
+    meta: { token: invite?.token ?? "" },
   };
 }
 
