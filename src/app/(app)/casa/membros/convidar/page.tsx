@@ -37,7 +37,7 @@ export default async function Page() {
 
       <div className="max-w-md">
         <p className="text-sm text-muted-foreground mb-6">
-          O convidado receberá um link de convite. Ele precisa ter uma conta no MORANO para aceitar.
+          Copie o link gerado e envie para a pessoa. Ela precisa ter uma conta no MORANO para aceitar.
         </p>
         <InviteForm inviteMemberAction={inviteMember} />
       </div>

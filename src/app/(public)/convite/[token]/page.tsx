@@ -6,10 +6,11 @@ import { acceptInvite } from "@/features/members/actions";
 
 export const metadata: Metadata = { title: "Aceitar convite — MORANO" };
 
-type Props = { params: Promise<{ token: string }> };
+type Props = { params: Promise<{ token: string }>; searchParams: Promise<{ error?: string }> };
 
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { token } = await params;
+  const { error: errorParam } = await searchParams;
   const supabase = await createClient();
 
   // Verifica se o usuário está autenticado
@@ -63,6 +64,11 @@ export default async function Page({ params }: Props) {
         <p className="text-muted-foreground">
           Clique abaixo para aceitar o convite e entrar na residência.
         </p>
+        {errorParam ? (
+          <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+            {errorParam}
+          </p>
+        ) : null}
         <form action={handleAcceptBlind}>
           <button
             type="submit"
@@ -152,6 +158,11 @@ export default async function Page({ params }: Props) {
         <p><span className="text-muted-foreground">Expira em:</span> {new Date(invite.expires_at).toLocaleDateString("pt-BR")}</p>
       </div>
 
+      {errorParam ? (
+        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+          {errorParam}
+        </p>
+      ) : null}
       <form action={handleAccept}>
         <button
           type="submit"
