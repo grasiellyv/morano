@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // O E2E usa outra pasta de build para não colidir com um `next dev` já aberto na porta 3000.
@@ -14,4 +13,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, { silent: true, disableLogger: true });
+export default nextConfig;
