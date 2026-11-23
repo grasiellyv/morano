@@ -37,6 +37,52 @@ function formatUpcomingDate(dateStr: string, currentDate: string): string {
   return `${DAY_ABBR[parsed.getDay()]}, ${parsed.getDate()} ${MONTH_ABBR[parsed.getMonth()]}`;
 }
 
+function formatNextEventDate(event: Event, currentDate: string): string {
+  const a = new Date(currentDate + "T00:00:00Z").getTime();
+  const b = new Date(event.start_date + "T00:00:00Z").getTime();
+  const diff = Math.round((b - a) / 86_400_000);
+  const d = parseISO(event.start_date);
+  const dateStr = `${DAY_ABBR[d.getDay()]}, ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+  const timeStr = event.start_time ? ` · ${event.start_time.slice(0, 5).replace(":", "h").replace(/h00$/, "h")}` : "";
+  const daysStr = diff === 1 ? " · amanhã" : diff > 1 ? ` · em ${diff} dias` : "";
+  return `${dateStr}${timeStr}${daysStr}`;
+}
+
+// ── Shared avatar helpers ─────────────────────────────────────────────────────
+
+const AVATAR_PALETTES = [
+  { bg: "#EBD5BE", text: "#6B3A17" },
+  { bg: "#F3CFCF", text: "#8A2F3A" },
+  { bg: "#D5DEEA", text: "#2C4A6E" },
+  { bg: "#F5E4D2", text: "#7A5030" },
+  { bg: "#E0EADB", text: "#2C5633" },
+];
+
+function memberColor(id: string) {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) & 0xffff;
+  return AVATAR_PALETTES[Math.abs(h) % AVATAR_PALETTES.length] ?? AVATAR_PALETTES[0]!;
+}
+
+function MiniAvatar({ id, name, size }: { id: string; name: string | null; size: number }) {
+  const palette = memberColor(id);
+  const initials = name
+    ? (() => { const p = name.trim().split(/\s+/); return p.length >= 2 ? ((p[0]?.[0] ?? "") + (p[p.length - 1]?.[0] ?? "")).toUpperCase() : p[0]?.slice(0, 2).toUpperCase() ?? "?"; })()
+    : "?";
+  return (
+    <div
+      style={{
+        width: size, height: size, borderRadius: size / 2,
+        background: palette.bg, color: palette.text,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 600, fontSize: Math.round(size * 0.44), flexShrink: 0,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 type Props = {
   today: OccurrenceWithTask[];
   overdue?: OccurrenceWithTask[];
@@ -48,6 +94,7 @@ type Props = {
   weekNav: React.ReactNode;
   absenceBanner?: React.ReactNode;
   events?: Event[];
+  nextEvent?: Event | null;
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
@@ -70,6 +117,7 @@ export function TaskList({
   weekNav,
   absenceBanner,
   events = [],
+  nextEvent,
   createEventAction,
   updateEventAction,
   deleteEventAction,
@@ -82,6 +130,7 @@ export function TaskList({
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
+  const [filterMemberId, setFilterMemberId] = useState<string | "mine" | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [showManageRotations, setShowManageRotations] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -114,10 +163,21 @@ export function TaskList({
     filterEssencial ? occs.filter((o) => o.task.is_essential) : occs;
   const byRoom = (occs: OccurrenceWithTask[]) =>
     filterRoomId ? occs.filter((o) => o.task.room_id === filterRoomId) : occs;
+  const byMember = (occs: OccurrenceWithTask[]) => {
+    if (!filterMemberId) return occs;
+    if (filterMemberId === "mine") return occs.filter((o) => o.assigned_to === userId);
+    return occs.filter((o) => o.assigned_to === filterMemberId);
+  };
 
-  const displayToday = byRoom(byEssential(today));
-  const displayOverdue = byRoom(byEssential(overdue));
-  const displayUpcoming = byRoom(byEssential(upcoming));
+  const displayToday = byMember(byRoom(byEssential(today)));
+  const displayOverdue = byMember(byRoom(byEssential(overdue)));
+  const displayUpcoming = byMember(byRoom(byEssential(upcoming)));
+
+  // Member filter progress counts (from today only, pre-room-filter)
+  const memberScopedToday = byMember(byEssential(today));
+  const memberTotal = memberScopedToday.length;
+  const memberDone = memberScopedToday.filter((o) => o.status !== "pending").length;
+  const memberPct = memberTotal > 0 ? Math.round((memberDone / memberTotal) * 100) : 0;
 
   const todayPending = displayToday.filter((o) => o.status === "pending");
   const todayDone = displayToday.filter((o) => o.status !== "pending");
@@ -230,28 +290,50 @@ export function TaskList({
         </div>
       </header>
 
-      {/* Secondary nav links */}
-      <div className="flex items-center gap-4 pb-4 -mt-1">
-        <Link
-          href="/rotina/tarefas"
-          className="text-xs"
-          style={{ color: "var(--muted-foreground)" }}
+      {/* Segmented control */}
+      <div
+        style={{
+          height: 42,
+          borderRadius: 12,
+          background: "var(--secondary)",
+          display: "flex",
+          padding: 3,
+          gap: 3,
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            borderRadius: 9,
+            background: "var(--card)",
+            boxShadow: "var(--shadow)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 13.5,
+            fontWeight: 500,
+            color: "var(--foreground)",
+          }}
         >
-          Gerenciar
-        </Link>
+          Tarefas
+        </div>
         <Link
           href="/rotina/calendario"
-          className="text-xs"
-          style={{ color: "var(--muted-foreground)" }}
+          style={{
+            flex: 1,
+            borderRadius: 9,
+            background: "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 13.5,
+            fontWeight: 400,
+            color: "var(--muted-foreground)",
+            textDecoration: "none",
+          }}
         >
           Calendário
-        </Link>
-        <Link
-          href="/rotina/historico"
-          className="text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          Histórico
         </Link>
       </div>
 
@@ -277,21 +359,136 @@ export function TaskList({
 
       {weekNav}
 
+      {/* Next event banner */}
+      {nextEvent ? (
+        <Link
+          href="/rotina/calendario"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            height: 56,
+            borderRadius: 14,
+            background: "var(--warn-bg)",
+            color: "var(--warn-ink)",
+            padding: "0 14px",
+            marginTop: 12,
+            marginBottom: 4,
+            textDecoration: "none",
+          }}
+        >
+          <div
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: "var(--warn-icon)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="3"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {nextEvent.title}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              {formatNextEventDate(nextEvent, currentDate)}
+            </div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.6 }}>
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </Link>
+      ) : null}
+
+      {/* Member filter chips */}
+      {homeMembers && homeMembers.length >= 2 ? (
+        <div style={{ marginTop: 16, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setFilterMemberId(null)}
+              style={{
+                height: 32, borderRadius: 10, padding: "0 12px",
+                fontSize: 13, fontWeight: filterMemberId === null ? 500 : 400,
+                border: `1px solid ${filterMemberId === null ? "transparent" : "var(--border)"}`,
+                background: filterMemberId === null ? "var(--nav-active)" : "var(--card)",
+                color: filterMemberId === null ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+                cursor: "pointer",
+              }}
+            >
+              Todas
+            </button>
+            {userId ? (
+              <button
+                type="button"
+                onClick={() => setFilterMemberId(filterMemberId === "mine" ? null : "mine")}
+                style={{
+                  height: 32, borderRadius: 10, padding: "0 12px",
+                  fontSize: 13, fontWeight: filterMemberId === "mine" ? 500 : 400,
+                  border: `1px solid ${filterMemberId === "mine" ? "transparent" : "var(--border)"}`,
+                  background: filterMemberId === "mine" ? "var(--nav-active)" : "var(--card)",
+                  color: filterMemberId === "mine" ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                Minhas
+              </button>
+            ) : null}
+            {homeMembers.filter((m) => m.id !== userId).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setFilterMemberId(filterMemberId === m.id ? null : m.id)}
+                style={{
+                  height: 32, borderRadius: 10, padding: "0 10px 0 6px",
+                  display: "flex", alignItems: "center", gap: 5,
+                  fontSize: 13, fontWeight: filterMemberId === m.id ? 500 : 400,
+                  border: `1px solid ${filterMemberId === m.id ? "transparent" : "var(--border)"}`,
+                  background: filterMemberId === m.id ? "var(--nav-active)" : "var(--card)",
+                  color: filterMemberId === m.id ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                <MiniAvatar id={m.id} name={m.name} size={22} />
+                <span>{m.name ? m.name.trim().split(/\s+/)[0] : "?"}</span>
+              </button>
+            ))}
+            {memberTotal > 0 ? (
+              <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+                {memberDone} de {memberTotal}
+              </span>
+            ) : null}
+          </div>
+          {memberTotal > 0 ? (
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 2, background: "#D97706", width: `${memberPct}%`, transition: "width 0.3s" }} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Room filter chips — only when there are 2+ rooms with tasks */}
       {rooms.length > 1 ? (() => {
         const allOccs = [...today, ...overdue, ...upcoming];
         const roomsWithTasks = rooms.filter((r) => allOccs.some((o) => o.task.room_id === r.id));
         if (roomsWithTasks.length < 2) return null;
-        const chipBase = "border px-3 text-xs transition-colors font-medium";
-        const chipActive = "border-primary text-primary-foreground";
-        const chipInactive = "border-border bg-card text-muted-foreground hover:bg-muted";
         return (
-          <div className="mb-6 flex flex-wrap gap-2">
+          <div style={{ marginTop: 12, marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 6 }}>
             <button
               type="button"
               onClick={() => setFilterRoomId(null)}
-              className={`${chipBase} ${filterRoomId === null ? chipActive : chipInactive}`}
-              style={{ height: 32, borderRadius: 10, background: filterRoomId === null ? "var(--nav-active)" : undefined }}
+              style={{
+                height: 32, borderRadius: 10, padding: "0 12px",
+                fontSize: 12, fontWeight: filterRoomId === null ? 500 : 400,
+                border: `1px solid ${filterRoomId === null ? "transparent" : "var(--border)"}`,
+                background: filterRoomId === null ? "var(--nav-active)" : "var(--card)",
+                color: filterRoomId === null ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+                cursor: "pointer",
+              }}
             >
               Todos
             </button>
@@ -300,8 +497,14 @@ export function TaskList({
                 key={room.id}
                 type="button"
                 onClick={() => setFilterRoomId(filterRoomId === room.id ? null : room.id)}
-                className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
-                style={{ height: 32, borderRadius: 10, background: filterRoomId === room.id ? "var(--nav-active)" : undefined }}
+                style={{
+                  height: 32, borderRadius: 10, padding: "0 12px",
+                  fontSize: 12, fontWeight: filterRoomId === room.id ? 500 : 400,
+                  border: `1px solid ${filterRoomId === room.id ? "transparent" : "var(--border)"}`,
+                  background: filterRoomId === room.id ? "var(--nav-active)" : "var(--card)",
+                  color: filterRoomId === room.id ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+                  cursor: "pointer",
+                }}
               >
                 {room.name}
               </button>

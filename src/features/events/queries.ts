@@ -34,3 +34,26 @@ export async function getEventsForRange(
 
   return data;
 }
+
+export async function getNextUpcomingEvent(
+  supabase: SupabaseClient<Database>,
+  homeId: string,
+  afterDate: string,
+): Promise<Event | null> {
+  const to = new Date(afterDate + "T00:00:00Z");
+  to.setUTCDate(to.getUTCDate() + 90);
+  const toStr = to.toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, home_id, title, event_type, start_date, end_date, start_time, end_time, description, created_at")
+    .eq("home_id", homeId)
+    .gt("start_date", afterDate)
+    .lte("start_date", toStr)
+    .order("start_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}

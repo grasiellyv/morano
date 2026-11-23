@@ -19,7 +19,7 @@ import {
 } from "@/features/tasks/queries";
 import { TaskList } from "@/features/tasks/components/task-list";
 import { WeekNav } from "@/features/tasks/components/week-nav";
-import { getEventsForRange } from "@/features/events/queries";
+import { getEventsForRange, getNextUpcomingEvent } from "@/features/events/queries";
 import {
   createEvent,
   updateEvent,
@@ -73,11 +73,12 @@ export default async function Page({
   const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
   await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
 
-  const [todayOcc, overdueOcc, upcomingOcc, events, absence, rotations, homeMembers] = await Promise.all([
+  const [todayOcc, overdueOcc, upcomingOcc, events, nextEvent, absence, rotations, homeMembers] = await Promise.all([
     getTodayOccurrences(supabase, home.id, selectedDate),
     selectedDate === currentDate ? getOverdueOccurrences(supabase, home.id, currentDate) : Promise.resolve([]),
     selectedDate === currentDate ? getUpcomingOccurrences(supabase, home.id, currentDate) : Promise.resolve([]),
     getEventsForRange(supabase, home.id, selectedDate, selectedDate),
+    getNextUpcomingEvent(supabase, home.id, currentDate),
     getMyAbsence(supabase, userId),
     getRotations(supabase, home.id),
     getHomeMembers(supabase),
@@ -128,6 +129,7 @@ export default async function Page({
       weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} taskDates={taskDates} />}
       absenceBanner={absenceBanner}
       events={events}
+      nextEvent={nextEvent}
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}
