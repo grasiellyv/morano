@@ -17,9 +17,9 @@ export type NavItem = {
 export const PRIMARY_NAV: readonly NavItem[] = [
   { href: "/inicio", label: "Início", icon: House },
   { href: "/rotina", label: "Rotina", icon: CalendarCheck },
-  { href: "/casa", label: "Casa", icon: Sofa },
-  { href: "/manutencao", label: "Manutenção", icon: Wrench },
   { href: "/compras", label: "Compras", icon: ShoppingBasket },
+  { href: "/manutencao", label: "Manutenção", icon: Wrench },
+  { href: "/casa", label: "Casa", icon: Sofa },
 ];
 
 export const SETTINGS_NAV: {

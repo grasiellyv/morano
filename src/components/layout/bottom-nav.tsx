@@ -4,35 +4,69 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isNavItemActive } from "@/components/layout/nav-active";
 import { PRIMARY_NAV } from "@/components/layout/nav-items";
-import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname() ?? "";
   return (
     <nav
       aria-label="Navegação principal"
-      className="bg-background border-border fixed inset-x-0 bottom-0 z-40 border-t pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] md:hidden"
+      className="fixed z-40 flex items-center justify-between md:hidden"
+      style={{
+        left: 20,
+        right: 20,
+        bottom: "calc(18px + env(safe-area-inset-bottom))",
+        height: 64,
+        borderRadius: 32,
+        background: "var(--nav-bg)",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        border: "1px solid var(--border)",
+        boxShadow: "0 10px 28px rgba(60,35,15,0.16)",
+        padding: "0 8px",
+      }}
     >
-      <ul className="grid grid-cols-5">
-        {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
-          const active = isNavItemActive(pathname, href);
+      {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
+        const active = isNavItemActive(pathname, href);
+        if (active) {
           return (
-            <li key={href}>
-              <Link
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "focus-visible:ring-ring flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-0 outline-none focus-visible:ring-2 focus-visible:ring-inset",
-                  active ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-5" />
-                <span className="text-[11px] leading-none font-medium tracking-tight">{label}</span>
-              </Link>
-            </li>
+            <Link
+              key={href}
+              href={href}
+              aria-current="page"
+              className="flex shrink-0 items-center gap-[7px] no-underline"
+              style={{
+                height: 48,
+                borderRadius: 24,
+                background: "var(--nav-active)",
+                color: "var(--nav-active-ink)",
+                padding: "0 16px",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              <Icon aria-hidden size={19} strokeWidth={1.7} />
+              <span>{label}</span>
+            </Link>
           );
-        })}
-      </ul>
+        }
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-label={label}
+            className="flex shrink-0 items-center justify-center no-underline"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              background: "var(--nav-item)",
+              color: "var(--foreground)",
+            }}
+          >
+            <Icon aria-hidden size={19} strokeWidth={1.7} />
+          </Link>
+        );
+      })}
     </nav>
   );
 }

@@ -5,18 +5,17 @@
 /* O MVP não tem modo escuro (spec §5). A variante fica presa a uma classe que nunca é aplicada. */
 @custom-variant dark (&:is(.dark *));
 
-/* Paleta bruta: única fonte dos valores hex. Gera as utilities offwhite, sand, graphite, sage, caramel, sage-ink, alert-ink e stone. */
+/* Paleta bruta: família marrom/âmbar Morano. */
 @theme {
-  --color-offwhite: #f5f2ec;
-  --color-sand: #e7e0d5;
-  --color-graphite: #30332f;
-  --color-sage: #879080;
-  --color-caramel: #b69b79;
-  /* Versões AA para texto: Sálvia e Caramelo nunca são usados como cor de texto. */
-  --color-sage-ink: #5a6155;
-  --color-alert-ink: #8a5530;
-  /* Cinza quente para bordas de campos e anéis: >= 3:1 sobre off-white e branco (WCAG 1.4.11). */
-  --color-stone: #827b6f;
+  --color-cream: #FBF0E4;
+  --color-cream-card: #FFFAF4;
+  --color-cream-card2: #F5E4D2;
+  --color-brown-ink: #2A1B12;
+  --color-brown-mute: #725E4F;
+  --color-amber: #D98A2B;
+  --color-warn-bg: #F7DCCB;
+  --color-warn-ink: #7E3417;
+  --color-warn-icon: #EFBFA3;
 }
 
 @theme inline {
@@ -38,37 +37,51 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-inter);
-  --font-heading: var(--font-manrope);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --font-sans: var(--font-dm-sans);
+  --font-heading: var(--font-dm-sans);
+  --radius-sm: calc(var(--radius) * 0.625);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.5);
 }
 
 :root {
-  --background: var(--color-offwhite);
-  --foreground: var(--color-graphite);
-  --card: #ffffff;
-  --card-foreground: var(--color-graphite);
-  --popover: #ffffff;
-  --popover-foreground: var(--color-graphite);
-  --primary: var(--color-graphite);
-  --primary-foreground: var(--color-offwhite);
-  --secondary: var(--color-sand);
-  --secondary-foreground: var(--color-graphite);
-  --muted: var(--color-sand);
-  --muted-foreground: var(--color-sage-ink);
-  --accent: var(--color-sand);
-  --accent-foreground: var(--color-graphite);
-  --destructive: var(--color-alert-ink);
-  --border: var(--color-sand);
-  --input: var(--color-stone);
-  --ring: var(--color-sage-ink);
-  --radius: 0.75rem;
+  /* Sistema de cores claro — família marrom/âmbar */
+  --background: #FBF0E4;
+  --foreground: #2A1B12;
+  --card: #FFFAF4;
+  --card-foreground: #2A1B12;
+  --popover: #FFFAF4;
+  --popover-foreground: #2A1B12;
+  --primary: #2A1B12;
+  --primary-foreground: #FBEFE3;
+  --secondary: #F5E4D2;
+  --secondary-foreground: #2A1B12;
+  --muted: #F5E4D2;
+  --muted-foreground: #725E4F;
+  --accent: #F5E4D2;
+  --accent-foreground: #2A1B12;
+  --destructive: #7E3417;
+  --border: rgba(110, 70, 35, 0.12);
+  --input: #A08070;
+  --ring: #725E4F;
+  --radius: 1rem;
+
+  /* Tokens estendidos do design system */
+  --shadow: 0 1px 2px rgba(90, 55, 25, 0.05), 0 6px 18px rgba(90, 55, 25, 0.06);
+  --glow: rgba(240, 184, 128, 0.30);
+  --warn-bg: #F7DCCB;
+  --warn-ink: #7E3417;
+  --warn-icon: #EFBFA3;
+  --nav-bg: rgba(255, 250, 244, 0.88);
+  --nav-item: #F5E4D2;
+  --nav-active: #2A1B12;
+  --nav-active-ink: #FBEFE3;
+  --hero-a: #4B3527;
+  --hero-b: #2B1E16;
 }
 
 @layer base {
@@ -76,15 +89,11 @@
     @apply border-border outline-ring;
   }
   body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-  h1,
-  h2,
-  h3 {
-    @apply font-heading;
+    @apply text-foreground font-sans antialiased;
+    background: radial-gradient(380px 300px at 100% 0%, var(--glow), transparent 70%),
+      var(--background);
+    background-attachment: fixed;
+    min-height: 100dvh;
   }
 }
 

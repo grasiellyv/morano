@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Sidebar } from "@/components/layout/sidebar";
 
@@ -14,11 +13,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <Sidebar />
       <div className="md:pl-60">
-        <AppHeader />
         <main
           id="conteudo"
           tabIndex={-1}
-          className="mx-auto w-full max-w-3xl px-4 pt-4 pb-[calc(56px+env(safe-area-inset-bottom)+1.5rem)] outline-none md:px-10 md:py-10"
+          className="mx-auto w-full max-w-3xl px-5 pt-4 pb-[calc(100px+env(safe-area-inset-bottom))] outline-none md:px-10 md:py-10"
         >
           {children}
         </main>

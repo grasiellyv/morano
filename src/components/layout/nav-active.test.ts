@@ -7,16 +7,16 @@ describe("navegação principal", () => {
     expect(PRIMARY_NAV.map((i) => i.label)).toEqual([
       "Início",
       "Rotina",
-      "Casa",
-      "Manutenção",
       "Compras",
+      "Manutenção",
+      "Casa",
     ]);
     expect(PRIMARY_NAV.map((i) => i.href)).toEqual([
       "/inicio",
       "/rotina",
-      "/casa",
-      "/manutencao",
       "/compras",
+      "/manutencao",
+      "/casa",
     ]);
   });
 

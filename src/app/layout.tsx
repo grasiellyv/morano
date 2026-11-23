@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Manrope } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "MORANO", template: "%s · MORANO" },
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F5F2EC",
+  themeColor: "#FBF0E4",
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
@@ -21,8 +24,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${manrope.variable} ${inter.variable}`}>
-      <body className="bg-background text-foreground font-sans antialiased">
+    <html lang="pt-BR" className={dmSans.variable}>
+      <body className="text-foreground font-sans antialiased">
         {children}
         <Toaster position="top-center" theme="light" />
       </body>
