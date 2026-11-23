@@ -49,6 +49,10 @@ next-env.d.ts
 .claude/worktrees/
 .claire/
 
+# database dumps / backups (podem conter dados sensiveis — nunca versionar)
+/backup-*.sql
+*.dump
+
 # playwright
 /test-results
 /playwright-report
