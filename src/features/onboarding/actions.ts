@@ -44,28 +44,22 @@ export async function saveResidencia(
 
   const supabase = await createClient();
 
-  const { data: home, error: homeError } = await supabase
-    .from("homes")
-    .insert({ ...parsed.data, created_by: userId })
-    .select("id")
-    .single();
+  const { data: homeId, error: rpcError } = await supabase.rpc(
+    "onboarding_create_home",
+    {
+      p_name:           parsed.data.name,
+      p_property_type:  parsed.data.property_type,
+      p_ownership_type: parsed.data.ownership_type,
+      p_household_type: parsed.data.household_type,
+      p_resident_count: parsed.data.resident_count,
+      p_timezone:       parsed.data.timezone,
+    },
+  );
 
-  if (homeError ?? !home) {
+  if (rpcError ?? !homeId) {
     return {
       status: "error",
       message: "Erro ao salvar residência. Tente novamente.",
-    };
-  }
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ current_home_id: home.id, onboarding_step: 1 })
-    .eq("id", userId);
-
-  if (profileError) {
-    return {
-      status: "error",
-      message: "Erro ao avançar o onboarding. Tente novamente.",
     };
   }
 

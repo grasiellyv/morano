@@ -868,6 +868,9 @@ isOneToOne: false
 "is_home_member":
 { Args: { "p_home_id": string }; Returns: boolean
                            },
+"onboarding_create_home":
+{ Args: { "p_household_type": string,"p_name": string,"p_ownership_type": string,"p_property_type": string,"p_resident_count": number,"p_timezone": string }; Returns: string
+                           },
 "plan_limits":
 { Args: { "p_plan": Database["public"]['Enums']["subscription_plan"] }; Returns: {
               "attachments_allowed": boolean,"max_active_tasks": number,"max_appliances": number,"max_homes": number
