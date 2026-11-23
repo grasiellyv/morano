@@ -40,6 +40,8 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
     unit: textField(fd, "unit") || undefined,
     notes: textField(fd, "notes") || undefined,
     room_id: textField(fd, "room_id") || undefined,
+    mission: textField(fd, "mission") || undefined,
+    priority: textField(fd, "priority") || undefined,
   });
 
   if (!parsed.success) {
@@ -55,6 +57,8 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
     notes: parsed.data.notes ?? null,
     room_id: parsed.data.room_id ?? null,
     is_purchased: false,
+    mission: parsed.data.mission ?? null,
+    priority: parsed.data.priority,
   });
 
   if (error) {
@@ -92,8 +96,6 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  // Verify item belongs to this home (RLS handles this, but we also confirm homeId)
-  // Finding 5: select("id") detects 0-row matches that return error:null
   const { data: updated, error } = await supabase
     .from("shopping_items")
     .update({ is_purchased: parsed.data.is_purchased })
@@ -137,13 +139,14 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
     unit: textField(fd, "unit"),
     notes: textField(fd, "notes") || undefined,
     room_id: textField(fd, "room_id") || undefined,
+    mission: textField(fd, "mission") || undefined,
+    priority: textField(fd, "priority") || undefined,
   });
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  // Finding 5: select("id") detects 0-row matches that return error:null
   const { data: updated, error } = await supabase
     .from("shopping_items")
     .update({
@@ -152,6 +155,8 @@ export async function editItem(_: FormState, fd: FormData): Promise<FormState> {
       quantity: parsed.data.quantity,
       unit: parsed.data.unit,
       notes: parsed.data.notes ?? null,
+      mission: parsed.data.mission ?? null,
+      priority: parsed.data.priority,
     })
     .eq("id", parsed.data.id)
     .eq("home_id", homeId)
@@ -190,7 +195,6 @@ export async function deleteItem(_: FormState, fd: FormData): Promise<FormState>
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  // Finding 5: select("id") detects 0-row matches that return error:null
   const { data: deleted, error } = await supabase
     .from("shopping_items")
     .delete()
@@ -236,4 +240,52 @@ export async function clearPurchased(_: FormState, _fd: FormData): Promise<FormS
   revalidatePath("/compras");
   revalidatePath("/inicio");
   return { status: "success" };
+}
+
+export async function finalizarCompra(_: FormState, _fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_home_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada." };
+  const homeId = profile.current_home_id;
+
+  const perms = await getMemberPermissions(supabase, userId, homeId);
+  if (!perms.bypass && !perms.can_purchase_shopping) {
+    return { status: "error", message: "Sem permissão." };
+  }
+
+  // Get purchased items to archive
+  const { data: purchased } = await supabase
+    .from("shopping_items")
+    .select("id, name, quantity, unit, category_id")
+    .eq("home_id", homeId)
+    .eq("is_purchased", true);
+
+  if (!purchased?.length) {
+    return { status: "error", message: "Nenhum item marcado como comprado." };
+  }
+
+  // Record the session
+  await supabase.from("shopping_sessions").insert({
+    home_id: homeId,
+    finished_by: userId,
+    items_count: purchased.length,
+    items: purchased,
+  });
+
+  // Delete purchased items
+  await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("home_id", homeId)
+    .eq("is_purchased", true);
+
+  revalidatePath("/compras");
+  revalidatePath("/inicio");
+  await trackEvent(userId, homeId, "shopping_session_finished");
+  return { status: "success", message: `Compra finalizada com ${purchased.length} iten${purchased.length !== 1 ? "s" : ""}.` };
 }

@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const MISSIONS = ["abastecimento", "reposicao", "ocasioes"] as const;
+export type Mission = typeof MISSIONS[number];
+export const MISSION_LABELS: Record<Mission, string> = {
+  abastecimento: "Abastecimento",
+  reposicao: "Reposição",
+  ocasioes: "Ocasiões",
+};
+
 export const addItemSchema = z.object({
   name: z.string().trim().min(1, { error: "Nome obrigatório" }).max(120),
   category_id: z.string().uuid().optional(),
@@ -7,6 +15,8 @@ export const addItemSchema = z.object({
   unit: z.enum(["un", "kg", "g", "l", "ml", "pacote", "caixa"]).default("un"),
   notes: z.string().trim().max(200, { error: "Máximo 200 caracteres" }).optional(),
   room_id: z.string().uuid().optional(),
+  mission: z.enum(MISSIONS).optional(),
+  priority: z.enum(["normal", "urgente"]).default("normal"),
 });
 
 export const editItemSchema = addItemSchema.extend({
