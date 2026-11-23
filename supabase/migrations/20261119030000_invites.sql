@@ -21,7 +21,7 @@ create type public.invite_status as enum ('pending', 'accepted', 'revoked', 'exp
 create table public.home_invites (
   id            uuid        primary key default gen_random_uuid(),
   home_id       uuid        not null references public.homes(id) on delete cascade,
-  token         text        not null unique default encode(gen_random_bytes(32), 'hex'),
+  token         text        not null unique default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
   invited_email text        not null check (char_length(btrim(invited_email)) between 3 and 254),
   role          public.home_role not null default 'member'
                             check (role <> 'owner'),

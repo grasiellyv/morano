@@ -1,0 +1,19 @@
+# Local dev
+.env.local
+.env*.local
+
+# Supabase local stack (not needed for deploy)
+supabase/.branches
+supabase/.temp
+supabase/data
+
+# Design references and docs
+design/reference/
+
+# Tests
+tests/
+playwright.config.ts
+vitest.config.mts
+
+# Misc
+.claude/
