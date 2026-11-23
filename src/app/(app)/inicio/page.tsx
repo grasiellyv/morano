@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { format, parseISO, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Bell, Settings2, Plus, ChevronRight, ArrowUpRight } from "lucide-react";
+import { Bell, SlidersHorizontal, Plus, ChevronRight, ArrowUpRight } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -134,6 +134,22 @@ export default async function Page() {
   const roomMap = new Map(home.rooms.map((r) => [r.id, r.name]));
   const memberMap = new Map(homeMembers.map((m, i) => [m.user_id, { name: m.full_name, index: i }]));
 
+  // Contagem de tarefas pendentes por morador (para sub-texto do card Moradores)
+  const memberTaskCounts = new Map<string, number>();
+  for (const occ of todayOcc) {
+    if (occ.assigned_to && occ.status === "pending") {
+      memberTaskCounts.set(occ.assigned_to, (memberTaskCounts.get(occ.assigned_to) ?? 0) + 1);
+    }
+  }
+  const memberSummary = homeMembers
+    .filter((m) => memberTaskCounts.has(m.user_id))
+    .map((m) => {
+      const n = memberTaskCounts.get(m.user_id)!;
+      const first = m.full_name ? m.full_name.trim().split(/\s+/)[0] : "?";
+      return `${first}: ${n} tarefa${n !== 1 ? "s" : ""}`;
+    })
+    .join(" · ");
+
   // Progress ring
   const RING_R = 32;
   const circumference = 2 * Math.PI * RING_R;
@@ -159,13 +175,28 @@ export default async function Page() {
       {/* ── CABEÇALHO ─────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 h-11 mb-3">
         <span className="flex-1 text-[22px] font-semibold tracking-[-0.6px]">Morano</span>
+        <button
+          type="button"
+          aria-label="Notificações"
+          className="relative flex size-10 items-center justify-center rounded-full border border-border"
+          style={{ background: "var(--card)" }}
+        >
+          <Bell aria-hidden size={19} strokeWidth={1.6} />
+          {overdueCount > 0 ? (
+            <span
+              aria-hidden
+              className="absolute rounded-full border-2"
+              style={{ top: 9, right: 10, width: 8, height: 8, background: "#C8643C", borderColor: "var(--card)" }}
+            />
+          ) : null}
+        </button>
         <Link
           href="/configuracoes"
-          aria-label="Ajustes"
+          aria-label="Ajustes da casa"
           className="flex size-10 items-center justify-center rounded-full border border-border"
           style={{ background: "var(--card)" }}
         >
-          <Settings2 aria-hidden size={19} strokeWidth={1.6} />
+          <SlidersHorizontal aria-hidden size={19} strokeWidth={1.6} />
         </Link>
         <div
           className="flex size-10 items-center justify-center rounded-full text-[15px] font-semibold"
@@ -548,14 +579,14 @@ export default async function Page() {
             <div className="flex-1">
               <p className="text-[15px] font-semibold">Moradores</p>
               <p className="mt-[1px] text-[12px]" style={{ color: "var(--muted-foreground)" }}>
-                {homeMembers.length} na casa
+                {memberSummary || `${homeMembers.length} na casa`}
               </p>
             </div>
             <div
               className="rounded-[8px] px-2.5 py-1 text-[11.5px] font-medium"
               style={{ background: "var(--secondary)" }}
             >
-              {homeMembers.length} {homeMembers.length === 1 ? "morador" : "moradores"}
+              {homeMembers.length} na casa
             </div>
           </div>
           <div className="flex items-center gap-2.5">
@@ -564,6 +595,18 @@ export default async function Page() {
                 <AvatarCircle key={m.user_id} name={m.full_name} index={i} overlap={i > 0} />
               ))}
             </div>
+            <Link
+              href="/casa"
+              aria-label="Adicionar morador"
+              className="flex items-center justify-center rounded-full"
+              style={{
+                width: 44, height: 44, flexShrink: 0,
+                border: "1.5px dashed var(--muted-foreground)",
+                background: "transparent", color: "var(--foreground)",
+              }}
+            >
+              <Plus aria-hidden size={18} strokeWidth={1.8} />
+            </Link>
             <div className="flex-1" />
             <Link
               href="/casa"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { Event } from "@/features/events/queries";
 import {
   type FormState,
@@ -9,16 +9,79 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
-const EVENT_TYPES: Array<{ value: Event["event_type"]; label: string }> = [
-  { value: "aniversario", label: "Aniversário" },
-  { value: "viagem", label: "Viagem" },
-  { value: "jantar", label: "Jantar" },
-  { value: "consulta_medica", label: "Consulta" },
-  { value: "visita", label: "Visita" },
-  { value: "manutencao", label: "Manutenção" },
-  { value: "feriado", label: "Feriado" },
-  { value: "outros", label: "Outros" },
+// 4 visual tiles mapping to DB event_type values
+const EVENT_TILES: Array<{
+  value: Event["event_type"];
+  label: string;
+  iconBg: string;
+  iconColor: string;
+  activeBg: string;
+  activeBorder: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    value: "aniversario",
+    label: "Aniversário",
+    iconBg: "#FFFAF4",
+    iconColor: "#C25B6E",
+    activeBg: "#F3D2D8",
+    activeBorder: "#C25B6E",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 20v-7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v7M3 20h18M5 16c2 1.5 3.5 1.5 5 0s3.5-1.5 5 0 3 1 4 0M12 12V9M12 7c-.8 0-1.2-.8-1.2-1.5S12 3.5 12 3.5s1.2 1.3 1.2 2S12.8 7 12 7z"/>
+      </svg>
+    ),
+  },
+  {
+    value: "jantar",
+    label: "Festa",
+    iconBg: "#F6DDB9",
+    iconColor: "#2A1B12",
+    activeBg: "#FDF3E0",
+    activeBorder: "#D98A2B",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3c-3 0-5 2.5-5 5.5S9 14 12 14s5-2.5 5-5.5S15 3 12 3zM12 14v2.5M10.5 17.5h3M12 17.5V21"/>
+      </svg>
+    ),
+  },
+  {
+    value: "visita",
+    label: "Compromisso",
+    iconBg: "#D5DEEA",
+    iconColor: "#2A1B12",
+    activeBg: "#E8EFF6",
+    activeBorder: "#4F6D93",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4M9.5 15l2 2 3.5-3.5"/>
+      </svg>
+    ),
+  },
+  {
+    value: "outros",
+    label: "Outros",
+    iconBg: "#F5E4D2",
+    iconColor: "#2A1B12",
+    activeBg: "#F5E4D2",
+    activeBorder: "#725E4F",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>
+      </svg>
+    ),
+  },
 ];
+
+// Map any existing event_type to the closest tile value
+function normalizeType(t: Event["event_type"] | undefined): Event["event_type"] {
+  if (!t) return "outros";
+  if (t === "aniversario" || t === "jantar" || t === "visita" || t === "outros") return t;
+  if (t === "consulta_medica") return "visita";
+  if (t === "viagem" || t === "feriado") return "visita";
+  if (t === "manutencao") return "outros";
+  return "outros";
+}
 
 const inputClass =
   "w-full border border-border rounded-md px-3 py-2 text-sm bg-background";
@@ -55,6 +118,9 @@ export function EventForm({
     deleteAction ?? noopAction,
     initialFormState,
   );
+  const [selectedType, setSelectedType] = useState<Event["event_type"]>(
+    normalizeType(initialValues?.event_type)
+  );
 
   useEffect(() => {
     if (state.status === "success") onSuccess?.();
@@ -71,9 +137,64 @@ export function EventForm({
           <input type="hidden" name="id" value={initialValues.id} />
         ) : null}
 
+        {/* Type tiles */}
+        <div>
+          <p className="text-xs font-medium mb-1.5" style={{ color: "var(--muted-foreground)" }}>
+            Tipo
+          </p>
+          <input type="hidden" name="event_type" value={selectedType} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {EVENT_TILES.map((tile) => {
+              const active = selectedType === tile.value;
+              return (
+                <button
+                  key={tile.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedType(tile.value)}
+                  style={{
+                    height: 76,
+                    borderRadius: 14,
+                    background: active ? tile.activeBg : "var(--card)",
+                    border: active ? `1.5px solid ${tile.activeBorder}` : "1px solid var(--border)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                    color: "var(--foreground)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 34, height: 34, borderRadius: 17,
+                      background: tile.iconBg,
+                      color: tile.iconColor,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {tile.icon}
+                  </span>
+                  <span style={{ fontSize: 11.5, fontWeight: active ? 600 : 500 }}>
+                    {tile.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {state.fieldErrors?.event_type ? (
+            <p className="text-xs text-destructive mt-1">
+              {state.fieldErrors.event_type}
+            </p>
+          ) : null}
+        </div>
+
         <div>
           <label htmlFor="event-title" className="block text-sm font-medium mb-1">
-            Título
+            Nome
           </label>
           <input
             id="event-title"
@@ -86,29 +207,6 @@ export function EventForm({
           {state.fieldErrors?.title ? (
             <p className="text-xs text-destructive mt-1">
               {state.fieldErrors.title}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label htmlFor="event-type" className="block text-sm font-medium mb-1">
-            Tipo
-          </label>
-          <select
-            id="event-type"
-            name="event_type"
-            defaultValue={initialValues?.event_type ?? "outros"}
-            className={inputClass}
-          >
-            {EVENT_TYPES.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          {state.fieldErrors?.event_type ? (
-            <p className="text-xs text-destructive mt-1">
-              {state.fieldErrors.event_type}
             </p>
           ) : null}
         </div>
