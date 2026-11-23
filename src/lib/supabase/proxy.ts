@@ -62,8 +62,8 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   };
 
-  if (pathname === "/" && signedIn) {
-    return redirectTo(new URL("/inicio", request.url));
+  if (pathname === "/") {
+    return redirectTo(new URL(signedIn ? "/inicio" : "/entrar", request.url));
   }
 
   if (!signedIn && matches(pathname, PRIVATE_PREFIXES)) {
