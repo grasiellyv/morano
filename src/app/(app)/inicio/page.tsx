@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
-import { extendWindowForHome } from "@/features/tasks/actions";
+import { extendWindowForHome, completeOccurrence } from "@/features/tasks/actions";
 import {
   markMissedOccurrences,
   getTodayOccurrences,
@@ -133,6 +133,11 @@ export default async function Page() {
   const topTasks = todayOcc.filter((o) => o.status === "pending").slice(0, 4);
   const roomMap = new Map(home.rooms.map((r) => [r.id, r.name]));
   const memberMap = new Map(homeMembers.map((m, i) => [m.user_id, { name: m.full_name, index: i }]));
+
+  async function completeTaskAction(fd: FormData) {
+    "use server";
+    await completeOccurrence({ status: "idle" }, fd);
+  }
 
   // Contagem de tarefas pendentes por morador (para sub-texto do card Moradores)
   const memberTaskCounts = new Map<string, number>();
@@ -433,11 +438,15 @@ export default async function Page() {
                     {getInitial(memberInfo.name)}
                   </div>
                 )}
-                <button
-                  aria-label={`Concluir: ${o.task.title}`}
-                  className="shrink-0 rounded-full"
-                  style={{ width: 26, height: 26, border: "1.5px solid var(--muted-foreground)", background: "transparent" }}
-                />
+                <form action={completeTaskAction}>
+                  <input type="hidden" name="occurrence_id" value={o.id} />
+                  <button
+                    type="submit"
+                    aria-label={`Concluir: ${o.task.title}`}
+                    className="shrink-0 rounded-full"
+                    style={{ width: 26, height: 26, border: "1.5px solid var(--muted-foreground)", background: "transparent" }}
+                  />
+                </form>
               </div>
             );
           })}

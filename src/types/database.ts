@@ -559,14 +559,14 @@ isOneToOne: false
                   ]
                 },"shopping_items": {
                   Row: {
-                    "category_id": string | null,"created_at": string,"created_by": string | null,"home_id": string,"id": string,"is_purchased": boolean,"issue_id": string | null,"name": string,"notes": string | null,"purchased_at": string | null,"purchased_by": string | null,"quantity": number,"room_id": string | null,"unit": Database["public"]['Enums']["shopping_unit"],"updated_at": string
+                    "category_id": string | null,"created_at": string,"created_by": string | null,"home_id": string,"id": string,"is_purchased": boolean,"name": string,"notes": string | null,"purchased_at": string | null,"purchased_by": string | null,"quantity": number,"room_id": string | null,"unit": Database["public"]['Enums']["shopping_unit"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id": string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name": string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id": string,"id"?: string,"is_purchased"?: boolean,"name": string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
                   }
                   Update: {
-                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id"?: string,"id"?: string,"is_purchased"?: boolean,"issue_id"?: string | null,"name"?: string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
+                    "category_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"home_id"?: string,"id"?: string,"is_purchased"?: boolean,"name"?: string,"notes"?: string | null,"purchased_at"?: string | null,"purchased_by"?: string | null,"quantity"?: number,"room_id"?: string | null,"unit"?: Database["public"]['Enums']["shopping_unit"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -586,12 +586,6 @@ isOneToOne: false
       columns: ["home_id"]
 isOneToOne: false
       referencedRelation: "homes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "shopping_items_issue_id_fkey"
-      columns: ["issue_id"]
-isOneToOne: false
-      referencedRelation: "home_issues"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "shopping_items_purchased_by_fkey"

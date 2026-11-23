@@ -327,12 +327,18 @@ export function TaskList({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            gap: 5,
             fontSize: 13.5,
-            fontWeight: 400,
-            color: "var(--muted-foreground)",
+            fontWeight: 500,
+            color: "var(--foreground)",
+            opacity: 0.5,
             textDecoration: "none",
           }}
         >
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="4" y="5" width="16" height="15" rx="3"/>
+            <path d="M4 10h16M9 3v4M15 3v4"/>
+          </svg>
           Calendário
         </Link>
       </div>

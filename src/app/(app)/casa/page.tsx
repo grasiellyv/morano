@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { getHomeWithRooms, getRoutinesCount } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -107,6 +108,29 @@ export default async function Page() {
             <Link href="/casa/membros">Ver membros →</Link>
           </Button>
         </div>
+      </section>
+
+      {/* Links de gestão */}
+      <section className="mt-4">
+        <Link
+          href="/configuracoes"
+          className="flex items-center gap-3 rounded-xl border border-border p-3.5 no-underline"
+          style={{ background: "var(--card)", color: "var(--foreground)" }}
+        >
+          <div
+            className="flex items-center justify-center rounded-[9px]"
+            style={{ width: 32, height: 32, background: "var(--secondary)" }}
+          >
+            <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 6h16M4 12h16M4 18h16" />
+              <circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="16" cy="12" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="10" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+          </div>
+          <span className="flex-1 text-sm font-medium">Configurações</span>
+          <ChevronRight size={16} strokeWidth={1.8} style={{ color: "var(--muted-foreground)" }} />
+        </Link>
       </section>
     </>
   );
