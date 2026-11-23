@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { startOfISOWeek, addWeeks, subWeeks, addDays, parseISO, format } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"] as const;
 
 type Props = {
   selectedDate: string;
   today: string;
+  taskDates?: Set<string>;
 };
 
-export function WeekNav({ selectedDate, today }: Props) {
+export function WeekNav({ selectedDate, today, taskDates }: Props) {
   const selected = parseISO(selectedDate);
   const weekStart = startOfISOWeek(selected);
 
@@ -18,54 +20,76 @@ export function WeekNav({ selectedDate, today }: Props) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     const dateStr = format(d, "yyyy-MM-dd");
-    const dayNum = format(d, "d");
-    return { label: DAY_LABELS[i], dateStr, dayNum };
+    return { label: DAY_LABELS[i]!, dateStr, dayNum: format(d, "d") };
   });
 
   return (
-    <nav className="mb-6" aria-label="Navegação de semana">
+    <nav className="mt-3 mb-3" aria-label="Navegação de semana">
       <div className="flex items-center gap-1">
         <Link
           href={`?date=${prevWeekMonday}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          className="flex shrink-0 items-center justify-center rounded-full border border-border"
+          style={{ width: 28, height: 28, background: "var(--card)", color: "var(--muted-foreground)" }}
           aria-label="Semana anterior"
         >
-          ‹
+          <ChevronLeft size={14} strokeWidth={2} />
         </Link>
-        <div className="flex flex-1 justify-around">
+
+        <div className="flex flex-1 gap-1">
           {days.map(({ label, dateStr, dayNum }) => {
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === today;
+            const hasTasks = taskDates?.has(dateStr) ?? false;
+            const active = isSelected || isToday;
+
             return (
               <Link
                 key={dateStr}
                 href={`?date=${dateStr}`}
-                className={[
-                  "flex flex-col items-center rounded-lg px-2 py-1.5 text-sm transition-colors",
-                  isSelected
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-foreground hover:bg-muted",
-                ].join(" ")}
+                className="flex flex-1 flex-col items-center justify-center gap-[3px] rounded-[14px]"
+                style={{
+                  height: 62,
+                  background: active ? "var(--nav-active)" : "var(--card)",
+                  color: active ? "var(--nav-active-ink)" : "var(--foreground)",
+                  border: active ? "none" : "1px solid var(--border)",
+                }}
                 aria-current={isSelected ? "date" : undefined}
               >
-                <span className="text-xs">{label}</span>
-                <span className="font-medium">{dayNum}</span>
-                {isToday ? (
+                <span
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: active ? 600 : 500,
+                    opacity: active ? 0.8 : 1,
+                    color: active ? undefined : "var(--muted-foreground)",
+                  }}
+                >
+                  {label}
+                </span>
+                <span style={{ fontSize: 17, fontWeight: 500 }}>{dayNum}</span>
+                {hasTasks ? (
                   <span
-                    className="mt-0.5 h-1 w-1 rounded-full bg-current"
-                    aria-hidden="true"
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: 3,
+                      background: active ? "#F2C48D" : "#D98A2B",
+                    }}
                   />
-                ) : null}
+                ) : (
+                  <span style={{ width: 5, height: 5 }} />
+                )}
               </Link>
             );
           })}
         </div>
+
         <Link
           href={`?date=${nextWeekMonday}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          className="flex shrink-0 items-center justify-center rounded-full border border-border"
+          style={{ width: 28, height: 28, background: "var(--card)", color: "var(--muted-foreground)" }}
           aria-label="Próxima semana"
         >
-          ›
+          <ChevronRight size={14} strokeWidth={2} />
         </Link>
       </div>
     </nav>

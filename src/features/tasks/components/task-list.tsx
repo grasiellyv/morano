@@ -164,51 +164,96 @@ export function TaskList({
 
   return (
     <>
-      {/* Page header with "Nova tarefa" button */}
-      <header className="flex flex-wrap items-start justify-between gap-4 pb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Rotina</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/rotina/tarefas"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            Gerenciar
-          </Link>
-          <Link
-            href="/rotina/calendario"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            Calendário
-          </Link>
-          <Link
-            href="/rotina/historico"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            Histórico
-          </Link>
+      {/* Page header */}
+      <header className="flex items-center justify-between pb-5">
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: 400,
+            letterSpacing: "-0.4px",
+            color: "var(--foreground)",
+            lineHeight: 1.2,
+          }}
+        >
+          Rotina
+        </h1>
+        <div className="flex items-center gap-2">
+          {rotations != null ? (
+            <button
+              type="button"
+              onClick={() => setShowManageRotations(true)}
+              className="flex items-center justify-center rounded-full border border-border"
+              style={{
+                width: 40,
+                height: 40,
+                background: "var(--card)",
+                color: "var(--muted-foreground)",
+                fontSize: 13,
+              }}
+              title="Rodízios"
+            >
+              ↺
+            </button>
+          ) : null}
           <Link
             href={filterToggleHref}
-            className={`text-sm underline-offset-4 hover:underline ${filterEssencial ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+            className="flex items-center justify-center rounded-full border border-border"
+            style={{
+              width: 40,
+              height: 40,
+              background: filterEssencial ? "var(--nav-active)" : "var(--card)",
+              color: filterEssencial ? "var(--nav-active-ink)" : "var(--muted-foreground)",
+            }}
+            title={filterEssencial ? "Ver todas" : "Essenciais"}
           >
-            {filterEssencial ? "Ver todas" : "Essenciais"}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
           </Link>
-          {rotations != null ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowManageRotations(true)}
-            >
-              Rodízios
-            </Button>
-          ) : null}
-          <Button
+          <button
             type="button"
             onClick={() => setShowCreate((v) => !v)}
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: 40,
+              height: 40,
+              background: showCreate ? "var(--muted)" : "var(--nav-active)",
+              color: showCreate ? "var(--muted-foreground)" : "var(--nav-active-ink)",
+              fontSize: 22,
+              fontWeight: 300,
+              lineHeight: 1,
+            }}
+            title={showCreate ? "Cancelar" : "Nova tarefa"}
           >
-            {showCreate ? "Cancelar" : "Nova tarefa"}
-          </Button>
+            {showCreate ? "×" : "+"}
+          </button>
         </div>
       </header>
+
+      {/* Secondary nav links */}
+      <div className="flex items-center gap-4 pb-4 -mt-1">
+        <Link
+          href="/rotina/tarefas"
+          className="text-xs"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Gerenciar
+        </Link>
+        <Link
+          href="/rotina/calendario"
+          className="text-xs"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Calendário
+        </Link>
+        <Link
+          href="/rotina/historico"
+          className="text-xs"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Histórico
+        </Link>
+      </div>
 
       {/* Create task form */}
       {showCreate ? (

@@ -22,14 +22,14 @@ export function DailyProgressBar({ occurrences }: { occurrences: OccurrenceWithT
   const label = total === 1 ? "tarefa" : "tarefas";
 
   return (
-    <div className="mb-4 space-y-1">
-      <p className="text-sm text-muted-foreground">
+    <div className="mb-4 space-y-1.5">
+      <p className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
         {done} de {total} {label} {total === 1 ? "concluída" : "concluídas"}
       </p>
-      <div className="bg-muted rounded-full h-2">
+      <div className="rounded-full" style={{ height: 4, background: "var(--muted)" }}>
         <div
-          className="bg-primary rounded-full h-2 transition-all"
-          style={{ width: `${percent}%` }}
+          className="rounded-full transition-all"
+          style={{ height: 4, width: `${percent}%`, background: "#D98A2B" }}
         />
       </div>
     </div>

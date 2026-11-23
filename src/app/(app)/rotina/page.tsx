@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { getHomeMembers } from "@/features/members/queries";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
-import { parseISO, format } from "date-fns";
+import { parseISO, format, startOfISOWeek, addDays } from "date-fns";
 import { getLocalDateString } from "@/lib/dates";
 import {
   extendWindowForHome,
@@ -106,6 +106,16 @@ export default async function Page({
     <AbsenceBanner absenceEnd={absence.absence_end} clearAbsenceAction={clearAbsence} />
   ) : undefined;
 
+  // Build the set of dates in the current ISO week that have active task occurrences
+  const weekStart = startOfISOWeek(parseISO(selectedDate));
+  const weekDates = new Set(Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), "yyyy-MM-dd")));
+  const taskDates = new Set<string>();
+  for (const occ of [...todayOcc, ...overdueOcc, ...upcomingOcc]) {
+    if (occ.task.status === "active" && weekDates.has(occ.scheduled_for)) {
+      taskDates.add(occ.scheduled_for);
+    }
+  }
+
   return (
     <TaskList
       today={filteredOccurrences}
@@ -115,7 +125,7 @@ export default async function Page({
       selectedDate={selectedDate}
       createTaskAction={createTask}
       rooms={home.rooms}
-      weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} />}
+      weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} taskDates={taskDates} />}
       absenceBanner={absenceBanner}
       events={events}
       createEventAction={createEvent}
