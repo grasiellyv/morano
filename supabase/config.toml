@@ -258,16 +258,23 @@ otp_expiry = 3600
 # Em produção, copie os mesmos templates no painel do Supabase (Authentication > Emails).
 [auth.email.template.confirmation]
 subject = "Confirme seu e-mail no MORANO"
-content_path = "./supabase/templates/confirmation.html"
+content_path = "./emails/confirmar-cadastro.html"
 
 [auth.email.template.recovery]
 subject = "Redefina sua senha do MORANO"
-content_path = "./supabase/templates/recovery.html"
+content_path = "./emails/redefinir-senha.html"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.invite]
+subject = "Você foi convidado para uma casa no MORANO"
+content_path = "./emails/convite.html"
+
+[auth.email.template.magic_link]
+subject = "Seu link de acesso ao MORANO"
+content_path = "./emails/link-magico.html"
+
+[auth.email.template.email_change]
+subject = "Confirme seu novo e-mail no MORANO"
+content_path = "./emails/troca-de-email.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

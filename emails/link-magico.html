@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Seu link de acesso</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FBF0E4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#FBF0E4;font-size:1px;line-height:1px;">Toque no botão para entrar no Morano.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FBF0E4" style="background:#FBF0E4;">
+<tr><td align="center" style="padding:32px 16px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+
+<!-- Marca (placeholder do logo) -->
+<tr><td style="padding:0 4px 18px;font-family:'DM Sans',Helvetica,Arial,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.6px;color:#2A1B12;">Morano</td></tr>
+
+<tr><td style="border-radius:20px;overflow:hidden;border:1px solid #EDDCCB;background:#FFFAF4;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<!-- Faixa principal -->
+<tr><td bgcolor="#3A2A1E" style="background-color:#3A2A1E;background-image:radial-gradient(circle at 100% 0%, rgba(242,183,122,0.40), rgba(242,183,122,0) 55%), linear-gradient(160deg,#4B3527,#2B1E16);padding:28px 28px 30px;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#FBEFE3;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:rgba(251,239,227,0.14);border-radius:10px;padding:5px 11px;font-family:'DM Sans',Helvetica,Arial,sans-serif;font-size:12.5px;font-weight:500;color:#FBEFE3;">Acesso</td></tr></table>
+<div style="font-size:28px;font-weight:300;line-height:1.2;letter-spacing:-0.4px;color:#FBEFE3;margin:16px 0 0;">Entrar no Morano</div>
+</td></tr>
+
+<!-- Corpo -->
+<tr><td style="padding:28px 28px 8px;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#2A1B12;">
+<p style="margin:0;font-size:16px;line-height:1.6;color:#2A1B12;">Toque no botão abaixo para entrar. O link é de uso único e expira em pouco tempo.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;"><tr><td bgcolor="#2A1B12" style="background:#2A1B12;border-radius:12px;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'DM Sans',Helvetica,Arial,sans-serif;font-size:15px;font-weight:500;color:#FBEFE3;text-decoration:none;border-radius:12px;">Entrar</a></td></tr></table>
+<p style="margin:22px 0 0;font-size:12.5px;line-height:1.55;color:#725E4F;">Se o botão não abrir, copie e cole este endereço no navegador:<br><a href="{{ .ConfirmationURL }}" style="color:#725E4F;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+</td></tr>
+
+<!-- Nota -->
+<tr><td style="padding:8px 28px 28px;font-family:'DM Sans',Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #EDDCCB;padding-top:18px;font-size:13px;line-height:1.55;color:#725E4F;">Se você não pediu este acesso, pode ignorar este e-mail. Ninguém entra na sua conta sem o link.</td></tr></table>
+</td></tr>
+
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:22px 12px 0;font-family:'DM Sans',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#725E4F;">
+Enviado pelo Morano · <a href="{{ .SiteURL }}" style="color:#725E4F;text-decoration:underline;">{{ .SiteURL }}</a>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
