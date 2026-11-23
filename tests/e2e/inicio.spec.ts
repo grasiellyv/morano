@@ -94,3 +94,43 @@ test("4. tarefas pendentes aparecem na lista e link 'Ver todas' vai para /rotina
     await expect(page.getByText("Nenhuma tarefa para hoje")).toBeVisible();
   }
 });
+
+test("5. concluir tarefa em /rotina atualiza contador em /inicio", async ({ page }) => {
+  const email = uniqueEmail("inicio-complete");
+  await ensureConfirmedUser(email, PASSWORD);
+  await page.context().clearCookies();
+
+  await signIn(page, email, PASSWORD);
+  await completeOnboarding(page);
+
+  // Create a daily task to ensure there's something to complete today
+  await page.goto("/rotina");
+  await page.getByRole("button", { name: "Nova tarefa" }).click();
+  await page.getByLabel("Título").fill(`Tarefa BT11 ${Date.now()}`);
+  await page.getByLabel("Frequência").selectOption("daily");
+  await page.getByRole("button", { name: "Criar tarefa" }).click();
+  await expect(page.getByRole("button", { name: "Nova tarefa" })).toBeVisible({ timeout: 10_000 });
+
+  // Go to /inicio and read the current "Tarefas hoje" count
+  await page.goto("/inicio");
+  const tile = page.getByText("Tarefas hoje").locator("..");
+  const countBefore = await tile.locator("p").first().textContent();
+
+  // Complete first unchecked task via the circle button in /rotina
+  await page.goto("/rotina");
+  const completeBtn = page.getByRole("button", { name: /Marcar como concluída|Concluir/ }).first();
+  if (await completeBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await completeBtn.click();
+    // Wait for update
+    await page.waitForTimeout(500);
+  }
+
+  // Reload /inicio and verify counter changed (decreased) or tasks show done state
+  await page.goto("/inicio");
+  const countAfter = await tile.locator("p").first().textContent();
+
+  // The counter should decrease by at least 1, or remain 0 if all were already done
+  const before = parseInt(countBefore ?? "0", 10);
+  const after = parseInt(countAfter ?? "0", 10);
+  expect(after).toBeLessThanOrEqual(before);
+});

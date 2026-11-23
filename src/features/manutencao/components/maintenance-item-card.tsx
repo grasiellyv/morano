@@ -29,11 +29,11 @@ const STATUS_LABELS: Record<MaintenanceItem["status"], string> = {
   cancelado: "Cancelado",
 };
 
-const STATUS_BADGE: Record<MaintenanceItem["status"], string> = {
-  pendente: "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  em_andamento: "rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  concluido: "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  cancelado: "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground",
+const STATUS_BADGE_STYLE: Record<MaintenanceItem["status"], React.CSSProperties> = {
+  pendente:    { borderRadius: 20, background: "var(--warn-bg)", color: "var(--warn-ink)", padding: "2px 10px", fontSize: 12, fontWeight: 500 },
+  em_andamento:{ borderRadius: 20, background: "#D5DEEA",        color: "#2C4A6E",         padding: "2px 10px", fontSize: 12, fontWeight: 500 },
+  concluido:   { borderRadius: 20, background: "#E0EADB",        color: "#2C5633",         padding: "2px 10px", fontSize: 12, fontWeight: 500 },
+  cancelado:   { borderRadius: 20, background: "var(--secondary)", color: "var(--muted-foreground)", padding: "2px 10px", fontSize: 12, fontWeight: 500 },
 };
 
 type Props = {
@@ -98,7 +98,7 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
 
   if (showEdit) {
     return (
-      <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <div style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "14px 16px" }}>
         <form action={editDispatch} className="space-y-3">
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="room_id" value={item.room_id ?? ""} />
@@ -165,7 +165,15 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3">
+    <div
+      style={{
+        borderRadius: 16,
+        border: "1px solid var(--border)",
+        background: "var(--card)",
+        boxShadow: "var(--shadow)",
+        padding: "14px 16px",
+      }}
+    >
         {/* Header: title + badge */}
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -174,7 +182,7 @@ export function MaintenanceItemCard({ item, onCompleted }: Props) {
               <p className="mt-0.5 text-xs text-muted-foreground">{item.room.name}</p>
             ) : null}
           </div>
-          <span className={STATUS_BADGE[item.status]}>{STATUS_LABELS[item.status]}</span>
+          <span style={STATUS_BADGE_STYLE[item.status]}>{STATUS_LABELS[item.status]}</span>
         </div>
 
         {/* Description */}

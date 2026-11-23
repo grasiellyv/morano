@@ -55,29 +55,20 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
 
   const isEmpty = filteredPending.length === 0 && filteredPurchased.length === 0;
 
-  const chipBase = "rounded-full border px-3 py-1 text-xs transition-colors";
-  const chipActive = "border-foreground bg-foreground text-background";
-  const chipInactive = "border-border bg-card text-muted-foreground hover:bg-muted";
+  function chipStyle(active: boolean): React.CSSProperties {
+    return active
+      ? { height: 32, borderRadius: 10, background: "var(--nav-active)", color: "var(--nav-active-ink)", border: "none", padding: "0 14px", fontSize: 13, fontWeight: 500 }
+      : { height: 32, borderRadius: 10, background: "var(--secondary)", color: "var(--muted-foreground)", border: "none", padding: "0 14px", fontSize: 13, fontWeight: 500 };
+  }
 
   return (
     <div className="space-y-8">
       {/* Room filter chips */}
       {rooms.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFilterRoomId(null)}
-            className={`${chipBase} ${filterRoomId === null ? chipActive : chipInactive}`}
-          >
-            Todos
-          </button>
+          <button type="button" onClick={() => setFilterRoomId(null)} style={chipStyle(filterRoomId === null)}>Todos</button>
           {rooms.map((room) => (
-            <button
-              key={room.id}
-              type="button"
-              onClick={() => setFilterRoomId(room.id)}
-              className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
-            >
+            <button key={room.id} type="button" onClick={() => setFilterRoomId(room.id)} style={chipStyle(filterRoomId === room.id)}>
               {room.name}
             </button>
           ))}
@@ -111,20 +102,9 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
       {/* Category filter chips */}
       {activeCategories.length > 1 ? (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFilterCategoryId(null)}
-            className={`${chipBase} ${filterCategoryId === null ? chipActive : chipInactive}`}
-          >
-            Todas
-          </button>
+          <button type="button" onClick={() => setFilterCategoryId(null)} style={chipStyle(filterCategoryId === null)}>Todas</button>
           {activeCategories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)}
-              className={`${chipBase} ${filterCategoryId === cat.id ? chipActive : chipInactive}`}
-            >
+            <button key={cat.id} type="button" onClick={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)} style={chipStyle(filterCategoryId === cat.id)}>
               {cat.icon} {cat.name}
             </button>
           ))}

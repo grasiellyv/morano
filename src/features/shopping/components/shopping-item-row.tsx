@@ -201,38 +201,38 @@ export function ShoppingItemRow({ item, categories }: Props) {
 
   return (
     <div
-      className={`flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 ${
-        item.is_purchased ? "opacity-60" : ""
-      }`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        borderRadius: 14,
+        border: "1px solid var(--border)",
+        background: "var(--card)",
+        boxShadow: "var(--shadow)",
+        padding: "10px 14px",
+        minHeight: 52,
+        opacity: item.is_purchased ? 0.6 : 1,
+      }}
     >
-      {/* Checkbox — toggles purchased state */}
-      <form action={toggleDispatch} className="mt-0.5 shrink-0">
+      {/* Checkbox */}
+      <form action={toggleDispatch} className="shrink-0">
         <input type="hidden" name="id" value={item.id} />
-        <input
-          type="hidden"
-          name="is_purchased"
-          value={String(!item.is_purchased)}
-        />
+        <input type="hidden" name="is_purchased" value={String(!item.is_purchased)} />
         <button
           type="submit"
           disabled={anyPending}
           aria-label={item.is_purchased ? "Desmarcar como comprado" : "Marcar como comprado"}
-          className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors disabled:opacity-50 ${
-            item.is_purchased
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border hover:bg-muted"
-          }`}
+          style={{
+            width: 22, height: 22, borderRadius: 11,
+            border: item.is_purchased ? "none" : "1.5px solid var(--muted-foreground)",
+            background: item.is_purchased ? "var(--nav-active)" : "transparent",
+            color: item.is_purchased ? "var(--nav-active-ink)" : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
           {item.is_purchased ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 12 12"
-              className="size-3"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-            >
+            <svg viewBox="0 0 12 12" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden>
               <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : null}
@@ -241,35 +241,27 @@ export function ShoppingItemRow({ item, categories }: Props) {
 
       {/* Main content */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <span
-            className={`text-sm font-medium leading-snug ${
-              item.is_purchased ? "text-muted-foreground line-through" : "text-foreground"
-            }`}
+            style={{
+              fontSize: 14, fontWeight: 500,
+              color: item.is_purchased ? "var(--muted-foreground)" : "var(--foreground)",
+              textDecoration: item.is_purchased ? "line-through" : "none",
+            }}
           >
             {item.name}
           </span>
           {item.category ? (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+            <span style={{ borderRadius: 8, background: "var(--secondary)", color: "var(--muted-foreground)", padding: "1px 7px", fontSize: 11.5 }}>
               {item.category.icon} {item.category.name}
             </span>
-          ) : (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-              Sem categoria
-            </span>
-          )}
+          ) : null}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p style={{ marginTop: 1, fontSize: 12, color: "var(--muted-foreground)" }}>
           {item.quantity} {UNIT_LABELS[item.unit]}
+          {item.notes ? ` · ${item.notes}` : ""}
+          {item.room ? ` · ${item.room.name}` : ""}
         </p>
-        {item.notes ? (
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.notes}</p>
-        ) : null}
-        {item.room ? (
-          <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {item.room.name}
-          </span>
-        ) : null}
       </div>
 
       {/* Menu "⋯" */}

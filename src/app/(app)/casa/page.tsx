@@ -7,7 +7,6 @@ import { getHomeWithRooms, getRoutinesCount } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeMembers } from "@/features/members/queries";
 import { PageHeader } from "@/components/feedback/page-header";
-import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Minha casa" };
 
@@ -52,62 +51,75 @@ export default async function Page() {
       <PageHeader
         title={home.name}
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/casa/editar">Editar dados</Link>
-          </Button>
+          <Link
+            href="/casa/editar"
+            className="flex items-center gap-1 no-underline"
+            style={{ fontSize: 13, fontWeight: 500, color: "var(--muted-foreground)", borderRadius: 8, border: "1px solid var(--border)", background: "var(--card)", padding: "5px 10px" }}
+          >
+            Editar dados
+          </Link>
         }
       />
 
       {/* Resumo da residência */}
-      <section className="mb-6">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 text-sm">
+      <section
+        className="mb-4"
+        style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "14px 16px" }}
+      >
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
           <div>
-            <dt className="text-muted-foreground">Tipo</dt>
-            <dd className="font-medium">{PROPERTY_TYPE_LABELS[home.property_type] ?? home.property_type}</dd>
+            <dt style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Tipo</dt>
+            <dd style={{ fontSize: 14, fontWeight: 500, marginTop: 1 }}>{PROPERTY_TYPE_LABELS[home.property_type] ?? home.property_type}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Posse</dt>
-            <dd className="font-medium">{OWNERSHIP_TYPE_LABELS[home.ownership_type] ?? home.ownership_type}</dd>
+            <dt style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Posse</dt>
+            <dd style={{ fontSize: 14, fontWeight: 500, marginTop: 1 }}>{OWNERSHIP_TYPE_LABELS[home.ownership_type] ?? home.ownership_type}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Composição</dt>
-            <dd className="font-medium">{HOUSEHOLD_TYPE_LABELS[home.household_type] ?? home.household_type}</dd>
+            <dt style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Composição</dt>
+            <dd style={{ fontSize: 14, fontWeight: 500, marginTop: 1 }}>{HOUSEHOLD_TYPE_LABELS[home.household_type] ?? home.household_type}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Moradores</dt>
-            <dd className="font-medium">{home.resident_count}</dd>
+            <dt style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Moradores</dt>
+            <dd style={{ fontSize: 14, fontWeight: 500, marginTop: 1 }}>{home.resident_count}</dd>
           </div>
         </dl>
       </section>
 
       {/* Cards de stats */}
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-3">
         {/* Cômodos */}
-        <div className="border rounded-xl p-4 space-y-1">
-          <p className="text-muted-foreground text-xs uppercase tracking-wide">Cômodos</p>
-          <p className="text-2xl font-semibold">{home.rooms.length}</p>
-          <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs">
-            <Link href="/casa/comodos">Ver cômodos →</Link>
-          </Button>
-        </div>
+        <Link
+          href="/casa/comodos"
+          className="no-underline"
+          style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 2, color: "var(--foreground)" }}
+        >
+          <p style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Cômodos</p>
+          <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.1 }}>{home.rooms.length}</p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>Ver cômodos →</p>
+        </Link>
 
         {/* Tarefas */}
-        <div className="border rounded-xl p-4 space-y-1">
-          <p className="text-muted-foreground text-xs uppercase tracking-wide">Tarefas da rotina</p>
-          <p className="text-2xl font-semibold">{routinesCount}</p>
-          <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs">
-            <Link href="/rotina">Ver rotina →</Link>
-          </Button>
-        </div>
+        <Link
+          href="/rotina"
+          className="no-underline"
+          style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 2, color: "var(--foreground)" }}
+        >
+          <p style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Tarefas da rotina</p>
+          <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.1 }}>{routinesCount}</p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>Ver rotina →</p>
+        </Link>
 
         {/* Membros */}
-        <div className="border rounded-xl p-4 space-y-1">
-          <p className="text-muted-foreground text-xs uppercase tracking-wide">Membros</p>
-          <p className="text-2xl font-semibold">{members.length}</p>
-          <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs">
-            <Link href="/casa/membros">Ver membros →</Link>
-          </Button>
-        </div>
+        <Link
+          href="/casa/membros"
+          className="no-underline"
+          style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 2, color: "var(--foreground)" }}
+        >
+          <p style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Membros</p>
+          <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.1 }}>{members.length}</p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>Ver membros →</p>
+        </Link>
       </section>
 
       {/* Links de gestão */}

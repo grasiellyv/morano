@@ -33,7 +33,7 @@ function ReorderItemRow({
   return (
     <form
       action={dispatch}
-      className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+      style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 14, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "var(--shadow)", padding: "10px 14px" }}
     >
       <input type="hidden" name="list_item_id" value={item.id} />
       <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export function ReorderSuggestions({
     <details open className="mb-6">
       <summary className="mb-3 flex cursor-pointer list-none items-center gap-2 select-none">
         <h2 className="text-base font-semibold">Repor em breve</h2>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+        <span style={{ borderRadius: 20, background: "var(--warn-bg)", color: "var(--warn-ink)", padding: "1px 8px", fontSize: 12, fontWeight: 500 }}>
           {suggestions.length}
         </span>
         <svg

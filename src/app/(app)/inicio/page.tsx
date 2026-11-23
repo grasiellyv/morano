@@ -203,13 +203,14 @@ export default async function Page() {
         >
           <SlidersHorizontal aria-hidden size={19} strokeWidth={1.6} />
         </Link>
-        <div
-          className="flex size-10 items-center justify-center rounded-full text-[15px] font-semibold"
+        <Link
+          href="/perfil"
+          className="flex size-10 items-center justify-center rounded-full text-[15px] font-semibold no-underline"
           style={{ background: "#EBD5BE", color: "#6B3A17" }}
           aria-label={`Perfil de ${firstName}`}
         >
           {getInitial(fullName)}
-        </div>
+        </Link>
       </div>
 
       {/* ── HERO CARD ─────────────────────────────────────────── */}

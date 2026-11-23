@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getMaintenanceItems } from "@/features/manutencao/queries";
@@ -26,7 +28,14 @@ export default async function Page() {
 
   return (
     <>
-      <PageHeader title="Manutenção" />
+      <PageHeader
+        title="Manutenção"
+        actions={
+          <Link href="/configuracoes" aria-label="Configurações" className="flex size-9 items-center justify-center rounded-full border border-border" style={{ background: "var(--card)" }}>
+            <SlidersHorizontal aria-hidden size={17} strokeWidth={1.6} />
+          </Link>
+        }
+      />
       <MaintenanceList items={items} rooms={rooms} />
     </>
   );
