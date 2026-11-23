@@ -282,8 +282,8 @@ export function TaskList({
         const allOccs = [...today, ...overdue, ...upcoming];
         const roomsWithTasks = rooms.filter((r) => allOccs.some((o) => o.task.room_id === r.id));
         if (roomsWithTasks.length < 2) return null;
-        const chipBase = "rounded-full border px-3 py-1 text-xs transition-colors";
-        const chipActive = "border-foreground bg-foreground text-background";
+        const chipBase = "border px-3 text-xs transition-colors font-medium";
+        const chipActive = "border-primary text-primary-foreground";
         const chipInactive = "border-border bg-card text-muted-foreground hover:bg-muted";
         return (
           <div className="mb-6 flex flex-wrap gap-2">
@@ -291,6 +291,7 @@ export function TaskList({
               type="button"
               onClick={() => setFilterRoomId(null)}
               className={`${chipBase} ${filterRoomId === null ? chipActive : chipInactive}`}
+              style={{ height: 32, borderRadius: 10, background: filterRoomId === null ? "var(--nav-active)" : undefined }}
             >
               Todos
             </button>
@@ -300,6 +301,7 @@ export function TaskList({
                 type="button"
                 onClick={() => setFilterRoomId(filterRoomId === room.id ? null : room.id)}
                 className={`${chipBase} ${filterRoomId === room.id ? chipActive : chipInactive}`}
+                style={{ height: 32, borderRadius: 10, background: filterRoomId === room.id ? "var(--nav-active)" : undefined }}
               >
                 {room.name}
               </button>
