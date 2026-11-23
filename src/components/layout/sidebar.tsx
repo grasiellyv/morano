@@ -35,7 +35,7 @@ export function Sidebar() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     rowClass,
-                    active ? "bg-sand text-foreground" : "text-muted-foreground hover:bg-sand/60",
+                    active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60",
                   )}
                 >
                   <Icon aria-hidden className="size-5" />
@@ -51,7 +51,7 @@ export function Sidebar() {
             aria-current={settingsActive ? "page" : undefined}
             className={cn(
               rowClass,
-              settingsActive ? "bg-sand text-foreground" : "text-muted-foreground hover:bg-sand/60",
+              settingsActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60",
             )}
           >
             <SettingsIcon aria-hidden className="size-5" />

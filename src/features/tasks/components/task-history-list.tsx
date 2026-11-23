@@ -12,7 +12,7 @@ function StatusIcon({ status }: { status: OccurrenceWithRoom["status"] }) {
   switch (status) {
     case "completed":
       return (
-        <span className="text-sage-ink font-semibold" aria-label="Concluída">
+        <span className="text-muted-foreground font-semibold" aria-label="Concluída">
           ✓
         </span>
       );
@@ -36,7 +36,7 @@ function StatusIcon({ status }: { status: OccurrenceWithRoom["status"] }) {
 export function TaskHistoryList({ occurrences }: Props) {
   if (occurrences.length === 0) {
     return (
-      <div className="text-center py-16 text-sage-ink">
+      <div className="text-center py-16 text-muted-foreground">
         <p className="text-sm">Nenhuma tarefa no histórico ainda.</p>
       </div>
     );
@@ -54,8 +54,8 @@ export function TaskHistoryList({ occurrences }: Props) {
               <span
                 className={`text-sm font-medium ${
                   occ.task.status === "archived"
-                    ? "text-sage-ink"
-                    : "text-graphite"
+                    ? "text-muted-foreground"
+                    : "text-foreground"
                 }`}
               >
                 {occ.task.title}
@@ -64,7 +64,7 @@ export function TaskHistoryList({ occurrences }: Props) {
                 <span className="text-xs text-stone">(arquivada)</span>
               )}
             </div>
-            <div className="text-xs text-sage-ink mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {format(parseISO(occ.scheduled_for), "d 'de' MMMM", { locale: ptBR })}
               {occ.task.room ? (
                 <span className="ml-1 text-stone">· {occ.task.room.name}</span>

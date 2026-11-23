@@ -130,7 +130,8 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
       {isCompleted ? (
         <span
           aria-label="Concluída"
-          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sage text-xs text-white"
+          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs text-primary-foreground"
+          style={{ background: "#D98A2B" }}
         >
           ✓
         </span>

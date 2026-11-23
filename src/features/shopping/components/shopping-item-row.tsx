@@ -219,8 +219,8 @@ export function ShoppingItemRow({ item, categories }: Props) {
           aria-label={item.is_purchased ? "Desmarcar como comprado" : "Marcar como comprado"}
           className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors disabled:opacity-50 ${
             item.is_purchased
-              ? "border-sage bg-sage text-white"
-              : "border-stone hover:bg-muted"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:bg-muted"
           }`}
         >
           {item.is_purchased ? (

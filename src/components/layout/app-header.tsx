@@ -14,7 +14,7 @@ export function AppHeader() {
           aria-label="Configurações"
           className="focus-visible:ring-ring flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-2"
         >
-          <span className="bg-sand text-foreground flex size-8 items-center justify-center rounded-full">
+          <span className="bg-secondary text-foreground flex size-8 items-center justify-center rounded-full">
             <User aria-hidden className="size-4" />
           </span>
         </Link>

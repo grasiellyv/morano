@@ -82,7 +82,7 @@ export function FormMessage({
         "rounded-lg border px-3 py-2.5 text-sm",
         tone === "error"
           ? "border-destructive/30 text-destructive"
-          : "border-border bg-sand/60 text-foreground",
+          : "border-border bg-muted/60 text-foreground",
       )}
     >
       {children}

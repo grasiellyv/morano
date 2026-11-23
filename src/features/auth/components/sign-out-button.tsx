@@ -27,8 +27,8 @@ export function SignOutButton({
         className={cn(
           "focus-visible:ring-ring outline-none focus-visible:ring-2 disabled:opacity-50",
           variant === "icon"
-            ? "text-foreground hover:bg-sand/60 flex size-11 items-center justify-center rounded-full"
-            : "text-muted-foreground hover:bg-sand/60 flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium",
+            ? "text-foreground hover:bg-muted flex size-11 items-center justify-center rounded-full"
+            : "text-muted-foreground hover:bg-muted flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium",
           className,
         )}
       >
