@@ -142,7 +142,7 @@ export function TaskOccurrenceRow({ occurrence, today, userId, rotationInfo, onE
             type="submit"
             disabled={completePending}
             aria-label="Marcar como concluída"
-            className="h-5 w-5 rounded-full border-2 border-stone transition-colors hover:bg-muted disabled:opacity-50"
+            className="h-5 w-5 rounded-full border-2 border-input transition-colors hover:bg-muted disabled:opacity-50"
           />
         </form>
       )}
