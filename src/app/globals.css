@@ -41,8 +41,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-dm-sans);
-  --font-heading: var(--font-dm-sans);
+  /* Quincy = emoção e hierarquia (títulos e números); Jakarta = informação. */
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-title: "quincy-cf", "Quincy CF", Georgia, serif;
+  --font-heading: var(--font-title);
   --radius-sm: calc(var(--radius) * 0.625);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
@@ -112,6 +114,22 @@
   --add-ink: #2F5A21;
   /* Traço único para todos os ícones de linha (lucide + SVGs próprios). */
   --icon-stroke: 1.75;
+
+  /* Paleta da tela de boas-vindas e da ilustração (DESIGN.md §3). Só acrescenta
+     tokens; nenhum token das telas internas muda. */
+  --lavender-100: #EDE6FB;
+  --lavender-300: #C9B8F0;
+  --lavender-500: #9B87E0;
+  --pink-200: #F7C9D3;
+  --pink-400: #EE8FAE;
+  --pink-600: #D9527E;
+  --peach-200: #FAD9C0;
+  --peach-400: #F6B98A;
+  --orange-500: #EE8A3C;
+  --orange-600: #D9692A;
+  --yellow-300: #F7D27A;
+  --green-400: #7FAE4E;
+  --green-600: #4D7A35;
 }
 
 @layer base {
@@ -150,6 +168,11 @@
   button:disabled,
   [aria-disabled="true"] {
     cursor: not-allowed;
+  }
+  /* Títulos de tela e de seção em Quincy; o resto herda a Jakarta do body. */
+  h1,
+  h2 {
+    font-family: var(--font-title);
   }
   body {
     @apply text-foreground font-sans antialiased;

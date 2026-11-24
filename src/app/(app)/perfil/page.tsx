@@ -70,7 +70,7 @@ export default async function Page() {
             {getInitial(fullName)}
           </div>
           <div className="text-center">
-            <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.3px" }}>{fullName ?? "Sem nome"}</p>
+            <p className="font-title" style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.3px" }}>{fullName ?? "Sem nome"}</p>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>{user.email}</p>
           </div>
         </div>

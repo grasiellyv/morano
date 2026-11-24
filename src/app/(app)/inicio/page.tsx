@@ -292,7 +292,7 @@ export default async function Page() {
     <>
       {/* ── CABEÇALHO ─────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 h-11 mb-3">
-        <span className="flex-1 text-[22px] font-semibold tracking-[-0.6px]">Morano</span>
+        <span className="font-title flex-1 text-[22px] font-semibold tracking-[-0.6px]">Morano</span>
         <NotificationBell
           homeId={home.id}
           items={attention.map(({ key, href, title, meta, badge, tone }) => ({ key, href, title, meta, badge, tone }))}
@@ -342,7 +342,7 @@ export default async function Page() {
               className="rounded-[12px] px-2 py-2 no-underline transition-colors hover:bg-[rgba(251,239,227,0.08)]"
               style={{ color: CREAM }}
             >
-              <span className="block text-[26px] font-semibold leading-none tracking-[-0.5px]" aria-hidden>
+              <span className="font-title block text-[26px] font-semibold leading-none tracking-[-0.5px]" aria-hidden>
                 {s.value}
               </span>
               <span className="mt-1.5 block text-[12.5px]" style={{ color: CREAM_SOFT }} aria-hidden>

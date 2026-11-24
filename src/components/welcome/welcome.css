@@ -1,0 +1,251 @@
+/* Tela de boas-vindas (DESIGN.md §3, §6 e §9 — Opção C). */
+.welcome {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 60% at 0% 0%, var(--lavender-300) 0%, transparent 55%),
+    radial-gradient(90% 50% at 100% 0%, #f5e3d0 0%, transparent 60%),
+    radial-gradient(80% 30% at 100% 100%, var(--yellow-300) 0%, transparent 70%),
+    #fbf3ea;
+  overflow-x: clip;
+}
+/* Grão por cima do fundo, a 22%. */
+.welcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .25 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.welcome-head {
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+  padding: 0 24px;
+  padding-top: calc(clamp(20px, 5dvh, 48px) + env(safe-area-inset-top));
+}
+.welcome-logo {
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+.welcome-logo i {
+  font-style: normal;
+  color: var(--orange-500);
+}
+.welcome-tagline span {
+  display: block;
+}
+.welcome-tagline {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #6b5b53;
+}
+.welcome-title {
+  margin-top: clamp(14px, 3dvh, 22px);
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: clamp(27px, 8.7vw, 34px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+.welcome-lede {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #6b5b53;
+}
+
+.welcome-art {
+  /* Ocupa só a sobra da tela (base 0): nunca empurra o rodapé para fora. */
+  position: relative;
+  flex: 1 1 0;
+  min-height: 72px;
+  max-height: 340px;
+  margin: 4px auto 0;
+  width: 100%;
+  max-width: 460px;
+  padding: 0 4px;
+}
+.welcome-illus {
+  position: absolute;
+  inset: 0 4px;
+  width: calc(100% - 8px);
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Rodapé fixo: carrossel + CTA, respeitando a safe-area do iPhone. */
+.welcome-foot {
+  /* Sticky: no iPhone SE a página rola por baixo, mas o botão fica sempre à mão. */
+  position: sticky;
+  bottom: 0;
+  padding: 6px 22px calc(12px + env(safe-area-inset-bottom));
+  max-width: 460px;
+  width: 100%;
+  margin-inline: auto;
+}
+.welcome-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin: 0 -22px;
+  padding: 0 22px 6px;
+  scroll-padding-inline: 22px;
+  list-style: none;
+  overscroll-behavior-x: contain;
+}
+.welcome-track::-webkit-scrollbar {
+  display: none;
+}
+.welcome-feat {
+  flex: 0 0 82%;
+  scroll-snap-align: start;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(255, 249, 242, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px -14px rgba(120, 80, 60, 0.35);
+}
+.welcome-feat h3 {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.welcome-feat p {
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #6b5b53;
+}
+.welcome-ico {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.welcome-ico.lav { background: var(--lavender-100); color: #6a55c4; }
+.welcome-ico.pea { background: #fce6d4; color: var(--orange-600); }
+.welcome-ico.yel { background: #fcefc8; color: #9a6a0a; }
+
+.welcome-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 6px 0 10px;
+}
+/* Alvo de toque de 24px com ponto de 6px (::after) e margem negativa para manter o ritmo visual. */
+.welcome-dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin: -9px -3px;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+.welcome-dot::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9px;
+  background: #e0cdb9;
+  transition: width 0.25s, background 0.25s, left 0.25s;
+}
+.welcome-dot[aria-current="true"]::after {
+  left: 3px;
+  width: 18px;
+  background: var(--foreground);
+}
+
+.welcome-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  border-radius: 999px;
+  background: var(--foreground);
+  color: #fff6ec;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 24px -10px rgba(42, 28, 23, 0.6);
+}
+.welcome-login {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b5b53;
+}
+.welcome-login a {
+  display: inline-block;
+  padding: 8px 4px;
+  color: var(--foreground);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Ordem do gif (DESIGN.md §6). */
+.welcome .a-hand-l { animation: w-inL 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.2s; }
+.welcome .a-hand-r { animation: w-inR 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.35s; }
+.welcome .a-hand-r2 { animation: w-inR 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.5s; }
+.welcome .a-bag { animation: w-drop 0.9s cubic-bezier(0.3, 1.4, 0.5, 1) both 0.9s; }
+.welcome .a-veg { animation: w-pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.welcome .a-plant { animation: w-grow 1s ease-out both 0.4s; transform-origin: 50% 100%; }
+.welcome .a-leaf { transform-box: fill-box; transform-origin: 0% 100%; animation: w-sway 4s ease-in-out infinite; }
+.welcome .a-float { animation: w-float 5s ease-in-out infinite; }
+.welcome .a-in { animation: w-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes w-inL { from { transform: translate(-120px, 30px) rotate(-8deg); opacity: 0; } }
+@keyframes w-inR { from { transform: translate(120px, 20px) rotate(8deg); opacity: 0; } }
+@keyframes w-drop { from { transform: translateY(-60px) scale(0.8); opacity: 0; } }
+@keyframes w-pop { from { transform: scale(0.2); opacity: 0; } }
+@keyframes w-grow { from { transform: scaleY(0.2); opacity: 0; } }
+@keyframes w-sway { 50% { transform: rotate(4deg); } }
+@keyframes w-float { 50% { transform: translateY(-4px); } }
+@keyframes w-up { from { transform: translateY(18px); opacity: 0; } }
+
+/* Telas baixas (iPhone SE, paisagem): compacta sem criar rolagem desnecessária. */
+@media (max-height: 640px) {
+  .welcome-art { min-height: 64px; }
+  .welcome-lede { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome *,
+  .welcome *::before,
+  .welcome *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
