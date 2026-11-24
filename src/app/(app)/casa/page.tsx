@@ -214,7 +214,7 @@ export default async function Page() {
             style={{ ...card, color: "var(--foreground)" }}
           >
             <span style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Cômodos</span>
-            <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.15 }}>{home.rooms.length}</span>
+            <span className="font-title" style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.15 }}>{home.rooms.length}</span>
             <span className="flex items-center gap-0.5" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
               Ver cômodos<ChevronRight size={13} aria-hidden />
             </span>
@@ -225,7 +225,7 @@ export default async function Page() {
             style={{ ...card, color: "var(--foreground)" }}
           >
             <span style={{ fontSize: 11.5, color: "var(--muted-foreground)", fontWeight: 500 }}>Tarefas da rotina</span>
-            <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.15 }}>{routinesCount}</span>
+            <span className="font-title" style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.5px", lineHeight: 1.15 }}>{routinesCount}</span>
             <span className="flex items-center gap-0.5" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
               Ver rotina<ChevronRight size={13} aria-hidden />
             </span>

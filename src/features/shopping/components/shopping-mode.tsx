@@ -93,7 +93,7 @@ export function ShoppingMode({ pending, purchased, categories }: Props) {
       {/* Progress header */}
       <div style={{ padding: "16px 20px 12px", background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
         <div className="mb-1 flex items-baseline gap-2">
-          <span style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>{purchasedCount}</span>
+          <span className="font-title" style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>{purchasedCount}</span>
           <span style={{ fontSize: 16, color: "var(--muted-foreground)" }}>/ {totalCount}</span>
         </div>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 10 }}>
