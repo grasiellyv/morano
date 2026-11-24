@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatHourShort, getHeroPeriod, periodForHour } from "./index";
+import { formatHourShort, getHeroPeriod, greetingFor, periodForHour } from "./index";
 
 describe("periodForHour", () => {
   it.each([
@@ -22,5 +22,23 @@ describe("formatHourShort", () => {
     expect(formatHourShort("10:00:00")).toBe("10h");
     expect(formatHourShort("09:30:00")).toBe("9h30");
     expect(formatHourShort(null)).toBeNull();
+  });
+});
+
+describe("greetingFor", () => {
+  it.each([
+    ["morning", "Bom dia, Gustavo"],
+    ["afternoon", "Boa tarde, Gustavo"],
+    ["night", "Boa noite, Gustavo"],
+  ] as const)("%s → %s", (p, expected) => expect(greetingFor(p, "Gustavo Lima")).toBe(expected));
+
+  it("sem nome usa Olá", () => {
+    expect(greetingFor("afternoon", null)).toBe("Olá");
+    expect(greetingFor("night", "   ")).toBe("Olá");
+  });
+
+  it("usa o fuso da casa", () => {
+    const now = new Date("2026-11-23T13:00:00Z");
+    expect(greetingFor(getHeroPeriod("America/Sao_Paulo", now), "Ana")).toBe("Bom dia, Ana");
   });
 });
