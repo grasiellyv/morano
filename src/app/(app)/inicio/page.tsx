@@ -21,7 +21,8 @@ import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
 import { formatHourShort, getHeroPeriod, greetingFor, GREETING_LABEL, type HeroPeriod } from "@/lib/day-period";
-import { extendWindowForHome } from "@/features/tasks/actions";
+import { extendWindow } from "@/features/tasks/extend-window";
+import { runHomeMaintenance } from "@/features/tasks/maintenance";
 import { CompleteCircleButton } from "@/features/tasks/components/complete-circle-button";
 import {
   markMissedOccurrences,
@@ -155,13 +156,19 @@ export default async function Page() {
   const period = getHeroPeriod(home.timezone);
   const theme = HERO_THEME[period];
 
-  // Operações de manutenção independentes rodam em paralelo (não uma após a outra)
-  // para cortar round-trips sequenciais ao Supabase remoto. Ambas ainda são
-  // aguardadas antes das leituras, garantindo consistência.
-  await Promise.all([
-    extendWindowForHome(home.id, home.timezone).catch(() => {}),
-    markMissedOccurrences(supabase, home.id, today).catch(() => {}),
-  ]);
+  // Manutenção (gerar ocorrências, marcar atrasadas) fora do caminho de toda visita: 1 consulta
+  // decide quem roda; só a primeira visita do dia espera, o resto roda depois da resposta.
+  await runHomeMaintenance({
+    supabase,
+    homeId: home.id,
+    timezone: home.timezone,
+    run: async () => {
+      await Promise.all([
+        extendWindow(supabase, home.id, home.timezone),
+        markMissedOccurrences(supabase, home.id, today),
+      ]);
+    },
+  });
 
   const [todayOcc, overdueOcc, shopping, maintenance, reorderSuggestions, homeMembers, profileResult] =
     await Promise.all([

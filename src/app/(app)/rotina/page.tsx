@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { parseISO, format, startOfISOWeek, addDays } from "date-fns";
 import { getLocalDateString } from "@/lib/dates";
 import {
-  extendWindowForHome,
   createTask,
   updateTask,
 } from "@/features/tasks/actions";
@@ -16,6 +15,8 @@ import {
   getOverdueOccurrences,
   getOccurrencesForWeek,
 } from "@/features/tasks/queries";
+import { extendWindow } from "@/features/tasks/extend-window";
+import { runHomeMaintenance } from "@/features/tasks/maintenance";
 import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-list";
 import { getEventsForRange, getEventShoppingItems } from "@/features/events/queries";
 import { removeEventItem } from "@/features/events/actions-items";
@@ -80,16 +81,22 @@ export default async function Page({
   };
   const novo = params["novo"] === "evento" ? "evento" : params["novo"] === "tarefa" ? "tarefa" : null;
 
-  extendWindowForHome(home.id, home.timezone).catch(() => {});
-
-  // markMissed e getAbsentMemberIds são independentes — rodam em paralelo para
-  // cortar round-trips sequenciais ao Supabase remoto. advanceRotations depende
-  // de absentIds, então vem depois.
-  const [, absentIds] = await Promise.all([
-    markMissedOccurrences(supabase, home.id, currentDate).catch(() => {}),
-    getAbsentMemberIds(supabase, home.id, currentDate),
-  ]);
-  await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
+  // Manutenção (gerar ocorrências, marcar atrasadas, avançar rodízio) fora do caminho de toda
+  // visita: 1 consulta decide quem roda; só a primeira visita do dia espera, o resto roda
+  // depois da resposta. (Antes: extendWindow solto sem await e 3 escritas em toda visita.)
+  await runHomeMaintenance({
+    supabase,
+    homeId: home.id,
+    timezone: home.timezone,
+    run: async () => {
+      const absent = await getAbsentMemberIds(supabase, home.id, currentDate);
+      await Promise.all([
+        extendWindow(supabase, home.id, home.timezone),
+        markMissedOccurrences(supabase, home.id, currentDate).catch(() => {}),
+      ]);
+      await advanceRotationsIfDue(supabase, home.id, currentDate, absent);
+    },
+  });
 
   // Semana ISO (Seg–Dom) do dia aberto. A visão diária é derivada da semana:
   // uma única consulta alimenta a lista do dia e o resumo "Visão da semana".
@@ -101,7 +108,7 @@ export default async function Page({
   // Os itens de compras dos eventos dependem dos ids dos eventos: encadeados num só ramo,
   // em paralelo com as demais leituras.
   const weekEventsPromise = getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []);
-  const [weekOcc, overdueOcc, weekEvents, eventItems, absence, rotations, homeMembers, perms] =
+  const [weekOcc, overdueOcc, weekEvents, eventItems, absence, rotations, homeMembers, perms, absentIds] =
     await Promise.all([
       getOccurrencesForWeek(supabase, home.id, weekStart),
       view === "dia" && selectedDate === currentDate
@@ -113,6 +120,7 @@ export default async function Page({
       getRotations(supabase, home.id),
       getHomeMembers(supabase),
       getMemberPermissions(supabase, userId, home.id),
+      getAbsentMemberIds(supabase, home.id, currentDate),
     ]);
 
   const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
