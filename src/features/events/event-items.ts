@@ -28,6 +28,14 @@ const itemSchema = z.object({
 export function parseEventItems(
   raw: string | null | undefined,
 ): { ok: true; items: EventItemInput[] } | { ok: false; message: string } {
+  return parseProductItems(raw, { max: MAX_EVENT_ITEMS, noun: "evento" });
+}
+
+/** Lista de produtos em JSON (nome, quantidade, unidade, categoria) vinda de um formulário. */
+export function parseProductItems(
+  raw: string | null | undefined,
+  { max, noun }: { max: number; noun: string },
+): { ok: true; items: EventItemInput[] } | { ok: false; message: string } {
   if (!raw || !raw.trim()) return { ok: true, items: [] };
 
   let json: unknown;
@@ -37,7 +45,7 @@ export function parseEventItems(
     return { ok: false, message: "Itens inválidos. Tente adicionar de novo." };
   }
   if (!Array.isArray(json)) return { ok: false, message: "Itens inválidos. Tente adicionar de novo." };
-  if (json.length > MAX_EVENT_ITEMS) return { ok: false, message: `No máximo ${MAX_EVENT_ITEMS} itens por evento.` };
+  if (json.length > max) return { ok: false, message: `No máximo ${max} itens por ${noun}.` };
 
   const parsed = z.array(itemSchema).safeParse(json);
   if (!parsed.success) return { ok: false, message: "Itens inválidos. Confira nome, quantidade e unidade." };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import {
   createList,
   updateList,
@@ -17,7 +17,9 @@ import type { ShoppingList, ShoppingListItem } from "@/features/shopping/queries
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import { SHOPPING_CATALOG } from "@/features/shopping/catalog";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { Pencil, Plus, X } from "lucide-react";
+import { ChevronDown, Pencil, Plus, X } from "lucide-react";
+import { MISSION_LABELS } from "@/features/shopping/schemas";
+import { ListLinkFields } from "@/features/shopping/components/list-link-fields";
 import { CategoryIcon } from "@/features/shopping/category-icon";
 
 const selectClass =
@@ -29,7 +31,7 @@ type Props = {
 };
 
 // ---- Create List Form ----
-function CreateListForm({ onSuccess }: { onSuccess: () => void }) {
+function CreateListForm({ categories, onSuccess }: { categories: ShoppingCategory[]; onSuccess: () => void }) {
   const [state, dispatch, pending] = useActionState(createList, initialFormState);
 
   useEffect(() => {
@@ -40,13 +42,14 @@ function CreateListForm({ onSuccess }: { onSuccess: () => void }) {
     <form action={dispatch} className="flex flex-wrap items-center gap-2 py-2">
       <Input
         name="name"
-        placeholder="Nome da lista"
+        placeholder="Nome da lista (ex.: Churrasco)"
         required
         disabled={pending}
         autoFocus
         className="flex-1"
         aria-label="Nome da nova lista"
       />
+      <ListLinkFields categories={categories} defaultMission={null} defaultCategoryId={null} disabled={pending} />
       {state.fieldErrors?.name ? (
         <p className="w-full text-xs text-destructive">{state.fieldErrors.name}</p>
       ) : null}
@@ -432,7 +435,43 @@ function ListItemRow({
   );
 }
 
-// ---- Single Named List Card ----
+// ---- Editar nome, missão e categoria da lista ----
+function EditListForm({
+  list,
+  categories,
+  onDone,
+}: {
+  list: ShoppingList;
+  categories: ShoppingCategory[];
+  onDone: () => void;
+}) {
+  const [state, dispatch, pending] = useActionState(updateList, initialFormState);
+  useEffect(() => {
+    if (state.status === "success") onDone();
+  }, [state, onDone]);
+
+  return (
+    <form action={dispatch} className="space-y-2 rounded-xl border border-border bg-secondary/40 p-3">
+      <input type="hidden" name="id" value={list.id} />
+      <Input name="name" defaultValue={list.name} required disabled={pending} aria-label="Nome da lista" />
+      <ListLinkFields
+        categories={categories}
+        defaultMission={list.mission}
+        defaultCategoryId={list.category_id}
+        disabled={pending}
+      />
+      {state.fieldErrors?.name ? <p className="text-xs text-destructive">{state.fieldErrors.name}</p> : null}
+      {state.fieldErrors?.category_id ? <p className="text-xs text-destructive">{state.fieldErrors.category_id}</p> : null}
+      {state.status === "error" && state.message ? <p className="text-xs text-destructive">{state.message}</p> : null}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={pending}>Salvar</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone} disabled={pending}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
+// ---- Single Smart List Card ----
 function NamedListCard({
   list,
   categories,
@@ -440,25 +479,16 @@ function NamedListCard({
   list: ShoppingList;
   categories: ShoppingCategory[];
 }) {
-  const [applyingListId, setApplyingListId] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null);
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(list.name);
-
-  // Update list name action
-  const [updateState, updateDispatch, updatePending] = useActionState(
-    updateList,
-    initialFormState,
-  );
-  useEffect(() => {
-    if (updateState.status === "success") setEditingName(false);
-  }, [updateState]);
+  const [editing, setEditing] = useState(false);
+  const closeEditing = useCallback(() => setEditing(false), []);
 
   // Delete list action
-  const [, delDispatch, delPending] = useActionState(deleteList, initialFormState);
+  const [delState, delDispatch, delPending] = useActionState(deleteList, initialFormState);
 
   async function handleApply() {
-    setApplyingListId(list.id);
+    setApplying(true);
     try {
       const fd = new FormData();
       fd.set("list_id", list.id);
@@ -467,130 +497,68 @@ function NamedListCard({
         message: result.message ?? (result.status === "success" ? "Itens adicionados." : "Erro."),
         kind: result.status === "success" ? "success" : "error",
       });
-      setTimeout(() => setToast(null), 4000);
     } catch {
       setToast({ message: "Erro ao adicionar itens.", kind: "error" });
-      setTimeout(() => setToast(null), 4000);
     } finally {
-      setApplyingListId(null);
+      setApplying(false);
+      setTimeout(() => setToast(null), 4000);
     }
   }
 
-  const applying = applyingListId === list.id;
+  const count = list.items.length;
 
   return (
-    <details className="rounded-lg border border-border bg-card">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3">
-        {/* List name / edit toggle */}
-        <span className="flex-1 font-medium">
-          {editingName ? (
-            <form
-              action={updateDispatch}
-              className="flex items-center gap-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <input type="hidden" name="id" value={list.id} />
-              <Input
-                name="name"
-                value={nameValue}
-                onChange={(e) => setNameValue(e.target.value)}
-                required
-                disabled={updatePending}
-                autoFocus
-                className="h-7 text-sm"
-                aria-label="Nome da lista"
-              />
-              {updateState.status === "error" && updateState.message ? (
-                <span className="text-xs text-destructive">{updateState.message}</span>
-              ) : null}
-              <Button type="submit" size="sm" disabled={updatePending} className="h-7 px-2 text-xs">
-                Salvar
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setEditingName(false)}
-                disabled={updatePending}
-                className="h-7 px-2 text-xs"
-              >
-                Cancelar
-              </Button>
-            </form>
-          ) : (
-            <>
-              {list.name}
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                ({list.items.length} {list.items.length === 1 ? "item" : "itens"})
+    <details className="group rounded-2xl border border-border bg-card">
+      <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold">{list.name}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{count} {count === 1 ? "item" : "itens"}</span>
+            {list.mission ? (
+              <span className="rounded-md bg-secondary px-1.5 py-0.5 font-medium text-foreground">
+                {MISSION_LABELS[list.mission]}
               </span>
-            </>
-          )}
+            ) : null}
+            {list.category ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 font-medium text-foreground">
+                <CategoryIcon icon={list.category.icon} size={12} />
+                {list.category.name}
+              </span>
+            ) : null}
+          </span>
         </span>
-
-        {/* Actions (stop propagation so clicks don't toggle details) */}
-        <span className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={handleApply}
-            disabled={applying}
-            className="inline-flex items-center gap-1 rounded-lg bg-add px-2.5 py-1.5 text-xs font-semibold text-add-foreground hover:bg-add-hover disabled:opacity-50"
-            aria-label="Adicionar à lista de compras"
-          >
-            <Plus size={14} strokeWidth={1.75} aria-hidden />
-            {applying ? "Adicionando…" : "Adicionar à compra"}
-          </button>
-
-          {!editingName ? (
-            <button
-              type="button"
-              onClick={() => setEditingName(true)}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Editar nome da lista"
-            >
-              <Pencil size={15} strokeWidth={1.75} aria-hidden />
-            </button>
-          ) : null}
-
-          <ConfirmDialog
-            trigger={
-              <button
-                type="button"
-                disabled={delPending}
-                className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                aria-label="Excluir lista"
-              >
-                <X size={15} strokeWidth={1.75} aria-hidden />
-              </button>
-            }
-            title="Excluir lista"
-            description={`Excluir a lista "${list.name}"? Esta ação não pode ser desfeita.`}
-            confirmLabel="Excluir"
-            destructive
-            onConfirm={() => {
-              const fd = new FormData();
-              fd.set("id", list.id);
-              delDispatch(fd);
-            }}
-          />
-        </span>
+        <ChevronDown
+          size={16}
+          strokeWidth={1.75}
+          aria-hidden
+          className="shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+        />
       </summary>
 
-      {/* Toast */}
-      {toast ? (
-        <div
-          className={`mx-4 mt-2 rounded-md px-3 py-2 text-sm ${
-            toast.kind === "success"
-              ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200"
-              : "bg-destructive/10 text-destructive"
-          }`}
+      <div className="space-y-3 border-t border-border px-4 pb-4 pt-3">
+        <button
+          type="button"
+          onClick={handleApply}
+          disabled={applying || count === 0}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-add text-[14px] font-semibold text-add-foreground hover:bg-add-hover disabled:opacity-50"
+          aria-label="Adicionar à lista de compras"
         >
-          {toast.message}
-        </div>
-      ) : null}
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
+          {applying ? "Adicionando…" : "Adicionar à lista de compras"}
+        </button>
 
-      {/* Items */}
-      <div className="px-4 pb-4 pt-2">
-        {list.items.length > 0 ? (
+        {toast ? (
+          <p
+            role="status"
+            className={`rounded-md px-3 py-2 text-sm ${
+              toast.kind === "success" ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-destructive/10 text-destructive"
+            }`}
+          >
+            {toast.message}
+          </p>
+        ) : null}
+
+        {count > 0 ? (
           <div className="divide-y divide-border">
             {list.items.map((item) => (
               <ListItemRow key={item.id} item={item} categories={categories} />
@@ -601,6 +569,37 @@ function NamedListCard({
         )}
 
         <AddListItemForm listId={list.id} categories={categories} />
+
+        {editing ? (
+          <EditListForm list={list} categories={categories} onDone={closeEditing} />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)} aria-label="Editar lista">
+              <Pencil aria-hidden strokeWidth={1.75} />
+              Editar lista
+            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button type="button" size="sm" variant="ghost" disabled={delPending} className="text-destructive hover:text-destructive" aria-label="Excluir lista">
+                  <X aria-hidden strokeWidth={1.75} />
+                  Excluir lista
+                </Button>
+              }
+              title="Excluir lista"
+              description={`Excluir a lista "${list.name}"? Esta ação não pode ser desfeita.`}
+              confirmLabel="Excluir"
+              destructive
+              onConfirm={() => {
+                const fd = new FormData();
+                fd.set("id", list.id);
+                delDispatch(fd);
+              }}
+            />
+            {delState.status === "error" && delState.message ? (
+              <p className="text-xs text-destructive">{delState.message}</p>
+            ) : null}
+          </div>
+        )}
       </div>
     </details>
   );
@@ -609,16 +608,22 @@ function NamedListCard({
 // ---- Main Section ----
 export function NamedListsSection({ lists, categories }: Props) {
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const closeCreate = useCallback(() => setShowCreateForm(false), []);
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Listas salvas</h2>
+    <section className="space-y-3" aria-labelledby="listas-inteligentes">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 id="listas-inteligentes" className="text-base font-semibold">Listas inteligentes</h2>
+          <p className="text-xs text-muted-foreground">
+            Salve combinações (Churrasco, Compras do mês…) e jogue tudo na lista de compras com um toque.
+          </p>
+        </div>
         {!showCreateForm ? (
           <button
             type="button"
             onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-add px-3 py-2 text-sm font-semibold text-add-foreground hover:bg-add-hover"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-add px-3 py-2 text-sm font-semibold text-add-foreground hover:bg-add-hover"
           >
             <Plus size={16} strokeWidth={1.75} aria-hidden />
             Nova lista
@@ -627,11 +632,11 @@ export function NamedListsSection({ lists, categories }: Props) {
       </div>
 
       {showCreateForm ? (
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <CreateListForm onSuccess={() => setShowCreateForm(false)} />
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <CreateListForm categories={categories} onSuccess={closeCreate} />
           <button
             type="button"
-            onClick={() => setShowCreateForm(false)}
+            onClick={closeCreate}
             className="mt-1 text-xs text-muted-foreground underline-offset-4 hover:underline"
           >
             Cancelar
@@ -641,11 +646,11 @@ export function NamedListsSection({ lists, categories }: Props) {
 
       {lists.length === 0 && !showCreateForm ? (
         <p className="text-sm text-muted-foreground">
-          Nenhuma lista salva. Crie uma para reutilizar combinações de itens.
+          Nenhuma lista inteligente ainda. Crie uma aqui ou a partir dos itens mais pedidos.
         </p>
       ) : null}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {lists.map((list) => (
           <NamedListCard key={list.id} list={list} categories={categories} />
         ))}
