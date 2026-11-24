@@ -226,6 +226,20 @@
 .welcome .a-leaf { transform-box: fill-box; transform-origin: 0% 100%; animation: w-sway 4s ease-in-out infinite; }
 .welcome .a-float { animation: w-float 5s ease-in-out infinite; }
 .welcome .a-in { animation: w-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* Gotas do regador: caem em loop depois que a mão entra. */
+.welcome .a-drop { opacity: 0; animation: w-rain 1.2s ease-in infinite 1.7s; }
+/* Sombra na nuvem acompanha a flutuação (encolhe quando o objeto sobe). */
+.welcome .a-shadow { transform-box: fill-box; transform-origin: 50% 50%; animation: w-shadow 5s ease-in-out infinite; }
+.welcome .a-shadow-2 { animation-delay: -1s; }
+.welcome .a-twinkle { transform-box: fill-box; transform-origin: 50% 50%; animation: w-twinkle 2.4s ease-in-out infinite; }
+@keyframes w-rain {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 0.95; }
+  80% { opacity: 0.9; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+@keyframes w-shadow { 50% { transform: scaleX(0.88); opacity: 0.18; } }
+@keyframes w-twinkle { 50% { transform: scale(0.55); opacity: 0.5; } }
 @keyframes w-inL { from { transform: translate(-120px, 30px) rotate(-8deg); opacity: 0; } }
 @keyframes w-inR { from { transform: translate(120px, 20px) rotate(8deg); opacity: 0; } }
 @keyframes w-drop { from { transform: translateY(-60px) scale(0.8); opacity: 0; } }
