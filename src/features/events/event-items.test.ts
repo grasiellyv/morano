@@ -57,7 +57,7 @@ describe("parseEventItems", () => {
 describe("summarizeEventItemResults", () => {
   it("falha parcial: evento salvo e itens que não entraram listados", () => {
     const msg = summarizeEventItemResults("criado", [
-      { name: "Leite", result: { result: "inserted" } },
+      { name: "Leite", result: { result: "inserted", id: "00000000-0000-0000-0000-000000000001" } },
       { name: "Café", result: { result: "error", forbidden: true } },
       { name: "Pão", result: { result: "conflict", name: "Pão", quantity: 2, unit: "pacote" } },
     ]);
@@ -69,7 +69,11 @@ describe("summarizeEventItemResults", () => {
   });
 
   it("tudo certo não acrescenta aviso", () => {
-    expect(summarizeEventItemResults("atualizado", [{ name: "Leite", result: { result: "inserted" } }])).toBe("Evento atualizado.");
+    expect(
+      summarizeEventItemResults("atualizado", [
+        { name: "Leite", result: { result: "inserted", id: "00000000-0000-0000-0000-000000000001" } },
+      ]),
+    ).toBe("Evento atualizado.");
     expect(summarizeEventItemResults("criado", [])).toBe("Evento criado.");
   });
 

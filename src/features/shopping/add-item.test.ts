@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addShoppingItem } from "./add-item";
 
 function fakeSupabase() {
-  const rpc = vi.fn().mockResolvedValue({ data: { result: "inserted" }, error: null });
+  const rpc = vi.fn().mockResolvedValue({
+    data: { result: "inserted", id: "00000000-0000-0000-0000-000000000001" },
+    error: null,
+  });
   return { client: { rpc } as unknown as SupabaseClient<never>, rpc };
 }
 
