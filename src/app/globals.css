@@ -123,6 +123,34 @@
   * {
     @apply border-border outline-ring;
   }
+
+  /* Cursor: no computador o navegador mostra o "I" de campo editável sobre QUALQUER
+     texto, e títulos/rótulos parecem caixas de texto abertas. Texto de interface usa
+     a seta; só campos de digitação mantêm o "I"; o que é clicável mostra a mãozinha.
+     O texto continua selecionável (dá para copiar instruções e observações). */
+  body {
+    cursor: default;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]):not([type="file"]),
+  textarea,
+  [contenteditable="true"] {
+    cursor: text;
+  }
+  a[href],
+  button:not(:disabled),
+  summary,
+  select,
+  [role="button"],
+  [role="radio"],
+  [role="menuitem"],
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   body {
     @apply text-foreground font-sans antialiased;
     background: radial-gradient(380px 300px at 100% 0%, var(--glow), transparent 70%),
