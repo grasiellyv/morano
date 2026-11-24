@@ -12,7 +12,49 @@
   gap: 22px;
   min-height: calc(100dvh - 170px);
   padding: 32px 20px 12px;
+  margin: 0 -20px;
   text-align: center;
+}
+/* O gradiente precisa ir até a borda da tela — compensa o padding lateral
+   do <main> do AppShell (20px no mobile, 40px a partir do breakpoint md). */
+@media (min-width: 768px) {
+  .ld-screen {
+    margin: 0 -40px;
+    padding: 32px 40px 12px;
+  }
+}
+
+/* Gradiente suave por área, cobrindo a tela toda enquanto carrega — mesma
+   família de nuvens coloridas da ilustração de boas-vindas, sem exagerar. */
+.ld-screen--inicio {
+  background:
+    radial-gradient(55% 50% at 18% 14%, rgba(176, 224, 250, 0.55) 0%, transparent 70%),
+    radial-gradient(50% 46% at 88% 12%, rgba(201, 184, 240, 0.4) 0%, transparent 72%),
+    radial-gradient(60% 50% at 55% 94%, rgba(190, 228, 250, 0.3) 0%, transparent 70%);
+}
+.ld-screen--rotina {
+  background:
+    radial-gradient(55% 50% at 15% 16%, rgba(184, 217, 143, 0.45) 0%, transparent 70%),
+    radial-gradient(50% 46% at 90% 14%, rgba(247, 210, 122, 0.38) 0%, transparent 72%),
+    radial-gradient(60% 50% at 50% 94%, rgba(159, 196, 110, 0.22) 0%, transparent 70%);
+}
+.ld-screen--compras {
+  background:
+    radial-gradient(55% 50% at 14% 14%, rgba(247, 201, 211, 0.5) 0%, transparent 70%),
+    radial-gradient(50% 46% at 90% 16%, rgba(250, 217, 192, 0.45) 0%, transparent 72%),
+    radial-gradient(60% 50% at 50% 94%, rgba(155, 187, 217, 0.25) 0%, transparent 70%);
+}
+.ld-screen--manutencao {
+  background:
+    radial-gradient(55% 50% at 15% 16%, rgba(239, 191, 163, 0.48) 0%, transparent 70%),
+    radial-gradient(50% 46% at 88% 14%, rgba(216, 200, 195, 0.4) 0%, transparent 72%),
+    radial-gradient(60% 50% at 50% 94%, rgba(200, 140, 110, 0.22) 0%, transparent 70%);
+}
+.ld-screen--casa {
+  background:
+    radial-gradient(55% 50% at 14% 14%, rgba(143, 208, 232, 0.42) 0%, transparent 70%),
+    radial-gradient(50% 46% at 90% 16%, rgba(184, 217, 143, 0.35) 0%, transparent 72%),
+    radial-gradient(60% 50% at 50% 94%, rgba(246, 196, 120, 0.22) 0%, transparent 70%);
 }
 
 .ld-icon {
@@ -73,6 +115,22 @@
 @keyframes ld-breathe {
   50% {
     transform: scale(1.12);
+  }
+}
+.ld-glow-pulse {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: ld-glow-pulse 2.2s ease-in-out infinite;
+}
+@keyframes ld-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
   }
 }
 .ld-ray {

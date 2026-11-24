@@ -1,10 +1,10 @@
 /**
- * Ícones animados das telas de carregamento (um por área do app). Mesmo
- * "selo" por trás (prato cream com sombra) em todos, mudando só o desenho e a
- * cor da sombra — repete o quadro, varia o conteúdo. Estilo flat com grão,
- * gradientes e traço fino, como a ilustração de boas-vindas (ver
- * `src/components/welcome/hero-illustration.tsx`), mas na paleta
- * marrom/âmbar do app (DESIGN.md), não na lilás/rosa da landing.
+ * Ícones animados das telas de carregamento (um por área do app). Sem prato
+ * nem moldura atrás — só o desenho, flutuando, com uma sombra bem suave no
+ * chão. O fundo colorido/gradiente de cada tela mora em `loading.css`
+ * (`.ld-screen--{area}`), não aqui. Estilo flat com grão, gradientes e traço
+ * fino, como a ilustração de boas-vindas (ver
+ * `src/components/welcome/hero-illustration.tsx`).
  */
 
 function Grain({ id }: { id: string }) {
@@ -18,23 +18,9 @@ function Grain({ id }: { id: string }) {
   );
 }
 
-function Plate({ shadow }: { shadow: string }) {
-  return (
-    <>
-      <ellipse cx="80" cy="128" rx="40" ry="8" fill={shadow} opacity=".35" />
-      <circle cx="80" cy="78" r="62" fill="url(#plateG)" />
-      <circle cx="80" cy="78" r="62" fill="none" stroke="var(--border)" strokeWidth="1" />
-    </>
-  );
-}
-
-function PlateDefs() {
-  return (
-    <radialGradient id="plateG" cx=".4" cy=".35" r=".75">
-      <stop offset="0" stopColor="var(--card)" />
-      <stop offset="1" stopColor="var(--card2, #F5E4D2)" />
-    </radialGradient>
-  );
+/** Sombra de chão bem discreta — dá peso ao objeto sem virar uma moldura. */
+function GroundShadow({ cy, rx, color }: { cy: number; rx: number; color: string }) {
+  return <ellipse cx="80" cy={cy} rx={rx} ry={rx * 0.19} fill={color} opacity=".22" />;
 }
 
 export function LoadingIconInicio() {
@@ -42,49 +28,48 @@ export function LoadingIconInicio() {
   return (
     <svg viewBox="0 0 160 160" className="ld-icon" aria-hidden="true" focusable="false">
       <defs>
-        <PlateDefs />
         <Grain id="gInicioGrain" />
-        <linearGradient id="gBadge" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#E7AE5E" />
-          <stop offset="1" stopColor="#C57C23" />
+        <linearGradient id="gMBlue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#D9F0FC" />
+          <stop offset="1" stopColor="#5BA6DE" />
         </linearGradient>
+        <radialGradient id="gInicioGlow" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stopColor="#BEE4FA" stopOpacity=".9" />
+          <stop offset="1" stopColor="#BEE4FA" stopOpacity="0" />
+        </radialGradient>
       </defs>
       <g filter="url(#gInicioGrain)">
-        <Plate shadow="#B5701E" />
         <g className="ld-float">
-          <g>
-            {rays.map((deg, i) => (
-              <rect
-                key={deg}
-                className="ld-ray"
-                x="78.5"
-                y="20"
-                width="3"
-                height="11"
-                rx="1.5"
-                fill="#D98A2B"
-                opacity={0.6}
-                style={{ animationDelay: `${i * 0.12}s` }}
-                transform={`rotate(${deg} 80 78)`}
-              />
-            ))}
-          </g>
-          <g className="ld-breathe">
-            <rect x="38" y="38" width="84" height="84" rx="24" fill="url(#gBadge)" />
-            <rect x="38.5" y="38.5" width="83" height="83" rx="23.5" fill="none" stroke="#9C5E16" strokeOpacity=".35" />
-            <text
-              x="76"
-              y="94"
-              textAnchor="middle"
-              fill="#FFF8EC"
-              fontSize="46"
-              fontWeight="600"
-              style={{ fontFamily: "var(--font-title)", letterSpacing: "-0.02em" }}
-            >
-              m
-            </text>
-            <circle cx="104" cy="90" r="5" fill="#C8643C" />
-          </g>
+          {/* Brilho azul respirando atrás da letra */}
+          <circle cx="80" cy="80" r="68" fill="url(#gInicioGlow)" className="ld-glow-pulse" />
+          {/* Raios */}
+          {rays.map((deg, i) => (
+            <rect
+              key={deg}
+              className="ld-ray"
+              x="78.5"
+              y="20"
+              width="3.4"
+              height="13"
+              rx="1.7"
+              fill="#6FB6E6"
+              style={{ animationDelay: `${i * 0.12}s` }}
+              transform={`rotate(${deg} 80 80)`}
+            />
+          ))}
+          {/* Letra, sozinha — sem quadrado, sem ponto */}
+          <text
+            x="80"
+            y="107"
+            textAnchor="middle"
+            fill="url(#gMBlue)"
+            fontSize="104"
+            fontWeight="600"
+            className="ld-breathe"
+            style={{ fontFamily: "var(--font-title)", letterSpacing: "-0.03em" }}
+          >
+            m
+          </text>
         </g>
       </g>
     </svg>
@@ -95,7 +80,6 @@ export function LoadingIconRotina() {
   return (
     <svg viewBox="0 0 160 160" className="ld-icon" aria-hidden="true" focusable="false">
       <defs>
-        <PlateDefs />
         <Grain id="gRotinaGrain" />
         <linearGradient id="gPot" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#D98859" />
@@ -119,8 +103,8 @@ export function LoadingIconRotina() {
         </linearGradient>
       </defs>
       <g filter="url(#gRotinaGrain)">
-        <Plate shadow="#5F8F3A" />
         <g className="ld-float">
+          <GroundShadow cy={138} rx={34} color="#5F8F3A" />
           {/* Vaso + planta, fixos (o regador que se move por cima) */}
           <path d="M60 118 h40 l-5 26 h-30z" fill="url(#gPot)" />
           <rect x="57" y="112" width="46" height="9" rx="3.5" fill="#E79A70" />
@@ -167,7 +151,6 @@ export function LoadingIconCompras() {
   return (
     <svg viewBox="0 0 160 160" className="ld-icon" aria-hidden="true" focusable="false">
       <defs>
-        <PlateDefs />
         <Grain id="gComprasGrain" />
         <linearGradient id="gBagBody" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#E9C793" />
@@ -183,8 +166,8 @@ export function LoadingIconCompras() {
         </linearGradient>
       </defs>
       <g filter="url(#gComprasGrain)">
-        <Plate shadow="#B5701E" />
         <g className="ld-float">
+          <GroundShadow cy={128} rx={32} color="#B5701E" />
           <g className="ld-bag">
             {/* Alças, curtas e coladas na sacola para não cruzar com os itens */}
             <path d="M62 78 C60 72 63 68 67 67" stroke="#A87442" strokeWidth="3" strokeLinecap="round" fill="none" />
@@ -215,7 +198,6 @@ export function LoadingIconManutencao() {
   return (
     <svg viewBox="0 0 160 160" className="ld-icon" aria-hidden="true" focusable="false">
       <defs>
-        <PlateDefs />
         <Grain id="gManutGrain" />
         <linearGradient id="gBoxBody" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#D98059" />
@@ -231,8 +213,8 @@ export function LoadingIconManutencao() {
         </linearGradient>
       </defs>
       <g filter="url(#gManutGrain)">
-        <Plate shadow="#8A472A" />
         <g className="ld-float">
+          <GroundShadow cy={134} rx={34} color="#8A472A" />
           {/* Caixa */}
           <path d="M48 96 h64 l-4 34 h-56z" fill="url(#gBoxBody)" />
           <path d="M44 86 h72 v12 h-72z" fill="url(#gLid)" />
@@ -263,7 +245,6 @@ export function LoadingIconCasa() {
   return (
     <svg viewBox="0 0 160 160" className="ld-icon" aria-hidden="true" focusable="false">
       <defs>
-        <PlateDefs />
         <Grain id="gCasaGrain" />
         <linearGradient id="gRoof" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5C3B23" />
@@ -279,8 +260,8 @@ export function LoadingIconCasa() {
         </linearGradient>
       </defs>
       <g filter="url(#gCasaGrain)">
-        <Plate shadow="#8A6B3A" />
         <g className="ld-float">
+          <GroundShadow cy={122} rx={34} color="#8A6B3A" />
           {/* Arbusto */}
           <g className="ld-bush">
             <circle cx="46" cy="110" r="11" fill="url(#gBush)" />

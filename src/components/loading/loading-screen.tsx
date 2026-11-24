@@ -21,7 +21,7 @@ export type LoadingArea = keyof typeof ICONS;
 export function LoadingScreen({ area, message }: { area: LoadingArea; message: string }) {
   const Icon = ICONS[area];
   return (
-    <div className="ld-screen" role="status" aria-live="polite">
+    <div className={`ld-screen ld-screen--${area}`} role="status" aria-live="polite">
       <Icon />
       <p className="ld-caption">{message}</p>
       <div className="ld-bar-track">
