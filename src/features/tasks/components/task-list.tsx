@@ -84,6 +84,9 @@ type Props = {
   productSources?: SuggestionSources;
   /** Itens de compras já vinculados, por id de evento. */
   eventItems?: Record<string, LinkedEventItem[]>;
+  removeEventItemAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** false = sem permissão de Compras (não pode remover itens vinculados). */
+  canRemoveEventItems?: boolean;
   initialFilters?: RotinaFilters;
   initialCreate?: "tarefa" | "evento" | null;
   userId?: string;
@@ -114,6 +117,8 @@ export function TaskList({
   deleteEventAction,
   productSources,
   eventItems = {},
+  removeEventItemAction,
+  canRemoveEventItems = true,
   initialFilters = NO_FILTERS,
   initialCreate = null,
   userId,
@@ -267,6 +272,8 @@ export function TaskList({
               deleteAction={deleteEventAction}
               productSources={productSources}
               linkedItems={eventItems[e.id] ?? []}
+              removeItemAction={removeEventItemAction}
+              canRemoveItems={canRemoveEventItems}
               onSuccess={() => setEditingEventId(null)}
             />
           </div>

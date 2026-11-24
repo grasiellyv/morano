@@ -18,6 +18,8 @@ import {
 } from "@/features/tasks/queries";
 import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-list";
 import { getEventsForRange, getEventShoppingItems } from "@/features/events/queries";
+import { removeEventItem } from "@/features/events/actions-items";
+import { getMemberPermissions } from "@/features/members/permissions";
 import { getShoppingItems, getShoppingHistorySessions } from "@/features/shopping/queries";
 import { getCategories } from "@/features/shopping/queries-categories";
 import { historyProducts } from "@/features/shopping/dedupe";
@@ -102,7 +104,7 @@ export default async function Page({
   // Os itens de compras dos eventos dependem dos ids dos eventos: encadeados num só ramo,
   // em paralelo com as demais leituras.
   const weekEventsPromise = getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []);
-  const [weekOcc, overdueOcc, weekEvents, eventItems, categories, shopping, historySessions, absence, rotations, homeMembers] =
+  const [weekOcc, overdueOcc, weekEvents, eventItems, categories, shopping, historySessions, absence, rotations, homeMembers, perms] =
     await Promise.all([
       getOccurrencesForWeek(supabase, home.id, weekStart),
       view === "dia" && selectedDate === currentDate
@@ -116,6 +118,7 @@ export default async function Page({
       getMyAbsence(supabase, userId),
       getRotations(supabase, home.id),
       getHomeMembers(supabase),
+      getMemberPermissions(supabase, userId, home.id),
     ]);
 
   const productSources = {
@@ -166,6 +169,8 @@ export default async function Page({
       events={weekEvents}
       productSources={productSources}
       eventItems={eventItems}
+      removeEventItemAction={removeEventItem}
+      canRemoveEventItems={perms.bypass || perms.can_manage_shopping}
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}

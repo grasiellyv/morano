@@ -99,4 +99,47 @@ describe("EventItemsField", () => {
     expect(screen.getByText("No máximo 20 itens por evento.")).toBeInTheDocument();
     expect(screen.getByLabelText("Produto do evento")).toBeDisabled();
   });
+
+  describe("remover item já vinculado", () => {
+    const linked = [
+      { id: "1", name: "Vinho", quantity: 2, unit: "un", is_purchased: false },
+      { id: "2", name: "Pão", quantity: 1, unit: "un", is_purchased: true },
+    ];
+
+    it("pendente tem botão; confirmar chama a action com o id e tira o item da lista", async () => {
+      const user = userEvent.setup();
+      const removeAction = vi.fn().mockResolvedValue({ status: "success", message: "Item removido da lista de compras." });
+      render(<EventItemsField sources={sources} linked={linked} removeAction={removeAction} canRemove />);
+      await user.click(screen.getByRole("button", { name: "Remover Vinho da lista de compras" }));
+      expect(await screen.findByText("Remover da lista de compras?")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Remover" }));
+      await vi.waitFor(() => expect(removeAction).toHaveBeenCalledTimes(1));
+      const fd = removeAction.mock.calls[0]![1] as FormData;
+      expect(fd.get("id")).toBe("1");
+      await vi.waitFor(() => expect(screen.queryByText(/Vinho · 2 un/)).toBeNull());
+      expect(screen.getByText(/Pão/)).toBeInTheDocument();
+    });
+
+    it("comprado não tem botão e mostra Comprado", () => {
+      render(<EventItemsField sources={sources} linked={linked} removeAction={vi.fn()} canRemove />);
+      expect(screen.queryByRole("button", { name: "Remover Pão da lista de compras" })).toBeNull();
+      expect(screen.getByText("Comprado")).toBeInTheDocument();
+    });
+
+    it("sem permissão de Compras o botão fica desabilitado com a dica", () => {
+      render(<EventItemsField sources={sources} linked={linked} removeAction={vi.fn()} canRemove={false} />);
+      expect(screen.getByRole("button", { name: "Remover Vinho da lista de compras" })).toBeDisabled();
+      expect(screen.getByText("Sem permissão para Compras.")).toBeInTheDocument();
+    });
+
+    it("erro da action mantém o item e mostra o aviso", async () => {
+      const user = userEvent.setup();
+      const removeAction = vi.fn().mockResolvedValue({ status: "error", message: "Item não encontrado ou já comprado." });
+      render(<EventItemsField sources={sources} linked={linked} removeAction={removeAction} canRemove />);
+      await user.click(screen.getByRole("button", { name: "Remover Vinho da lista de compras" }));
+      await user.click(await screen.findByRole("button", { name: "Remover" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Item não encontrado ou já comprado.");
+      expect(screen.getByText(/Vinho · 2 un/)).toBeInTheDocument();
+    });
+  });
 });

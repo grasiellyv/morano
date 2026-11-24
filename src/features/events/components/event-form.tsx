@@ -102,6 +102,10 @@ type Props = {
   productSources?: SuggestionSources;
   /** Itens que o evento já pôs na lista de compras (edição). */
   linkedItems?: LinkedEventItem[];
+  /** Remove um item vinculado (do evento e da lista de compras). */
+  removeItemAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** false = sem permissão de Compras. */
+  canRemoveItems?: boolean;
 };
 
 const noopAction = async (
@@ -118,6 +122,8 @@ export function EventForm({
   onSuccess,
   productSources,
   linkedItems = [],
+  removeItemAction,
+  canRemoveItems = true,
 }: Props) {
   const mainAction =
     mode === "create"
@@ -318,7 +324,12 @@ export function EventForm({
           ) : null}
         </div>
 
-        {productSources ? <EventItemsField sources={productSources} linked={linkedItems} /> : null}
+        {productSources ? <EventItemsField
+            sources={productSources}
+            linked={linkedItems}
+            removeAction={removeItemAction}
+            canRemove={canRemoveItems}
+          /> : null}
 
         <div>
           <label

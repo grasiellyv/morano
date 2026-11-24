@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { normalizeName } from "@/features/shopping/dedupe";
 import { ProductAutocomplete } from "@/features/shopping/components/product-autocomplete";
 import type { ProductSuggestion, ShoppingUnit, SuggestionSources } from "@/features/shopping/suggest";
@@ -18,17 +20,36 @@ type Props = {
   sources: SuggestionSources;
   /** Itens que o evento já pôs na lista de compras (edição). */
   linked?: LinkedEventItem[];
+  /** Tira um item pendente vinculado do evento E da lista de compras (campo `id`). */
+  removeAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** false = sem permissão de Compras: o botão de remover fica desabilitado. */
+  canRemove?: boolean;
 };
 
 /** "Itens / Compras necessárias": o que entra na lista de compras quando o evento for salvo. */
-export function EventItemsField({ sources, linked = [] }: Props) {
+export function EventItemsField({ sources, linked = [], removeAction, canRemove = true }: Props) {
   const [items, setItems] = useState<EventItemInput[]>([]);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState<ShoppingUnit>("un");
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   const full = items.length >= MAX_EVENT_ITEMS;
+  const visibleLinked = linked.filter((l) => !removedIds.includes(l.id));
+  const hasRemovable = !!removeAction && visibleLinked.some((l) => !l.is_purchased);
+
+  async function removeLinked(id: string) {
+    if (!removeAction) return;
+    setRemoveError(null);
+    const fd = new FormData();
+    fd.set("id", id);
+    const result = await removeAction(initialFormState, fd);
+    if (result.status === "error") setRemoveError(result.message ?? "Não foi possível remover o item.");
+    else setRemovedIds((prev) => [...prev, id]);
+  }
 
   function addDraft() {
     const trimmed = name.trim();
@@ -64,20 +85,45 @@ export function EventItemsField({ sources, linked = [] }: Props) {
 
       <input type="hidden" name="items" value={JSON.stringify(items)} />
 
-      {linked.length > 0 ? (
+      {visibleLinked.length > 0 ? (
         <div className="mb-3">
           <p className="mb-1 text-xs font-semibold text-foreground">Já na lista</p>
           <ul className="space-y-1">
-            {linked.map((l) => (
+            {visibleLinked.map((l) => (
               <li key={l.id} className="flex items-center gap-2 text-[13px]">
                 <CalendarDays size={13} strokeWidth={1.75} aria-hidden className="shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate">
                   {l.name} · {l.quantity} {l.unit}
                 </span>
                 {l.is_purchased ? <span className="text-xs text-muted-foreground">Comprado</span> : null}
+                {!l.is_purchased && removeAction ? (
+                  <ConfirmDialog
+                    trigger={
+                      <button
+                        type="button"
+                        disabled={!canRemove}
+                        aria-label={`Remover ${l.name} da lista de compras`}
+                        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40"
+                      >
+                        <X size={14} strokeWidth={1.75} aria-hidden />
+                      </button>
+                    }
+                    title="Remover da lista de compras?"
+                    description={`“${l.name}” sai deste evento e da lista de compras.`}
+                    confirmLabel="Remover"
+                    destructive
+                    onConfirm={() => removeLinked(l.id)}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
+          {hasRemovable && !canRemove ? (
+            <p className="mt-1 text-xs text-muted-foreground">Sem permissão para Compras.</p>
+          ) : null}
+          {removeError ? (
+            <p role="alert" className="mt-1 text-xs text-destructive">{removeError}</p>
+          ) : null}
           <Link href="/compras" className="mt-1 inline-block text-xs font-semibold text-add-ink underline-offset-4 hover:underline">
             Ver na lista de compras
           </Link>
