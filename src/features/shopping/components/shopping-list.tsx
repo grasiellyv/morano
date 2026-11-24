@@ -19,6 +19,7 @@ import { ShareListButton } from "@/features/shopping/components/share-list-dialo
 import { HistoryRecover } from "@/features/shopping/components/history-recover";
 import { UpdatedAgo } from "@/features/shopping/components/live-updates";
 import type { HistoryProduct } from "@/features/shopping/dedupe";
+import type { SuggestionSources } from "@/features/shopping/suggest";
 import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
 import { CategoryIcon } from "@/features/shopping/category-icon";
 
@@ -63,11 +64,16 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
   const [showAddForm, setShowAddForm] = useState(false);
   const deferredQuery = useDeferredValue(searchQuery);
 
-  const personalSuggestions = Array.from(
-    new Map(
-      lists.flatMap((l) => l.items).map((item) => [item.name.toLowerCase(), { name: item.name, category_id: item.category_id }])
-    ).values()
-  );
+  // Autocomplete: tudo que a casa já usou — listas nomeadas, lista atual e histórico de compras.
+  const sources: SuggestionSources = {
+    categories,
+    home: [
+      ...lists.flatMap((l) => l.items).map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...pending.map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...purchased.map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...history.map((h) => ({ name: h.name, category_id: h.category_id, unit: h.unit })),
+    ],
+  };
 
   function matchesFilters(item: ShoppingItem) {
     if (filterMission && item.mission !== filterMission) return false;
@@ -266,7 +272,7 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
             <AddItemForm
               categories={categories}
               rooms={rooms}
-              personalSuggestions={personalSuggestions}
+              sources={sources}
               pendingItems={pending}
             />
           </div>
