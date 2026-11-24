@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingScreen, type LoadingArea } from "@/components/loading/loading-screen";
 import { DemoActions } from "./demo-actions";
 
 export const metadata: Metadata = { title: "Estilo" };
@@ -24,6 +25,14 @@ const PALETTE = [
 ] as const;
 
 const VARIANTS = ["default", "secondary", "outline", "ghost", "destructive", "link"] as const;
+
+const LOADING_SCREENS: { area: LoadingArea; message: string }[] = [
+  { area: "inicio", message: "Preparando o seu dia…" },
+  { area: "rotina", message: "Regando a rotina de hoje…" },
+  { area: "compras", message: "Organizando a lista de compras…" },
+  { area: "manutencao", message: "Afiando as ferramentas…" },
+  { area: "casa", message: "Arrumando a casa…" },
+];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -101,6 +110,16 @@ export default function EstiloPage() {
         <div className="space-y-2">
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
+        </div>
+      </Section>
+
+      <Section title="Telas de carregamento">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {LOADING_SCREENS.map(({ area, message }) => (
+            <div key={area} className="border-border bg-card overflow-hidden rounded-2xl border">
+              <LoadingScreen area={area} message={message} />
+            </div>
+          ))}
         </div>
       </Section>
 
