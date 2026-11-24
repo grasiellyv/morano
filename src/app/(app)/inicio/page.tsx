@@ -15,12 +15,14 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { AccountButton } from "@/components/layout/account-button";
+import { ExpandableList } from "@/components/ui/expandable-list";
 import { NotificationBell } from "@/features/notifications/notification-bell";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
 import { formatHourShort, getHeroPeriod, greetingFor, GREETING_LABEL, type HeroPeriod } from "@/lib/day-period";
-import { extendWindowForHome } from "@/features/tasks/actions";
+import { extendWindow } from "@/features/tasks/extend-window";
+import { runHomeMaintenance } from "@/features/tasks/maintenance";
 import { CompleteCircleButton } from "@/features/tasks/components/complete-circle-button";
 import {
   markMissedOccurrences,
@@ -154,19 +156,25 @@ export default async function Page() {
   const period = getHeroPeriod(home.timezone);
   const theme = HERO_THEME[period];
 
-  // Operações de manutenção independentes rodam em paralelo (não uma após a outra)
-  // para cortar round-trips sequenciais ao Supabase remoto. Ambas ainda são
-  // aguardadas antes das leituras, garantindo consistência.
-  await Promise.all([
-    extendWindowForHome(home.id, home.timezone).catch(() => {}),
-    markMissedOccurrences(supabase, home.id, today).catch(() => {}),
-  ]);
+  // Manutenção (gerar ocorrências, marcar atrasadas) fora do caminho de toda visita: 1 consulta
+  // decide quem roda; só a primeira visita do dia espera, o resto roda depois da resposta.
+  await runHomeMaintenance({
+    supabase,
+    homeId: home.id,
+    timezone: home.timezone,
+    run: async () => {
+      await Promise.all([
+        extendWindow(supabase, home.id, home.timezone),
+        markMissedOccurrences(supabase, home.id, today),
+      ]);
+    },
+  });
 
   const [todayOcc, overdueOcc, shopping, maintenance, reorderSuggestions, homeMembers, profileResult] =
     await Promise.all([
       getTodayOccurrences(supabase, home.id, today),
       getOverdueOccurrences(supabase, home.id, today),
-      getShoppingItems(supabase, home.id),
+      getShoppingItems(supabase, home.id, { purchasedLimit: 0 }),
       getMaintenanceItems(supabase, home.id),
       getReorderSuggestions(supabase, home.id, today),
       getHomeMembers(supabase),
@@ -380,30 +388,20 @@ export default async function Page() {
             className="mt-1.5 overflow-hidden rounded-[16px] border border-border"
             style={{ background: "var(--card)", boxShadow: "var(--shadow)" }}
           >
-            {attentionVisible.map((item, i) => (
-              <AttentionRow
-                key={item.key}
-                item={item}
-                last={i === attentionVisible.length - 1 && attentionMore.length === 0}
-              />
-            ))}
-            {attentionMore.length > 0 ? (
-              <details className="group">
-                <summary
-                  className="flex cursor-pointer list-none items-center gap-2 px-3.5 text-[12.5px] font-medium [&::-webkit-details-marker]:hidden"
-                  style={{ height: 40, background: "var(--secondary)", color: "var(--muted-foreground)" }}
-                >
-                  <span className="flex-1">
-                    <span className="group-open:hidden">Ver tudo ({attentionMore.length} a mais)</span>
-                    <span className="hidden group-open:inline">Mostrar menos</span>
-                  </span>
-                  <ChevronRight aria-hidden size={15} className="rotate-90 transition-transform group-open:-rotate-90" />
-                </summary>
-                {attentionMore.map((item, i) => (
-                  <AttentionRow key={item.key} item={item} last={i === attentionMore.length - 1} />
-                ))}
-              </details>
-            ) : null}
+            <ExpandableList
+              moreCount={attentionMore.length}
+              more={attentionMore.map((item, i) => (
+                <AttentionRow key={item.key} item={item} last={i === attentionMore.length - 1} />
+              ))}
+            >
+              {attentionVisible.map((item, i) => (
+                <AttentionRow
+                  key={item.key}
+                  item={item}
+                  last={i === attentionVisible.length - 1 && attentionMore.length === 0}
+                />
+              ))}
+            </ExpandableList>
           </div>
         </section>
       ) : null}

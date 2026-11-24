@@ -520,6 +520,7 @@ export type Database = {
           created_by: string | null;
           household_type: Database["public"]["Enums"]["household_type"] | null;
           id: string;
+          maintenance_ran_at: string | null;
           name: string;
           ownership_type: Database["public"]["Enums"]["ownership_type"] | null;
           property_type: Database["public"]["Enums"]["property_type"] | null;
@@ -534,6 +535,7 @@ export type Database = {
           created_by?: string | null;
           household_type?: Database["public"]["Enums"]["household_type"] | null;
           id?: string;
+          maintenance_ran_at?: string | null;
           name: string;
           ownership_type?: Database["public"]["Enums"]["ownership_type"] | null;
           property_type?: Database["public"]["Enums"]["property_type"] | null;
@@ -547,6 +549,7 @@ export type Database = {
           created_by?: string | null;
           household_type?: Database["public"]["Enums"]["household_type"] | null;
           id?: string;
+          maintenance_ran_at?: string | null;
           name?: string;
           ownership_type?: Database["public"]["Enums"]["ownership_type"] | null;
           property_type?: Database["public"]["Enums"]["property_type"] | null;
@@ -1838,8 +1841,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      backfill_onboarding_task_rooms: { Args: Record<PropertyKey, never>; Returns: number };
       can_manage_shopping: { Args: { p_home_id: string }; Returns: boolean };
+      claim_home_maintenance: {
+        Args: { p_home_id: string; p_min_interval?: string };
+        Returns: Json;
+      };
       clear_my_absence: { Args: Record<PropertyKey, never>; Returns: undefined };
+      complete_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       current_plan: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];

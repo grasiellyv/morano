@@ -18,6 +18,7 @@ import {
   type RoutineRule,
 } from "@/features/tasks/rules/recurrence";
 import { applyRetroactivePolicy } from "@/features/tasks/rules/missed-policy";
+import { extendWindow } from "@/features/tasks/extend-window";
 import {
   createTaskSchema,
   updateTaskMetaSchema,
@@ -28,119 +29,22 @@ import { getMemberPermissions } from "@/features/members/permissions";
 /**
  * Extende a janela de ocorrências para todas as rotinas ativas de uma home.
  * Swallows ALL errors — nunca re-lança; a página deve renderizar mesmo se falhar.
+ * (Como server action, confere que a casa é a do usuário; a lógica está em `extendWindow`.)
  */
 export async function extendWindowForHome(
   homeId: string,
   homeTimezone: string,
 ): Promise<void> {
   try {
+    const { id: userId } = await requireUser();
     const supabase = await createClient();
-    // Verify caller owns this home
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     const { data: profile } = await supabase
       .from("profiles")
       .select("current_home_id")
-      .eq("id", user.id)
+      .eq("id", userId)
       .maybeSingle();
     if (profile?.current_home_id !== homeId) return;
-
-    const today = getLocalDateString(homeTimezone);
-    const threshold = addDaysStr(today, 28);
-    const newUntil = addDaysStr(today, 56);
-
-    // Buscar routines ativas com tasks ativas cujo generated_until está abaixo do threshold
-    // Para incluir routines com generated_until null (nunca geradas), usamos um workaround:
-    // null < threshold é verdadeiro no Postgres, mas o SDK precisa de uma query separada.
-    const { data: routinesBelow } = await supabase
-      .from("routines")
-      .select("*, tasks!inner(status)")
-      .eq("home_id", homeId)
-      .eq("is_active", true)
-      .filter("tasks.status", "eq", "active")
-      .lt("generated_until", threshold);
-
-    // Buscar routines com generated_until null (ainda não geradas)
-    const { data: routinesNull } = await supabase
-      .from("routines")
-      .select("*, tasks!inner(status)")
-      .eq("home_id", homeId)
-      .eq("is_active", true)
-      .filter("tasks.status", "eq", "active")
-      .is("generated_until", null);
-
-    const routines = [...(routinesBelow ?? []), ...(routinesNull ?? [])];
-    if (routines.length === 0) return;
-
-    for (const routine of routines) {
-      try {
-        const rule: RoutineRule = {
-          frequency_type: routine.frequency_type,
-          interval_value: routine.interval_value ?? null,
-          interval_unit: routine.interval_unit ?? null,
-          weekdays: routine.weekdays ?? null,
-          month_day: routine.month_day ?? null,
-          start_date: routine.start_date,
-          end_date: routine.end_date ?? null,
-        };
-
-        // fromDate: um dia após generated_until, ou start_date se nunca gerado
-        const fromDate = routine.generated_until
-          ? addDaysStr(routine.generated_until, 1)
-          : routine.start_date;
-
-        const yesterday = addDaysStr(today, -1);
-
-        // Step 1: retroactive dates (before today)
-        let retroToInsert: string[] = [];
-        let ungeneratedCount = 0;
-        if (fromDate <= yesterday) {
-          const retroDates = generateOccurrenceDates(rule, fromDate, yesterday);
-          const policy = applyRetroactivePolicy(retroDates, today);
-          retroToInsert = policy.toInsert;
-          ungeneratedCount = policy.ungeneratedCount;
-        }
-
-        // Step 2: future dates (today onward) — no limit
-        const futureDates = generateOccurrenceDates(rule, today, newUntil);
-
-        // Merge for upsert
-        const allToInsert = [...retroToInsert, ...futureDates];
-
-        if (allToInsert.length > 0) {
-          const occurrences = allToInsert.map((d) => ({
-            task_id: routine.task_id,
-            home_id: homeId,
-            original_date: d,
-            scheduled_for: d,
-            status: "pending" as const,
-          }));
-
-          await supabase
-            .from("task_occurrences")
-            .upsert(occurrences, { onConflict: "task_id,original_date", ignoreDuplicates: true });
-        }
-
-        // Read-then-write (not SQL increment) is intentional: concurrent sessions both
-        // write the same value, so double-counting is impossible even with fire-and-forget calls.
-        if (ungeneratedCount > 0) {
-          await supabase
-            .from("routines")
-            .update({
-              generated_until: newUntil,
-              ungenerated_count: routine.ungenerated_count + ungeneratedCount,
-            })
-            .eq("id", routine.id);
-        } else {
-          await supabase
-            .from("routines")
-            .update({ generated_until: newUntil })
-            .eq("id", routine.id);
-        }
-      } catch {
-        // Swallow individual routine errors — continue processing others
-      }
-    }
+    await extendWindow(supabase, homeId, homeTimezone);
   } catch {
     // Swallow all errors — page must render even if extension fails
   }
@@ -327,47 +231,33 @@ export async function completeOccurrence(
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  // Fetch occurrence — RLS validates membership implicitly
-  const { data: occurrence, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, task_id")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Uma ida só ao banco: a função confere membro, permissão de concluir e escopo de cômodos
+  // (as mesmas regras de antes) e atualiza. Antes eram ~5 idas sequenciais ao Supabase remoto.
+  const { data, error } = await supabase.rpc("complete_task_occurrence", {
+    p_occurrence_id: occurrenceId,
+  });
 
-  if (fetchError || !occurrence) {
-    return { status: "error", message: "Ocorrência não encontrada." };
-  }
-
-  const perms = await getMemberPermissions(supabase, userId, occurrence.home_id);
-  if (!perms.bypass && !perms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão para concluir tarefas." };
-  }
-  if (!perms.bypass && perms.task_room_ids.length > 0) {
-    const { data: task } = await supabase
-      .from("tasks")
-      .select("room_id")
-      .eq("id", occurrence.task_id)
-      .maybeSingle();
-    if (task?.room_id && !perms.task_room_ids.includes(task.room_id)) {
-      return { status: "error", message: "Sem acesso a este cômodo." };
-    }
-  }
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      completed_by: userId,
-    })
-    .eq("id", occurrenceId);
-
-  if (error) {
+  if (error || !data) {
     return { status: "error", message: "Erro ao concluir. Tente novamente." };
   }
 
+  const outcome = data as { result?: string; home_id?: string };
+  switch (outcome.result) {
+    case "completed":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para concluir tarefas." };
+    case "forbidden_room":
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao concluir. Tente novamente." };
+  }
+
   // Telemetria depois da resposta: não segura a bolinha por mais dois round-trips.
-  after(() => trackEvent(userId, occurrence.home_id, "occurrence_completed"));
+  const homeId = outcome.home_id ?? null;
+  after(() => trackEvent(userId, homeId, "occurrence_completed"));
   // A tela de Rotina já atualiza sozinha (UI otimista): `no_refresh` evita reler a página inteira.
   if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
 

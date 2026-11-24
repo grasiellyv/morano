@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { trackEvent } from "@/lib/telemetry";
+import { onboardingTaskRow } from "@/features/onboarding/catalog";
 import {
   type FormState,
   fieldErrorsFrom,
@@ -261,17 +262,26 @@ export async function approveRoutine(
     };
   }
 
+  // Cômodos da casa (para ligar cada tarefa sugerida ao seu cômodo pelo id do catálogo).
+  const { data: homeRooms } = await supabase
+    .from("rooms")
+    .select("id, room_type, position")
+    .eq("home_id", homeId);
+  const rooms = homeRooms ?? [];
+
   const includedTasks = parsed.data.filter((t) => t.include);
   const today = format(new TZDate(new Date(), homeTimezone), "yyyy-MM-dd");
   let insertedCount = 0;
 
   for (const task of includedTasks) {
+    const { room_id, priority } = onboardingTaskRow(task.id, rooms);
     const { data: insertedTask, error: taskError } = await supabase
       .from("tasks")
       .insert({
         home_id: homeId,
         title: task.title,
-        priority: "media",
+        room_id,
+        priority,
         source: "onboarding",
         // created_by is NOT in the INSERT grant — the DB default (auth.uid()) fills it
         status: "active",

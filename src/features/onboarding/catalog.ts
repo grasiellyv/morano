@@ -65,3 +65,21 @@ export function filterCatalog(rooms: RoomType[], level: RoutineLevel): CatalogTa
       LEVEL_ORDER[t.min_level] <= LEVEL_ORDER[level],
   );
 }
+
+/**
+ * Cômodo e prioridade de uma tarefa sugerida, resolvidos NO SERVIDOR a partir do id do
+ * catálogo (o cliente só diz qual sugestão foi aprovada). Sem isso, "Varrer o chão" da
+ * cozinha, da sala e do quarto viravam três tarefas idênticas e sem cômodo.
+ * Vários cômodos do mesmo tipo (ex.: dois quartos): vale o primeiro, por posição.
+ */
+export function onboardingTaskRow(
+  catalogId: string,
+  rooms: ReadonlyArray<{ id: string; room_type: string; position: number }>,
+): { room_id: string | null; priority: CatalogTask["priority"] } {
+  const entry = CATALOG.find((t) => t.id === catalogId);
+  if (!entry) return { room_id: null, priority: "media" };
+  const room = [...rooms]
+    .filter((r) => r.room_type === entry.room_type)
+    .sort((a, b) => a.position - b.position)[0];
+  return { room_id: room?.id ?? null, priority: entry.priority };
+}
