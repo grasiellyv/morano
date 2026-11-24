@@ -1364,25 +1364,38 @@ export type Database = {
       };
       shopping_lists: {
         Row: {
+          category_id: string | null;
           created_at: string;
           home_id: string;
           id: string;
+          mission: string | null;
           name: string;
         };
         ComputedFields: never;
         Insert: {
+          category_id?: string | null;
           created_at?: string;
           home_id: string;
           id?: string;
+          mission?: string | null;
           name: string;
         };
         Update: {
+          category_id?: string | null;
           created_at?: string;
           home_id?: string;
           id?: string;
+          mission?: string | null;
           name?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "shopping_lists_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "shopping_categories";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "shopping_lists_home_id_fkey";
             columns: ["home_id"];
@@ -1841,6 +1854,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      apply_shopping_list: { Args: { p_list_id: string }; Returns: Json };
       backfill_onboarding_task_rooms: { Args: Record<PropertyKey, never>; Returns: number };
       can_manage_shopping: { Args: { p_home_id: string }; Returns: boolean };
       claim_home_maintenance: {
@@ -1849,6 +1863,16 @@ export type Database = {
       };
       clear_my_absence: { Args: Record<PropertyKey, never>; Returns: undefined };
       complete_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
+      create_shopping_list: {
+        Args: {
+          p_category_id: string;
+          p_home_id: string;
+          p_items: Json;
+          p_mission: string;
+          p_name: string;
+        };
+        Returns: string;
+      };
       current_plan: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
@@ -1951,8 +1975,11 @@ export type Database = {
       };
       set_my_absence: { Args: { p_end: string; p_start: string }; Returns: undefined };
       shopping_name_key: { Args: { p_name: string }; Returns: string };
+      skip_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       storage_home_id: { Args: { p_name: string }; Returns: string };
+      task_occurrence_access: { Args: { p_occurrence_id: string }; Returns: Json };
       transfer_ownership: { Args: { p_new_owner_id: string }; Returns: undefined };
+      undo_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
     };
     Enums: {
       appliance_category:

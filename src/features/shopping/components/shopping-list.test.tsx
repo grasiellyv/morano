@@ -7,7 +7,10 @@ vi.mock("@/features/shopping/actions", () => ({
 vi.mock("@/features/shopping/actions-categories", () => ({
   createCategory: vi.fn(), updateCategory: vi.fn(), deleteCategory: vi.fn(), reorderCategories: vi.fn(),
 }));
-vi.mock("@/features/shopping/actions-lists", () => ({}));
+vi.mock("@/features/shopping/actions-lists", () => ({
+  createList: vi.fn(), updateList: vi.fn(), deleteList: vi.fn(), addListItem: vi.fn(),
+  updateListItem: vi.fn(), deleteListItem: vi.fn(), applyList: vi.fn(),
+}));
 vi.mock("@/features/shopping/actions-share", () => ({ createShareLink: vi.fn(), revokeShareLink: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("next/link", () => ({

@@ -133,4 +133,10 @@ describe("applyStatusOverrides", () => {
   it("override de id que não está na lista é ignorado", () => {
     expect(applyStatusOverrides([a], { zzz: "completed" })).toEqual([a]);
   });
+
+  it("pulada some da lista (não é pendente nem concluída) e as demais mantêm a identidade", () => {
+    const r = applyStatusOverrides([a, b], { o1: "skipped" });
+    expect(r.map((o) => o.id)).toEqual(["o2"]);
+    expect(r[0]).toBe(b);
+  });
 });

@@ -246,7 +246,7 @@ function RoomRow({ room }: { room: Room }) {
   return (
     <li className="flex items-center justify-between gap-4 border rounded-lg px-4 py-3">
       <div>
-        <p className="text-sm font-medium">{room.name}</p>
+        <p className="text-base font-medium">{room.name}</p>
         <p className="text-muted-foreground text-xs">{ROOM_TYPE_LABELS[room.room_type]}</p>
       </div>
       <div className="flex gap-1">

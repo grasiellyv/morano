@@ -33,7 +33,7 @@ type Props = {
    * Concluir/desfazer é otimista: a lista pai troca o status na hora ("completed"/"pending")
    * e volta ao que era (`null`) se o servidor recusar ou a rede falhar.
    */
-  onStatusChange?: (id: string, status: "completed" | "pending" | null) => void;
+  onStatusChange?: (id: string, status: "completed" | "pending" | "skipped" | null) => void;
   rooms?: Array<{ id: string; name: string }>;
   homeMembers?: Array<{ id: string; name: string | null }>;
 };
@@ -118,7 +118,27 @@ export function TaskOccurrenceRow({
       setMenuOpen(false);
       return res;
     };
-  const [, skipDispatch, skipPending] = useActionState(closingAfter(skipOccurrence), initialFormState);
+  // Pular também é otimista (some da lista no onSubmit) e não relê a página; erro devolve e avisa.
+  const [, skipDispatch, skipPending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof skipOccurrence>>, fd: FormData) => {
+      fd.set("no_refresh", "1");
+      try {
+        const res = await skipOccurrence(prev, fd);
+        if (res.status === "error") {
+          onStatusChange?.(occurrence.id, null);
+          toast.error(res.message ?? "Não foi possível pular. Tente novamente.");
+        }
+        return res;
+      } catch {
+        onStatusChange?.(occurrence.id, null);
+        toast.error("Não foi possível pular. Verifique a conexão e tente novamente.");
+        return { status: "error" as const, message: "Falha de conexão." };
+      } finally {
+        setMenuOpen(false);
+      }
+    },
+    initialFormState,
+  );
   const [postponeState, postponeDispatch, postponePending] = useActionState(postponeOccurrence, initialFormState);
   const [claimState, claimDispatch, claimPending] = useActionState(closingAfter(claimOccurrence), initialFormState);
   const [, unclaimDispatch, unclaimPending] = useActionState(closingAfter(unclaimOccurrence), initialFormState);
@@ -393,7 +413,7 @@ export function TaskOccurrenceRow({
                 <MenuItem onClick={() => { setShowPostpone(true); setMenuOpen(false); }}>Adiar</MenuItem>
               ) : null}
               {!isCompleted ? (
-                <form action={skipDispatch}>
+                <form action={skipDispatch} onSubmit={() => onStatusChange?.(occurrence.id, "skipped")}>
                   <input type="hidden" name="occurrence_id" value={occurrence.id} />
                   <MenuItem type="submit" disabled={skipPending}>
                     {skipPending ? "Pulando…" : "Pular desta vez"}

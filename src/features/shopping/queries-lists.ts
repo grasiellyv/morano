@@ -22,6 +22,11 @@ export type ShoppingList = {
   home_id: string;
   name: string;
   created_at: string;
+  /** Missão/ocasião padrão: os itens entram na lista ativa com ela. */
+  mission: "abastecimento" | "reposicao" | "ocasioes" | null;
+  /** Categoria padrão para os itens que não têm a sua. */
+  category_id: string | null;
+  category: { id: string; name: string; icon: string } | null;
   items: ShoppingListItem[];
 };
 
@@ -97,7 +102,8 @@ export async function getShoppingLists(
   const { data, error } = await supabase
     .from("shopping_lists")
     .select(`
-      id, home_id, name, created_at,
+      id, home_id, name, created_at, mission, category_id,
+      category:shopping_categories(id, name, icon),
       items:shopping_list_items(
         id, list_id, name, category_id, quantity, unit, notes, reorder_months, last_added_at,
         category:shopping_categories(id, name, icon)

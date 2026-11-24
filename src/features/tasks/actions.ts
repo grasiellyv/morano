@@ -11,8 +11,6 @@ import {
 } from "@/features/auth/form-state";
 import { trackEvent } from "@/lib/telemetry";
 import { getLocalDateString, addDaysStr } from "@/lib/dates";
-import { TZDate } from "@date-fns/tz";
-import { format } from "date-fns";
 import {
   generateOccurrenceDates,
   type RoutineRule,
@@ -268,66 +266,32 @@ export async function undoComplete(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  const { data: occurrence, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, completed_at, task_id")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Uma ida só ao banco: confere membro, permissão e escopo, exige "concluída" e "mesmo dia no fuso
+  // da casa", e desfaz. Antes eram ~5 idas sequenciais.
+  const { data, error } = await supabase.rpc("undo_task_occurrence", { p_occurrence_id: occurrenceId });
+  if (error || !data) return { status: "error", message: "Erro ao desfazer. Tente novamente." };
 
-  if (fetchError || !occurrence) {
-    return { status: "error", message: "Ocorrência não encontrada." };
-  }
-
-  const undoPerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
-  if (!undoPerms.bypass && !undoPerms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão para desfazer conclusão." };
-  }
-
-  if (occurrence.status !== "completed") {
-    return { status: "error", message: "Esta ocorrência não está concluída." };
-  }
-
-  // Buscar timezone da home para verificar o dia
-  const { data: home, error: homeError } = await supabase
-    .from("homes")
-    .select("timezone")
-    .eq("id", occurrence.home_id)
-    .maybeSingle();
-
-  if (homeError || !home) {
-    return { status: "error", message: "Casa não encontrada." };
-  }
-
-  const homeTimezone = home.timezone;
-  const today = getLocalDateString(homeTimezone);
-
-  // Verificar se completed_at foi hoje no fuso da casa
-  const completedOnDay = format(
-    new TZDate(new Date(occurrence.completed_at!), homeTimezone),
-    "yyyy-MM-dd",
-  );
-
-  if (completedOnDay !== today) {
-    return { status: "error", message: "Só é possível desfazer no mesmo dia" };
-  }
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({
-      status: "pending",
-      completed_at: null,
-      completed_by: null,
-    })
-    .eq("id", occurrenceId);
-
-  if (error) {
-    return { status: "error", message: "Erro ao desfazer. Tente novamente." };
+  switch ((data as { result?: string }).result) {
+    case "undone":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para desfazer conclusão." };
+    case "forbidden_room":
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    case "not_completed":
+      return { status: "error", message: "Esta ocorrência não está concluída." };
+    case "wrong_day":
+      return { status: "error", message: "Só é possível desfazer no mesmo dia" };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao desfazer. Tente novamente." };
   }
 
   if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
@@ -338,52 +302,30 @@ export async function skipOccurrence(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  const { data: occurrence, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, task_id")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Uma ida só ao banco (mesmas regras de permissão de concluir/desfazer).
+  const { data, error } = await supabase.rpc("skip_task_occurrence", { p_occurrence_id: occurrenceId });
+  if (error || !data) return { status: "error", message: "Erro ao pular. Tente novamente." };
 
-  if (fetchError || !occurrence) {
-    return { status: "error", message: "Ocorrência não encontrada." };
-  }
-
-  const skipPerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
-  if (!skipPerms.bypass && !skipPerms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão para pular tarefas." };
-  }
-  if (!skipPerms.bypass && skipPerms.task_room_ids.length > 0) {
-    const { data: task } = await supabase
-      .from("tasks")
-      .select("room_id")
-      .eq("id", occurrence.task_id)
-      .maybeSingle();
-    if (task?.room_id && !skipPerms.task_room_ids.includes(task.room_id)) {
+  switch ((data as { result?: string }).result) {
+    case "skipped":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para pular tarefas." };
+    case "forbidden_room":
       return { status: "error", message: "Sem acesso a este cômodo." };
-    }
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao pular. Tente novamente." };
   }
 
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ status: "skipped" })
-    .eq("id", occurrenceId);
-
-  if (error) {
-    return { status: "error", message: "Erro ao pular. Tente novamente." };
-  }
-
-  revalidatePath("/rotina");
-
-  revalidatePath("/rotina/ocorrencia/[id]", "page");
-  revalidatePath("/rotina/calendario");
-  revalidatePath("/rotina/historico");
-  revalidatePath("/inicio");
+  if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
   return { status: "success" };
 }
 

@@ -1,13 +1,24 @@
 import { z } from "zod";
+import { MISSIONS } from "@/features/shopping/schemas";
+
+/** Missão/ocasião e categoria padrão da lista inteligente (opcionais). */
+const listLinkFields = {
+  mission: z.enum(MISSIONS).optional(),
+  category_id: z.string().uuid().optional(),
+};
 
 export const createListSchema = z.object({
   name: z.string().trim().min(1, { error: "Nome obrigatório" }).max(100),
+  ...listLinkFields,
 });
 
 export const updateListSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1, { error: "Nome obrigatório" }).max(100),
+  ...listLinkFields,
 });
+
+export const MAX_LIST_ITEMS = 50;
 
 export const deleteListSchema = z.object({ id: z.string().uuid() });
 

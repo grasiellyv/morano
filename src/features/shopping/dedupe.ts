@@ -23,12 +23,14 @@ export type HistoryProduct = {
   unit: string;
   category_id: string | null;
   lastAt: string;
+  /** Em quantas compras finalizadas o produto apareceu (quanto mais, mais "pedido"). */
+  times: number;
 };
 
 /**
- * Produtos de compras já finalizadas, sem repetição (nome normalizado), do mais
- * recente para o mais antigo. `sessions` deve vir da mais nova para a mais antiga,
- * mas a ordenação não depende disso.
+ * Produtos de compras já finalizadas, sem repetição (nome normalizado). Os MAIS PEDIDOS primeiro
+ * (em mais compras), e entre iguais o de compra mais recente. Quantidade, unidade e categoria vêm
+ * da compra mais recente do produto. O limite corta depois de ordenar.
  */
 export function historyProducts(
   sessions: ReadonlyArray<{ finished_at: string; items: unknown }>,
@@ -38,10 +40,17 @@ export function historyProducts(
   const seen = new Map<string, HistoryProduct>();
   for (const s of sorted) {
     if (!Array.isArray(s.items)) continue;
+    const inThisSession = new Set<string>();
     for (const raw of s.items as Array<Record<string, unknown>>) {
       const name = typeof raw?.name === "string" ? raw.name.trim() : "";
       const key = normalizeName(name);
-      if (!key || seen.has(key)) continue;
+      if (!key || inThisSession.has(key)) continue;
+      inThisSession.add(key);
+      const existing = seen.get(key);
+      if (existing) {
+        existing.times += 1; // sessões vêm da mais nova para a mais antiga: os dados já são os mais recentes
+        continue;
+      }
       const qty = Number(raw.quantity);
       seen.set(key, {
         name,
@@ -49,9 +58,11 @@ export function historyProducts(
         unit: typeof raw.unit === "string" && raw.unit ? raw.unit : "un",
         category_id: typeof raw.category_id === "string" ? raw.category_id : null,
         lastAt: s.finished_at,
+        times: 1,
       });
-      if (seen.size >= limit) return [...seen.values()];
     }
   }
-  return [...seen.values()];
+  return [...seen.values()]
+    .sort((a, b) => b.times - a.times || b.lastAt.localeCompare(a.lastAt))
+    .slice(0, limit);
 }

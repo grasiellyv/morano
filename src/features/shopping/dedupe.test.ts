@@ -40,6 +40,28 @@ describe("historyProducts", () => {
   it("respeita o limite", () => {
     expect(historyProducts(sessions, 2)).toHaveLength(2);
   });
+  it("conta em quantas compras o produto apareceu (nome sem acento/caixa)", () => {
+    const h = historyProducts(sessions);
+    expect(h.find((p) => p.name === "leite")!.times).toBe(2);
+    expect(h.find((p) => p.name === "Café")!.times).toBe(1);
+  });
+  it("os mais pedidos vêm primeiro, mesmo que a última compra seja antiga", () => {
+    const many = [
+      { finished_at: "2026-09-01T10:00:00Z", items: [{ name: "Arroz" }] },
+      { finished_at: "2026-10-01T10:00:00Z", items: [{ name: "Arroz" }, { name: "Novidade" }] },
+      { finished_at: "2026-10-15T10:00:00Z", items: [{ name: "Arroz" }] },
+      { finished_at: "2026-11-20T10:00:00Z", items: [{ name: "Outro" }] },
+    ];
+    expect(historyProducts(many).map((p) => p.name)).toEqual(["Arroz", "Outro", "Novidade"]);
+  });
+  it("o limite corta DEPOIS de ordenar por frequência", () => {
+    const many = [
+      { finished_at: "2026-09-01T10:00:00Z", items: [{ name: "Frequente" }] },
+      { finished_at: "2026-10-01T10:00:00Z", items: [{ name: "Frequente" }] },
+      { finished_at: "2026-11-20T10:00:00Z", items: [{ name: "Recente1" }, { name: "Recente2" }] },
+    ];
+    expect(historyProducts(many, 1).map((p) => p.name)).toEqual(["Frequente"]);
+  });
 });
 
 describe("timeAgo", () => {

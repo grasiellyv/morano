@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Plus, Settings, ShoppingCart, X, Search } from "lucide-react";
 import { ShareListButton } from "@/features/shopping/components/share-list-dialog";
 import { HistoryRecover } from "@/features/shopping/components/history-recover";
+import { NamedListsSection } from "@/features/shopping/components/named-lists-section";
 import { UpdatedAgo } from "@/features/shopping/components/live-updates";
 import type { HistoryProduct } from "@/features/shopping/dedupe";
 import type { SuggestionSources } from "@/features/shopping/suggest";
@@ -342,7 +343,9 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
         </section>
       ) : null}
 
-      <HistoryRecover products={history} pendingNames={pending.map((i) => i.name)} />
+      <HistoryRecover products={history} pendingNames={pending.map((i) => i.name)} categories={categories} />
+
+      <NamedListsSection lists={lists} categories={categories} />
 
       {/* Purchased items */}
       {filteredPurchased.length > 0 ? (
