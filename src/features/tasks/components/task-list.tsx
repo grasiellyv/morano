@@ -145,12 +145,12 @@ export function TaskList({
   }
   const today = useMemo(() => applyStatusOverrides(todayProp, overrides), [todayProp, overrides]);
   const week = useMemo(() => applyStatusOverrides(weekProp, overrides), [weekProp, overrides]);
-  // Atrasada que foi concluída sai da seção de atrasadas.
+  // Atrasada que foi concluída ou pulada sai da seção de atrasadas.
   const overdue = useMemo(
-    () => overdueProp.filter((o) => overrides[o.id] !== "completed"),
+    () => overdueProp.filter((o) => overrides[o.id] !== "completed" && overrides[o.id] !== "skipped"),
     [overdueProp, overrides],
   );
-  const setStatusOverride = useCallback((id: string, status: "completed" | "pending" | null) => {
+  const setStatusOverride = useCallback((id: string, status: "completed" | "pending" | "skipped" | null) => {
     setOptimistic((prev) => {
       const map = { ...prev.map };
       if (status) map[id] = status;

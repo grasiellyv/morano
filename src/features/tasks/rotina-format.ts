@@ -87,7 +87,7 @@ export function timeSortKey(time: string | null | undefined): string {
 
 // ── Status otimista ───────────────────────────────────────────────────────────
 
-export type StatusOverrides = Record<string, "completed" | "pending">;
+export type StatusOverrides = Record<string, "completed" | "pending" | "skipped">;
 
 /**
  * Aplica à lista o que a pessoa acabou de fazer (concluir/desfazer) sem esperar o servidor.
@@ -95,15 +95,24 @@ export type StatusOverrides = Record<string, "completed" | "pending">;
  */
 export function applyStatusOverrides(list: OccurrenceWithTask[], overrides: StatusOverrides): OccurrenceWithTask[] {
   if (Object.keys(overrides).length === 0) return list;
-  return list.map((o) => {
+  const out: OccurrenceWithTask[] = [];
+  for (const o of list) {
     const status = overrides[o.id];
-    if (!status || o.status === status) return o;
-    return {
-      ...o,
-      status,
-      completed_at: status === "completed" ? (o.completed_at ?? new Date().toISOString()) : null,
-    };
-  });
+    if (!status) {
+      out.push(o);
+    } else if (status === "skipped") {
+      // Pulada não aparece como pendente nem como concluída: sai da lista.
+    } else if (o.status === status) {
+      out.push(o);
+    } else {
+      out.push({
+        ...o,
+        status,
+        completed_at: status === "completed" ? (o.completed_at ?? new Date().toISOString()) : null,
+      });
+    }
+  }
+  return out;
 }
 
 // ── Eventos na semana ─────────────────────────────────────────────────────────

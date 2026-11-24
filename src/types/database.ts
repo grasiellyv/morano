@@ -1975,8 +1975,11 @@ export type Database = {
       };
       set_my_absence: { Args: { p_end: string; p_start: string }; Returns: undefined };
       shopping_name_key: { Args: { p_name: string }; Returns: string };
+      skip_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       storage_home_id: { Args: { p_name: string }; Returns: string };
+      task_occurrence_access: { Args: { p_occurrence_id: string }; Returns: Json };
       transfer_ownership: { Args: { p_new_owner_id: string }; Returns: undefined };
+      undo_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
     };
     Enums: {
       appliance_category:

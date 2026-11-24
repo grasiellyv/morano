@@ -108,3 +108,35 @@ test("concluir muda a tela na hora (servidor lento) e desfazer também", async (
   await page.reload();
   await expect(page.getByRole("button", { name: `Concluir: ${title}` })).toBeVisible({ timeout: 10_000 });
 });
+
+test("pular some da lista na hora (servidor lento) e continua pulada depois", async ({ page }) => {
+  const email = uniqueEmail("otm-skip");
+  await ensureConfirmedUser(email, PASSWORD);
+  await signIn(page, email, PASSWORD);
+  await completeOnboarding(page);
+
+  const title = `Tarefa Pular ${Date.now()}`;
+  await seedTodayTask(email, title);
+  await page.goto("/rotina");
+  await expect(page.getByRole("button", { name: `Concluir: ${title}` })).toBeVisible({ timeout: 10_000 });
+
+  await page.route("**/rotina**", async (route) => {
+    if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 4_000));
+    await route.continue();
+  });
+
+  const t0 = Date.now();
+  await page.getByRole("button", { name: `Mais opções: ${title}` }).click();
+  await page.getByRole("menuitem", { name: "Pular desta vez" }).click();
+  await expect(page.getByRole("button", { name: `Concluir: ${title}` })).toHaveCount(0, { timeout: 1_500 });
+  expect(Date.now() - t0).toBeLessThan(2_500);
+
+  // a resposta chega e a tarefa continua fora (sem piscar de volta)
+  await page.waitForTimeout(5_000);
+  await expect(page.getByRole("button", { name: `Concluir: ${title}` })).toHaveCount(0);
+
+  // o servidor guardou
+  await page.unroute("**/rotina**");
+  await page.reload();
+  await expect(page.getByRole("button", { name: `Concluir: ${title}` })).toHaveCount(0);
+});

@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const completeOccurrence = vi.fn();
 const undoComplete = vi.fn();
+const skipOccurrence = vi.fn();
 vi.mock("@/features/tasks/actions", () => ({
   completeOccurrence: (...a: unknown[]) => completeOccurrence(...a),
   undoComplete: (...a: unknown[]) => undoComplete(...a),
-  skipOccurrence: vi.fn(),
+  skipOccurrence: (...a: unknown[]) => skipOccurrence(...a),
   postponeOccurrence: vi.fn(),
   claimOccurrence: vi.fn(),
   unclaimOccurrence: vi.fn(),
@@ -31,6 +32,7 @@ const pending: OccurrenceWithTask = {
 beforeEach(() => {
   completeOccurrence.mockReset();
   undoComplete.mockReset();
+  skipOccurrence.mockReset();
   toastError.mockReset();
 });
 
@@ -96,5 +98,49 @@ describe("TaskOccurrenceRow — concluir com UI otimista", () => {
     await vi.waitFor(() => expect(undoComplete).toHaveBeenCalledTimes(1));
     expect((undoComplete.mock.calls[0]![1] as FormData).get("no_refresh")).toBe("1");
     d.resolve({ status: "success" });
+  });
+});
+
+describe("TaskOccurrenceRow — pular com UI otimista", () => {
+  async function openMenuAndSkip(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Mais opções: Lavar roupas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Pular desta vez" }));
+  }
+
+  it("a tarefa some da lista na hora, a action roda sem reler a página e o menu fecha", async () => {
+    const user = userEvent.setup();
+    const d = deferred<{ status: "success" }>();
+    skipOccurrence.mockReturnValue(d.promise);
+    const onStatusChange = vi.fn();
+    render(<TaskOccurrenceRow occurrence={pending} today="2026-11-23" onStatusChange={onStatusChange} />);
+    await openMenuAndSkip(user);
+    expect(onStatusChange).toHaveBeenCalledWith("o1", "skipped");
+    await vi.waitFor(() => expect(skipOccurrence).toHaveBeenCalledTimes(1));
+    const fd = skipOccurrence.mock.calls[0]![1] as FormData;
+    expect(fd.get("occurrence_id")).toBe("o1");
+    expect(fd.get("no_refresh")).toBe("1");
+    d.resolve({ status: "success" });
+    await vi.waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(onStatusChange).not.toHaveBeenCalledWith("o1", null);
+  });
+
+  it("erro do servidor devolve a tarefa à lista e avisa", async () => {
+    const user = userEvent.setup();
+    skipOccurrence.mockResolvedValue({ status: "error", message: "Sem permissão para pular tarefas." });
+    const onStatusChange = vi.fn();
+    render(<TaskOccurrenceRow occurrence={pending} today="2026-11-23" onStatusChange={onStatusChange} />);
+    await openMenuAndSkip(user);
+    await vi.waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("o1", null));
+    expect(toastError).toHaveBeenCalledWith("Sem permissão para pular tarefas.");
+  });
+
+  it("falha de rede também devolve a tarefa e não derruba a página", async () => {
+    const user = userEvent.setup();
+    skipOccurrence.mockRejectedValue(new Error("rede"));
+    const onStatusChange = vi.fn();
+    render(<TaskOccurrenceRow occurrence={pending} today="2026-11-23" onStatusChange={onStatusChange} />);
+    await openMenuAndSkip(user);
+    await vi.waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("o1", null));
+    expect(toastError).toHaveBeenCalled();
   });
 });
