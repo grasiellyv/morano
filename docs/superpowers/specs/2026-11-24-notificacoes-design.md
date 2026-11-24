@@ -19,7 +19,7 @@ tipo de notificação.
   cada item com ícone, título, descrição curta, tempo relativo, e um botão
   "Marcar todas como lidas".
 - Clicar numa notificação leva à tela do item correspondente.
-- Preferência por tipo (ligado/desligado) em `/configuracoes`.
+- Preferência por tipo (ligado/desligado) em `/perfil` ("Minha conta").
 - Sininho no header de `/inicio` mostra contagem de não lidas e navega para
   `/notificacoes` (substitui o dropdown atual).
 - Nunca notificar o próprio autor da ação sobre a própria ação.
@@ -286,9 +286,12 @@ Deixa de ser um `Dialog` com lista embutida; passa a ser um `Link` para
 `/notificacoes` com o badge de contagem (`getUnreadCount`). Remove a dependência
 de `localStorage`/`seen.ts` (não precisa mais — o cursor agora é do banco).
 
-### `/configuracoes` — nova seção "Notificações"
+### `/perfil` — nova seção "Notificações"
 
-Lista os 4 tipos com toggle (switch), default ligado. Action
+`/configuracoes` foi removida (unificada em `/perfil`, redirect permanente —
+ver `src/app/(app)/configuracoes/page.tsx`). Nova seção segue o padrão de
+`SectionTitle` + `card` já usado em `/perfil` (Ausência, Segurança): lista os
+4 tipos com toggle (switch), default ligado. Action
 `setNotificationPreference(type, enabled)`.
 
 ## Files
@@ -306,12 +309,13 @@ Lista os 4 tipos com toggle (switch), default ligado. Action
 | `src/features/notifications/seen.ts` | Remover (substituído por cursor no banco) |
 | `src/features/notifications/components/notifications-list.tsx` | Criar |
 | `src/app/(app)/notificacoes/page.tsx` | Criar |
-| `src/app/(app)/configuracoes/page.tsx` | Editar — nova seção |
+| `src/app/(app)/perfil/page.tsx` | Editar — nova seção |
+| `src/features/notifications/schemas.test.ts` | Criar |
 | `src/lib/supabase/proxy.ts` | Editar — adicionar `/notificacoes` a `PRIVATE_PREFIXES` |
 | `src/features/shopping/actions.ts` | Editar — `addItem`, `togglePurchased` |
 | `src/features/manutencao/actions.ts` | Editar — `createMaintenanceItem` |
 | `src/features/notifications/group-by-day.test.ts` | Criar |
-| `src/features/notifications/emit.test.ts` | Criar (contra banco local, como outros testes de action) |
+| `tests/e2e/notificacoes.spec.ts` | Criar — nenhum teste Vitest deste projeto bate num banco real (confirmado: todos são lógica pura); fluxo completo (emissão, RLS entre duas contas, marcar como lida) vai para Playwright, como o resto do projeto |
 
 ## Decisions from Builder Review
 
