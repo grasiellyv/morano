@@ -1855,12 +1855,17 @@ export type Database = {
         Returns: Json;
       };
       apply_shopping_list: { Args: { p_list_id: string }; Returns: Json };
+      assign_task_occurrence: {
+        Args: { p_assigned_to: string; p_occurrence_id: string };
+        Returns: Json;
+      };
       backfill_onboarding_task_rooms: { Args: Record<PropertyKey, never>; Returns: number };
       can_manage_shopping: { Args: { p_home_id: string }; Returns: boolean };
       claim_home_maintenance: {
         Args: { p_home_id: string; p_min_interval?: string };
         Returns: Json;
       };
+      claim_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       clear_my_absence: { Args: Record<PropertyKey, never>; Returns: undefined };
       complete_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       create_shopping_list: {
@@ -1957,9 +1962,17 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
       };
+      postpone_task_occurrence: {
+        Args: { p_new_date: string; p_occurrence_id: string };
+        Returns: Json;
+      };
       remove_member: { Args: { p_user_id: string }; Returns: undefined };
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined };
       seed_shopping_categories_for_home: { Args: { p_home_id: string }; Returns: undefined };
+      set_checklist_item_state: {
+        Args: { p_item_id: string; p_occurrence_id: string; p_status: string };
+        Returns: Json;
+      };
       set_member_permissions: {
         Args: {
           p_can_complete_tasks?: boolean;
@@ -1979,7 +1992,12 @@ export type Database = {
       storage_home_id: { Args: { p_name: string }; Returns: string };
       task_occurrence_access: { Args: { p_occurrence_id: string }; Returns: Json };
       transfer_ownership: { Args: { p_new_owner_id: string }; Returns: undefined };
+      unclaim_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       undo_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
+      update_occurrence_notes: {
+        Args: { p_notes: string; p_occurrence_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       appliance_category:
