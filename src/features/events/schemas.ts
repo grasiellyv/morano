@@ -21,3 +21,5 @@ export const createEventSchema = eventBaseSchema.refine(dateOrder, dateOrderMsg)
 export const updateEventSchema = eventBaseSchema.extend({ id: z.string().uuid() }).refine(dateOrder, dateOrderMsg);
 
 export const deleteEventSchema = z.object({ id: z.string().uuid() });
+
+export const removeEventItemSchema = z.object({ id: z.string().uuid() });

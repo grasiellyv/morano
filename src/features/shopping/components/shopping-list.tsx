@@ -19,6 +19,7 @@ import { ShareListButton } from "@/features/shopping/components/share-list-dialo
 import { HistoryRecover } from "@/features/shopping/components/history-recover";
 import { UpdatedAgo } from "@/features/shopping/components/live-updates";
 import type { HistoryProduct } from "@/features/shopping/dedupe";
+import type { SuggestionSources } from "@/features/shopping/suggest";
 import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
 import { CategoryIcon } from "@/features/shopping/category-icon";
 
@@ -63,11 +64,16 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
   const [showAddForm, setShowAddForm] = useState(false);
   const deferredQuery = useDeferredValue(searchQuery);
 
-  const personalSuggestions = Array.from(
-    new Map(
-      lists.flatMap((l) => l.items).map((item) => [item.name.toLowerCase(), { name: item.name, category_id: item.category_id }])
-    ).values()
-  );
+  // Autocomplete: tudo que a casa já usou — listas nomeadas, lista atual e histórico de compras.
+  const sources: SuggestionSources = {
+    categories,
+    home: [
+      ...lists.flatMap((l) => l.items).map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...pending.map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...purchased.map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...history.map((h) => ({ name: h.name, category_id: h.category_id, unit: h.unit })),
+    ],
+  };
 
   function matchesFilters(item: ShoppingItem) {
     if (filterMission && item.mission !== filterMission) return false;
@@ -225,10 +231,10 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           <Input
             type="search"
             className="pl-9"
-            placeholder="Buscar produto…"
+            placeholder="Buscar na lista…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Buscar produto"
+            aria-label="Buscar na lista"
           />
           {searchQuery ? (
             <button
@@ -242,6 +248,45 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           ) : null}
         </div>
       ) : null}
+
+      {/* Add item - inline form toggle */}
+      <div>
+        {showAddForm ? (
+          <div
+            style={{
+              borderRadius: 16, border: "1px solid var(--border)",
+              background: "var(--card)", padding: "16px",
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Novo produto</span>
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="-mr-2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar formulário"
+              >
+                <X size={18} strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+            <AddItemForm
+              categories={categories}
+              rooms={rooms}
+              sources={sources}
+              pendingItems={pending}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-add text-[15px] font-semibold text-add-foreground transition-colors hover:bg-add-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <Plus size={18} strokeWidth={1.75} aria-hidden />
+            Adicionar produto
+          </button>
+        )}
+      </div>
 
       {/* Category filter chips */}
       {activeCategories.length > 1 ? (
@@ -296,45 +341,6 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           ))}
         </section>
       ) : null}
-
-      {/* Add item - inline form toggle */}
-      <div>
-        {showAddForm ? (
-          <div
-            style={{
-              borderRadius: 16, border: "1px solid var(--border)",
-              background: "var(--card)", padding: "16px",
-            }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Novo produto</span>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="-mr-2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                aria-label="Fechar formulário"
-              >
-                <X size={18} strokeWidth={1.75} aria-hidden />
-              </button>
-            </div>
-            <AddItemForm
-              categories={categories}
-              rooms={rooms}
-              personalSuggestions={personalSuggestions}
-              pendingItems={pending}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-add text-[15px] font-semibold text-add-foreground transition-colors hover:bg-add-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Plus size={18} strokeWidth={1.75} aria-hidden />
-            Adicionar produto
-          </button>
-        )}
-      </div>
 
       <HistoryRecover products={history} pendingNames={pending.map((i) => i.name)} />
 

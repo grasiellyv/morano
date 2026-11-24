@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import {
@@ -307,6 +308,15 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
 // Operações em ocorrências
 // ---------------------------------------------------------------------------
 
+/** Rotas que mostram o status de uma ocorrência. */
+function revalidateOccurrencePaths() {
+  revalidatePath("/rotina");
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
+  revalidatePath("/rotina/calendario");
+  revalidatePath("/rotina/historico");
+  revalidatePath("/inicio");
+}
+
 export async function completeOccurrence(
   _: FormState,
   fd: FormData,
@@ -356,12 +366,10 @@ export async function completeOccurrence(
     return { status: "error", message: "Erro ao concluir. Tente novamente." };
   }
 
-  await trackEvent(userId, occurrence.home_id, "occurrence_completed");
-  revalidatePath("/rotina");
-  revalidatePath("/rotina/ocorrencia/[id]", "page");
-  revalidatePath("/rotina/calendario");
-  revalidatePath("/rotina/historico");
-  revalidatePath("/inicio");
+  // Telemetria depois da resposta: não segura a bolinha por mais dois round-trips.
+  after(() => trackEvent(userId, occurrence.home_id, "occurrence_completed"));
+  // A tela de Rotina já atualiza sozinha (UI otimista): `no_refresh` evita reler a página inteira.
+  if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
 
   return { status: "success" };
 }
@@ -432,12 +440,7 @@ export async function undoComplete(
     return { status: "error", message: "Erro ao desfazer. Tente novamente." };
   }
 
-  revalidatePath("/rotina");
-
-  revalidatePath("/rotina/ocorrencia/[id]", "page");
-  revalidatePath("/rotina/calendario");
-  revalidatePath("/rotina/historico");
-  revalidatePath("/inicio");
+  if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
   return { status: "success" };
 }
 

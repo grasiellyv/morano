@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { parseISO } from "date-fns";
@@ -18,6 +18,8 @@ import { EventChip } from "@/features/events/components/event-chip";
 import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
 import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotations-dialog";
 import { EventForm } from "@/features/events/components/event-form";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import type { LinkedEventItem } from "@/features/events/event-items";
 import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
 import {
   RotinaHeader,
@@ -35,9 +37,14 @@ import {
   formatDayHeading,
   formatTime,
   formatWeekRange,
+  formatShortDate,
   periodOf,
   summarizeWeek,
   groupWeekByCategory,
+  groupEventsByDay,
+  eventCovers,
+  applyStatusOverrides,
+  type StatusOverrides,
   type WeekTaskRow,
   timeSortKey,
   type DayPeriod,
@@ -75,6 +82,13 @@ type Props = {
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** Pode pedir itens de compras no evento (permissão de Compras). */
+  canAddEventItems?: boolean;
+  /** Itens de compras já vinculados, por id de evento. */
+  eventItems?: Record<string, LinkedEventItem[]>;
+  removeEventItemAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** false = sem permissão de Compras (não pode remover itens vinculados). */
+  canRemoveEventItems?: boolean;
   initialFilters?: RotinaFilters;
   initialCreate?: "tarefa" | "evento" | null;
   userId?: string;
@@ -86,17 +100,13 @@ type Props = {
 
 const NO_FILTERS: RotinaFilters = { member: null, room: null, essential: false };
 
-function eventCovers(e: Event, date: string) {
-  return e.start_date <= date && (e.end_date ?? e.start_date) >= date;
-}
-
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export function TaskList({
   view,
-  today,
-  overdue = [],
-  week,
+  today: todayProp,
+  overdue: overdueProp = [],
+  week: weekProp,
   weekDates,
   currentDate,
   selectedDate,
@@ -107,6 +117,10 @@ export function TaskList({
   createEventAction,
   updateEventAction,
   deleteEventAction,
+  canAddEventItems = false,
+  eventItems = {},
+  removeEventItemAction,
+  canRemoveEventItems = true,
   initialFilters = NO_FILTERS,
   initialCreate = null,
   userId,
@@ -115,6 +129,36 @@ export function TaskList({
   homeMembers = [],
   updateTaskAction,
 }: Props) {
+  // Concluir/desfazer é otimista: o que a pessoa fez aparece na hora, sem esperar o servidor nem
+  // reler a página. Os overrides valem até chegarem dados novos do servidor (outra ação que
+  // atualiza a página): aí as props mudam e o estado é zerado (padrão "ajustar estado na renderização").
+  const [optimistic, setOptimistic] = useState<{
+    today: OccurrenceWithTask[];
+    overdue: OccurrenceWithTask[];
+    week: OccurrenceWithTask[];
+    map: StatusOverrides;
+  }>({ today: todayProp, overdue: overdueProp, week: weekProp, map: {} });
+  let overrides = optimistic.map;
+  if (optimistic.today !== todayProp || optimistic.overdue !== overdueProp || optimistic.week !== weekProp) {
+    overrides = {};
+    setOptimistic({ today: todayProp, overdue: overdueProp, week: weekProp, map: overrides });
+  }
+  const today = useMemo(() => applyStatusOverrides(todayProp, overrides), [todayProp, overrides]);
+  const week = useMemo(() => applyStatusOverrides(weekProp, overrides), [weekProp, overrides]);
+  // Atrasada que foi concluída sai da seção de atrasadas.
+  const overdue = useMemo(
+    () => overdueProp.filter((o) => overrides[o.id] !== "completed"),
+    [overdueProp, overrides],
+  );
+  const setStatusOverride = useCallback((id: string, status: "completed" | "pending" | null) => {
+    setOptimistic((prev) => {
+      const map = { ...prev.map };
+      if (status) map[id] = status;
+      else delete map[id];
+      return { ...prev, map };
+    });
+  }, []);
+
   const [creating, setCreating] = useState<"tarefa" | "evento" | null>(initialCreate);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -220,6 +264,7 @@ export function TaskList({
           rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
           onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
           onCompleted={(done) => setJustDone({ id: done.id, title: done.task.title })}
+          onStatusChange={setStatusOverride}
           rooms={rooms}
           homeMembers={homeMembers}
         />
@@ -258,6 +303,10 @@ export function TaskList({
               initialValues={e}
               updateAction={updateEventAction}
               deleteAction={deleteEventAction}
+              canAddItems={canAddEventItems}
+              linkedItems={eventItems[e.id] ?? []}
+              removeItemAction={removeEventItemAction}
+              canRemoveItems={canRemoveEventItems}
               onSuccess={() => setEditingEventId(null)}
             />
           </div>
@@ -329,6 +378,7 @@ export function TaskList({
           <EventForm
             mode="create"
             createAction={createEventAction}
+            canAddItems={canAddEventItems}
             initialValues={{ start_date: selectedDate }}
             onSuccess={() => setCreating(null)}
           />
@@ -399,6 +449,7 @@ export function TaskList({
     const weekEnd = weekDates[6]!;
     const thisWeek = weekDates.includes(currentDate);
     const categories = groupWeekByCategory(displayWeek, rooms);
+    const eventDays = groupEventsByDay(events, weekDates);
     const firstOpen = categories.find((c) => c.done < c.total)?.key ?? null;
 
     return (
@@ -423,16 +474,44 @@ export function TaskList({
           hrefForDay={(d) => buildHref({ view: "dia", date: d })}
         />
 
-        {categories.length === 0 ? (
+        {eventDays.length > 0 ? (
+          <section aria-labelledby="eventos-semana" className="mt-4 rounded-2xl border border-border bg-card p-3">
+            <h3 id="eventos-semana" className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+              <CalendarDays size={15} strokeWidth={1.75} aria-hidden className="text-muted-foreground" />
+              Eventos da semana
+            </h3>
+            <ul className="space-y-2">
+              {eventDays.map((d) => (
+                <li key={d.date}>
+                  <Link
+                    href={buildHref({ view: "dia", date: d.date })}
+                    className="mb-1 inline-block text-xs font-medium text-muted-foreground no-underline hover:underline"
+                  >
+                    {formatShortDate(d.date)}
+                  </Link>
+                  <div className="space-y-1.5">
+                    {d.events.map((e) => (
+                      <Link key={e.id} href={buildHref({ view: "dia", date: d.date })} className="block no-underline">
+                        <EventChip event={e} showKindTag />
+                      </Link>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {categories.length === 0 && eventDays.length === 0 ? (
           <div className="mt-4">
             <EmptyCard>
               {activeFilterCount > 0 ? "Nenhuma tarefa com esses filtros nesta semana." : "Nada planejado para esta semana."}
             </EmptyCard>
           </div>
-        ) : (
+        ) : categories.length === 0 ? null : (
           <div className="mt-4 space-y-2">
             {categories.map((c) => (
-              <Collapsible
+              <CollapsibleSection
                 key={c.key}
                 storageKey={`rotina:semana:${c.key}`}
                 defaultOpen={c.key === firstOpen}
@@ -452,7 +531,7 @@ export function TaskList({
                     />
                   ))}
                 </ul>
-              </Collapsible>
+              </CollapsibleSection>
             ))}
           </div>
         )}
@@ -522,7 +601,7 @@ export function TaskList({
       <div className="mt-5 space-y-5">
         {/* Pendências de dias anteriores: recolhidas, visíveis pela contagem, sem pressão */}
         {displayOverdue.length > 0 ? (
-          <Collapsible
+          <CollapsibleSection
             storageKey="rotina:dia:atras"
             defaultOpen={false}
             icon={<PeriodIcon kind="atras" />}
@@ -531,7 +610,7 @@ export function TaskList({
             tone="warn"
           >
             <ul className="space-y-2 pt-1">{displayOverdue.map(renderOccurrence)}</ul>
-          </Collapsible>
+          </CollapsibleSection>
         ) : null}
 
         {taskCount === 0 && dayEvents.length === 0 ? (
@@ -570,7 +649,7 @@ export function TaskList({
         )}
 
         {doneToday.length > 0 ? (
-          <Collapsible
+          <CollapsibleSection
             storageKey="rotina:dia:concluidas"
             defaultOpen={false}
             icon={<CheckDot />}
@@ -578,10 +657,10 @@ export function TaskList({
             meta={String(doneToday.length)}
           >
             <ul className="space-y-2 pt-1">{doneToday.map(renderOccurrence)}</ul>
-          </Collapsible>
+          </CollapsibleSection>
         ) : null}
 
-        <Collapsible
+        <CollapsibleSection
           storageKey="rotina:dia:semana"
           defaultOpen={false}
           icon={<WeekIcon />}
@@ -598,7 +677,7 @@ export function TaskList({
               bare
             />
           </div>
-        </Collapsible>
+        </CollapsibleSection>
       </div>
 
       {footer}
@@ -802,90 +881,6 @@ function WeekOverview({
         </Link>
       ) : null}
     </section>
-  );
-}
-
-/**
- * Seção recolhível com <details> nativo (teclado e leitor de tela de graça).
- * Lembra aberto/fechado por `storageKey` no localStorage. A preferência é
- * aplicada direto no DOM depois da montagem, sem setState (evita hydration mismatch).
- */
-function Collapsible({
-  storageKey,
-  defaultOpen,
-  title,
-  meta,
-  icon,
-  tone,
-  card = false,
-  muted = false,
-  children,
-}: {
-  storageKey: string;
-  defaultOpen: boolean;
-  title: string;
-  meta?: string;
-  icon?: React.ReactNode;
-  tone?: "warn";
-  card?: boolean;
-  muted?: boolean;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    try {
-      const v = window.localStorage.getItem(storageKey);
-      if (v !== null && ref.current) ref.current.open = v === "1";
-    } catch {
-      // localStorage indisponível (modo privado): fica o padrão
-    }
-  }, [storageKey]);
-
-  const color = tone === "warn" ? "var(--warn-ink)" : "var(--foreground)";
-
-  return (
-    <details
-      ref={ref}
-      open={defaultOpen}
-      onToggle={(e) => {
-        try {
-          window.localStorage.setItem(storageKey, (e.currentTarget as HTMLDetailsElement).open ? "1" : "0");
-        } catch {
-          // ignora
-        }
-      }}
-      className={`group ${card ? "rounded-2xl border border-border" : ""}`}
-      style={{ background: card ? "var(--card)" : undefined, opacity: muted ? 0.7 : 1 }}
-    >
-      <summary
-        className="flex cursor-pointer list-none items-center gap-2 rounded-2xl select-none focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
-        style={{ minHeight: 44, padding: card ? "0 16px" : "0 2px", color }}
-      >
-        {icon ? (
-          <span style={{ display: "flex", color: tone === "warn" ? "var(--warn-ink)" : "var(--muted-foreground)" }}>{icon}</span>
-        ) : null}
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>
-        {meta ? (
-          <span style={{ fontSize: 12.5, fontWeight: 500, color: "var(--muted-foreground)" }}>{meta}</span>
-        ) : null}
-        <svg
-          width={16}
-          height={16}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.75}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-          className="ml-auto transition-transform duration-200 group-open:rotate-180"
-          style={{ color: "var(--muted-foreground)", flexShrink: 0 }}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </summary>
-      {children}
-    </details>
   );
 }
 

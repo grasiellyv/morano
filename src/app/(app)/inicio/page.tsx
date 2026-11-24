@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  Bell,
   Plus,
   ChevronRight,
   Sun,
@@ -16,10 +15,11 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { AccountButton } from "@/components/layout/account-button";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
-import { formatHourShort, getHeroPeriod, type HeroPeriod } from "@/lib/day-period";
+import { formatHourShort, getHeroPeriod, greetingFor, GREETING_LABEL, type HeroPeriod } from "@/lib/day-period";
 import { extendWindowForHome } from "@/features/tasks/actions";
 import { CompleteCircleButton } from "@/features/tasks/components/complete-circle-button";
 import {
@@ -77,9 +77,9 @@ function AvatarCircle({
 
 /** Tom do card "Olá" por período do dia (fuso da casa). Tokens em globals.css. */
 const HERO_THEME: Record<HeroPeriod, { a: string; b: string; glow: string; Icon: LucideIcon; label: string }> = {
-  morning: { a: "var(--hero-morning-a)", b: "var(--hero-morning-b)", glow: "var(--hero-morning-glow)", Icon: Sun, label: "Bom dia" },
-  afternoon: { a: "var(--hero-afternoon-a)", b: "var(--hero-afternoon-b)", glow: "var(--hero-afternoon-glow)", Icon: SunMedium, label: "Boa tarde" },
-  night: { a: "var(--hero-night-a)", b: "var(--hero-night-b)", glow: "var(--hero-night-glow)", Icon: Moon, label: "Boa noite" },
+  morning: { a: "var(--hero-morning-a)", b: "var(--hero-morning-b)", glow: "var(--hero-morning-glow)", Icon: Sun, label: GREETING_LABEL.morning },
+  afternoon: { a: "var(--hero-afternoon-a)", b: "var(--hero-afternoon-b)", glow: "var(--hero-afternoon-glow)", Icon: SunMedium, label: GREETING_LABEL.afternoon },
+  night: { a: "var(--hero-night-a)", b: "var(--hero-night-b)", glow: "var(--hero-night-glow)", Icon: Moon, label: GREETING_LABEL.night },
 };
 
 const CREAM = "#FBEFE3";
@@ -174,7 +174,6 @@ export default async function Page() {
     ]);
 
   const fullName = profileResult.data?.full_name ?? null;
-  const firstName = fullName ? fullName.split(" ")[0] : "você";
 
   // Progresso do dia
   const completedToday = todayOcc.filter((o) => o.status === "completed").length;
@@ -286,21 +285,10 @@ export default async function Page() {
       {/* ── CABEÇALHO ─────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 h-11 mb-3">
         <span className="flex-1 text-[22px] font-semibold tracking-[-0.6px]">Morano</span>
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="relative flex size-10 items-center justify-center rounded-full border border-border"
-          style={{ background: "var(--card)" }}
-        >
-          <Bell aria-hidden size={19} strokeWidth={1.75} />
-          {overdueCount > 0 ? (
-            <span
-              aria-hidden
-              className="absolute rounded-full border-2"
-              style={{ top: 9, right: 10, width: 8, height: 8, background: "#C8643C", borderColor: "var(--card)" }}
-            />
-          ) : null}
-        </button>
+        <NotificationBell
+          homeId={home.id}
+          items={attention.map(({ key, href, title, meta, badge, tone }) => ({ key, href, title, meta, badge, tone }))}
+        />
         <AccountButton name={fullName} />
       </div>
 
@@ -327,7 +315,7 @@ export default async function Page() {
             title={theme.label}
           >
             <theme.Icon aria-hidden size={14} />
-            <span>Olá, {firstName}</span>
+            <span>{greetingFor(period, fullName)}</span>
           </div>
           <span className="rounded-[8px] px-2 py-[3px] text-[11.5px] font-semibold" style={homeStatus.style}>
             {homeStatus.label}

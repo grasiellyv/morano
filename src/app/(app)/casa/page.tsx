@@ -146,7 +146,7 @@ export default async function Page() {
           </ul>
           {canInvite ? (
             <Link
-              href="/casa/membros/convidar"
+              href="/casa/membros?secao=convites&novo=1"
               className="flex h-12 items-center gap-2 px-3.5 text-[13.5px] font-semibold no-underline"
               style={{ color: "var(--add-ink)" }}
             >

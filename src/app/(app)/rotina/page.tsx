@@ -17,7 +17,9 @@ import {
   getOccurrencesForWeek,
 } from "@/features/tasks/queries";
 import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-list";
-import { getEventsForRange } from "@/features/events/queries";
+import { getEventsForRange, getEventShoppingItems } from "@/features/events/queries";
+import { removeEventItem } from "@/features/events/actions-items";
+import { getMemberPermissions } from "@/features/members/permissions";
 import {
   createEvent,
   updateEvent,
@@ -96,16 +98,22 @@ export default async function Page({
   const weekStart = weekDates[0]!;
   const weekEnd = weekDates[6]!;
 
-  const [weekOcc, overdueOcc, weekEvents, absence, rotations, homeMembers] = await Promise.all([
-    getOccurrencesForWeek(supabase, home.id, weekStart),
-    view === "dia" && selectedDate === currentDate
-      ? getOverdueOccurrences(supabase, home.id, currentDate)
-      : Promise.resolve([]),
-    getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []),
-    getMyAbsence(supabase, userId),
-    getRotations(supabase, home.id),
-    getHomeMembers(supabase),
-  ]);
+  // Os itens de compras dos eventos dependem dos ids dos eventos: encadeados num só ramo,
+  // em paralelo com as demais leituras.
+  const weekEventsPromise = getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []);
+  const [weekOcc, overdueOcc, weekEvents, eventItems, absence, rotations, homeMembers, perms] =
+    await Promise.all([
+      getOccurrencesForWeek(supabase, home.id, weekStart),
+      view === "dia" && selectedDate === currentDate
+        ? getOverdueOccurrences(supabase, home.id, currentDate)
+        : Promise.resolve([]),
+      weekEventsPromise,
+      weekEventsPromise.then((events) => getEventShoppingItems(supabase, events.map((e) => e.id))),
+      getMyAbsence(supabase, userId),
+      getRotations(supabase, home.id),
+      getHomeMembers(supabase),
+      getMemberPermissions(supabase, userId, home.id),
+    ]);
 
   const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
   const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
@@ -144,6 +152,10 @@ export default async function Page({
       rooms={home.rooms}
       absenceBanner={absenceBanner}
       events={weekEvents}
+      canAddEventItems={perms.bypass || perms.can_manage_shopping}
+      eventItems={eventItems}
+      removeEventItemAction={removeEventItem}
+      canRemoveEventItems={perms.bypass || perms.can_manage_shopping}
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import {
   completeOccurrence,
@@ -8,7 +8,7 @@ import {
   claimOccurrence,
   unclaimOccurrence,
 } from "@/features/tasks/actions";
-import { addItem as addShoppingItem } from "@/features/shopping/actions";
+import { ShoppingShortcut } from "@/features/tasks/components/shopping-shortcut";
 import { EditOccurrenceButton } from "@/features/tasks/components/edit-occurrence-sheet";
 import { initialFormState } from "@/features/auth/form-state";
 import type { OccurrenceDetail } from "@/features/tasks/queries";
@@ -311,93 +311,5 @@ function SmallButton({ children, disabled, quiet }: { children: React.ReactNode;
     >
       {children}
     </button>
-  );
-}
-
-/** "Precisa de algum produto?" — adiciona à lista de compras sem sair da tarefa. */
-function ShoppingShortcut({ taskTitle, roomId }: { taskTitle: string; roomId: string | null }) {
-  const [open, setOpen] = useState(false);
-  const [added, setAdded] = useState<string[]>([]);
-  const formRef = useRef<HTMLFormElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [state, dispatch, pending] = useActionState(
-    async (prev: Awaited<ReturnType<typeof addShoppingItem>>, fd: FormData) => {
-      const res = await addShoppingItem(prev, fd);
-      if (res.status === "success") {
-        const name = String(fd.get("name") ?? "");
-        setAdded((a) => [...a, name]);
-        formRef.current?.reset();
-        inputRef.current?.focus();
-      }
-      return res;
-    },
-    initialFormState,
-  );
-
-  return (
-    <section
-      aria-labelledby="compras-title"
-      className="mt-6 rounded-2xl"
-      style={{ background: "var(--secondary)", padding: "14px 16px" }}
-    >
-      <h2 id="compras-title" className="flex items-center gap-2" style={{ fontSize: 15, fontWeight: 600 }}>
-        <svg {...icon}>
-          <path d="M5 10h14l-1.5 9a2 2 0 0 1-2 1.7h-7a2 2 0 0 1-2-1.7z" /><path d="M9 10l3-6 3 6M3 10h18" />
-        </svg>
-        Precisa de algum produto?
-      </h2>
-      <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>
-        Adicione itens à lista de compras sem sair da tarefa.
-      </p>
-
-      {added.length > 0 ? (
-        <p role="status" style={{ fontSize: 13, marginTop: 8 }}>
-          Na lista: {added.join(", ")}.{" "}
-          <Link href="/compras" className="font-medium underline underline-offset-4">Ver lista</Link>
-        </p>
-      ) : null}
-
-      {open ? (
-        <form ref={formRef} action={dispatch} className="mt-3 flex items-center gap-2">
-          <input type="hidden" name="notes" value={`Para: ${taskTitle}`.slice(0, 200)} />
-          {roomId ? <input type="hidden" name="room_id" value={roomId} /> : null}
-          <input type="hidden" name="mission" value="reposicao" />
-          <input
-            ref={inputRef}
-            name="name"
-            required
-            maxLength={120}
-            autoFocus
-            placeholder="Ex.: detergente"
-            aria-label="Produto"
-            className="min-w-0 flex-1 rounded-lg border border-border px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            style={{ height: 40, fontSize: 15, background: "var(--card)" }}
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="shrink-0 rounded-lg bg-add px-4 font-semibold text-add-foreground hover:bg-add-hover focus-visible:outline-2 disabled:opacity-60"
-            style={{ height: 40, fontSize: 13.5 }}
-          >
-            {pending ? "…" : "Adicionar"}
-          </button>
-        </form>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="mt-2 flex items-center gap-1.5 rounded-lg px-1 font-semibold text-add-ink hover:underline focus-visible:outline-2"
-          style={{ fontSize: 14, minHeight: 36 }}
-        >
-          <svg {...icon} width={15} height={15} strokeWidth={1.75}><path d="M12 5v14M5 12h14" /></svg>
-          Adicionar à lista
-        </button>
-      )}
-      {state.status === "error" ? (
-        <p role="alert" className="mt-2 text-destructive" style={{ fontSize: 12.5 }}>
-          {state.fieldErrors?.name ?? state.message}
-        </p>
-      ) : null}
-    </section>
   );
 }

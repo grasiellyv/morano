@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { CalendarDays } from "lucide-react";
 import type { ShoppingItem } from "@/features/shopping/queries";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import { MISSIONS, MISSION_LABELS, type Mission } from "@/features/shopping/schemas";
@@ -195,6 +196,16 @@ export function ShoppingItemRow({ item, categories }: Props) {
           {item.mission ? (
             <span style={{ borderRadius: 6, background: "var(--secondary)", color: "var(--muted-foreground)", padding: "1px 6px", fontSize: 11 }}>
               {MISSION_LABELS[item.mission]}
+            </span>
+          ) : null}
+          {item.event ? (
+            <span
+              aria-label={`Vinculado a: ${item.event.title}`}
+              className="inline-flex max-w-[160px] items-center gap-1"
+              style={{ borderRadius: 6, background: "#F6DDB9", color: "#6E420F", padding: "1px 6px", fontSize: 11 }}
+            >
+              <CalendarDays size={11} strokeWidth={1.75} aria-hidden className="shrink-0" />
+              <span className="truncate">{item.event.title}</span>
             </span>
           ) : null}
         </div>

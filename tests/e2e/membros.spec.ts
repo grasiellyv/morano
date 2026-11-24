@@ -1,6 +1,6 @@
 /**
- * Validação funcional — Membros da casa (/casa/membros, /casa/membros/convidar)
- * 3 cenários: listar membros, acessar convites pendentes, enviar convite.
+ * Validação funcional — Membros da casa (/casa/membros): página única com as seções
+ * Moradores, Convites pendentes e Histórico de convites; rotas antigas redirecionam.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { ensureConfirmedUser } from "./helpers/admin";
@@ -45,9 +45,9 @@ async function completeOnboarding(page: Page) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. /casa/membros lista o usuário atual como Proprietário
+// 1. Página única: moradores, seções de convites e "Voltar" para Minha Casa
 // ---------------------------------------------------------------------------
-test("1. lista de membros exibe o usuário atual como Proprietário", async ({ page }) => {
+test("1. página de membros mostra o proprietário e as três seções", async ({ page }) => {
   const email = uniqueEmail("mbr-1-list");
   await ensureConfirmedUser(email, PASSWORD);
   await signIn(page, email, PASSWORD);
@@ -56,57 +56,56 @@ test("1. lista de membros exibe o usuário atual como Proprietário", async ({ p
   await page.goto("/casa/membros");
   await expect(page.getByRole("heading", { name: "Membros" })).toBeVisible({ timeout: 10_000 });
 
-  // Proprietário é o único membro e deve ter o badge "Proprietário"
   await expect(page.getByText("Proprietário")).toBeVisible();
-
-  // Botões de gestão aparecem para o owner
+  await expect(page.getByText("Moradores", { exact: true })).toBeVisible();
+  await expect(page.getByText("Convites pendentes", { exact: true })).toBeVisible();
+  await expect(page.getByText("Histórico de convites", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Convidar membro" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Convites pendentes" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Voltar" }).click();
+  await expect(page).toHaveURL(/\/casa$/, { timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
-// 2. Convites pendentes exibe lista vazia
+// 2. Rotas antigas redirecionam para a página única
 // ---------------------------------------------------------------------------
-test("2. página de convites pendentes carrega sem erro", async ({ page }) => {
-  const email = uniqueEmail("mbr-2-invites");
+test("2. /casa/membros/convites redireciona e abre a seção de convites", async ({ page }) => {
+  const email = uniqueEmail("mbr-2-redirect");
   await ensureConfirmedUser(email, PASSWORD);
   await signIn(page, email, PASSWORD);
   await completeOnboarding(page);
 
   await page.goto("/casa/membros/convites");
-  await expect(page).toHaveURL(/\/casa\/membros\/convites/, { timeout: 10_000 });
-  // A página deve carregar sem redirecionar ou errar
-  // Sem convites → mensagem de estado vazio esperada
-  await expect(
-    page.getByText(/nenhum convite|sem convites|convite pendente/i).or(
-      page.getByRole("heading", { name: /convite/i }),
-    ),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/casa\/membros\?secao=convites/, { timeout: 10_000 });
+  await expect(page.getByText("Nenhum convite pendente.")).toBeVisible({ timeout: 10_000 });
+
+  await page.goto("/casa/membros/convidar");
+  await expect(page).toHaveURL(/\/casa\/membros\?secao=convites&novo=1/, { timeout: 10_000 });
+  await expect(page.getByLabel("E-mail do convidado")).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
-// 3. Formulário de convite envia email válido
+// 3. Criar convite e revogar: pendente → histórico como Revogado
 // ---------------------------------------------------------------------------
-test("3. formulário de convite aceita email e exibe confirmação", async ({ page }) => {
+test("3. criar convite e revogar move o convite para o histórico", async ({ page }) => {
   const email = uniqueEmail("mbr-3-invite");
   await ensureConfirmedUser(email, PASSWORD);
   await signIn(page, email, PASSWORD);
   await completeOnboarding(page);
 
-  await page.goto("/casa/membros/convidar");
-  await expect(page.getByRole("heading", { name: "Convidar membro" })).toBeVisible({
-    timeout: 10_000,
-  });
+  await page.goto("/casa/membros");
+  await page.getByRole("link", { name: "Convidar membro" }).click();
+  await expect(page.getByLabel("E-mail do convidado")).toBeVisible({ timeout: 10_000 });
 
-  // Preenche o formulário com um email de teste fictício
   const inviteeEmail = uniqueEmail("convidado");
-  await page.getByLabel("E-mail").fill(inviteeEmail);
-  await page.getByRole("button", { name: "Enviar convite" }).click();
+  await page.getByLabel("E-mail do convidado").fill(inviteeEmail);
+  await page.getByRole("button", { name: "Criar convite" }).click();
+  await expect(page.getByText("Convite criado!")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(inviteeEmail)).toBeVisible();
 
-  // Deve exibir mensagem de sucesso ou redirecionar para membros
-  await expect(
-    page.getByText(/convite.*enviado|enviado com sucesso/i).or(
-      page.getByRole("heading", { name: "Membros" }),
-    ),
-  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Revogar" }).click();
+  await expect(page.getByText("Nenhum convite pendente.")).toBeVisible({ timeout: 15_000 });
+
+  await page.getByText("Histórico de convites", { exact: true }).click();
+  await expect(page.getByText("Revogado")).toBeVisible();
 });

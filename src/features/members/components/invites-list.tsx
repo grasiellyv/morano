@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { PendingInvite } from "@/features/members/queries";
+
+type InviteRow = Pick<PendingInvite, "id" | "invited_email" | "role" | "expires_at">;
 import type { FormState } from "@/features/auth/form-state";
 import { initialFormState } from "@/features/auth/form-state";
 
@@ -11,7 +13,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 type Props = {
-  invites: PendingInvite[];
+  invites: InviteRow[];
   revokeInviteAction: (_: FormState, fd: FormData) => Promise<FormState>;
 };
 
@@ -41,7 +43,7 @@ function InviteRow({
   invite,
   revokeInviteAction,
 }: {
-  invite: PendingInvite;
+  invite: InviteRow;
   revokeInviteAction: (_: FormState, fd: FormData) => Promise<FormState>;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(

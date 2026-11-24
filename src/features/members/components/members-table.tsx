@@ -26,15 +26,17 @@ export function MembersTable({ members, currentUserId, currentUserRole }: Props)
   const isAdminOrOwner = isOwner || currentUserRole === "admin";
 
   return (
-    <div className="border rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Membro</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Papel</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Desde</th>
+            <th className="text-muted-foreground px-4 py-3 text-left font-medium">Membro</th>
+            <th className="text-muted-foreground px-4 py-3 text-left font-medium">Papel</th>
+            <th className="text-muted-foreground hidden px-4 py-3 text-left font-medium sm:table-cell">
+              Desde
+            </th>
             {isAdminOrOwner ? (
-              <th className="text-right px-4 py-3 font-medium text-muted-foreground">Ações</th>
+              <th className="text-muted-foreground px-4 py-3 text-right font-medium">Ações</th>
             ) : null}
           </tr>
         </thead>
@@ -77,10 +79,7 @@ function MemberRow({
     initialFormState,
   );
 
-  const canRemove =
-    isAdminOrOwner &&
-    !isCurrentUser &&
-    (member.role !== "owner" || isOwner);
+  const canRemove = isAdminOrOwner && !isCurrentUser && (member.role !== "owner" || isOwner);
 
   const canTransfer = isOwner && !isCurrentUser;
 
@@ -89,9 +88,7 @@ function MemberRow({
       <td className="px-4 py-3">
         <div>
           <p className="font-medium">{member.full_name ?? "Sem nome"}</p>
-          {isCurrentUser ? (
-            <p className="text-xs text-muted-foreground">Você</p>
-          ) : null}
+          {isCurrentUser ? <p className="text-muted-foreground text-xs">Você</p> : null}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -108,71 +105,73 @@ function MemberRow({
           {ROLE_LABEL[member.role] ?? member.role}
         </span>
       </td>
-      <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+      <td className="text-muted-foreground hidden px-4 py-3 sm:table-cell">
         {new Date(member.joined_at).toLocaleDateString("pt-BR")}
       </td>
       {isAdminOrOwner ? (
-        <td className="px-4 py-3 text-right space-x-2">
-          {removeState.status === "error" ? (
-            <span className="text-xs text-destructive">{removeState.message}</span>
-          ) : null}
-          {transferState.status === "error" ? (
-            <span className="text-xs text-destructive">{transferState.message}</span>
-          ) : null}
+        <td className="px-4 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            {removeState.status === "error" ? (
+              <span className="text-destructive text-xs">{removeState.message}</span>
+            ) : null}
+            {transferState.status === "error" ? (
+              <span className="text-destructive text-xs">{transferState.message}</span>
+            ) : null}
 
-          {isAdminOrOwner && member.role === "member" ? (
-            <Link
-              href={`/casa/membros/${member.user_id}/permissoes`}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-            >
-              Permissões
-            </Link>
-          ) : null}
+            {isAdminOrOwner && member.role === "member" ? (
+              <Link
+                href={`/casa/membros/${member.user_id}/permissoes`}
+                className="text-muted-foreground hover:text-foreground text-xs underline"
+              >
+                Permissões
+              </Link>
+            ) : null}
 
-          {canTransfer ? (
-            <ConfirmDialog
-              trigger={
-                <button
-                  type="button"
-                  disabled={transferPending}
-                  className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
-                >
-                  {transferPending ? "Transferindo..." : "Transferir propriedade"}
-                </button>
-              }
-              title="Transferir propriedade"
-              description={`Transferir a propriedade da residência para ${member.full_name ?? "este membro"}? Você deixará de ser o proprietário.`}
-              confirmLabel="Transferir"
-              onConfirm={() => {
-                const fd = new FormData();
-                fd.set("new_owner_id", member.user_id);
-                transferAction(fd);
-              }}
-            />
-          ) : null}
+            {canTransfer ? (
+              <ConfirmDialog
+                trigger={
+                  <button
+                    type="button"
+                    disabled={transferPending}
+                    className="text-muted-foreground hover:text-foreground text-xs underline disabled:opacity-50"
+                  >
+                    {transferPending ? "Transferindo..." : "Transferir propriedade"}
+                  </button>
+                }
+                title="Transferir propriedade"
+                description={`Transferir a propriedade da residência para ${member.full_name ?? "este membro"}? Você deixará de ser o proprietário.`}
+                confirmLabel="Transferir"
+                onConfirm={() => {
+                  const fd = new FormData();
+                  fd.set("new_owner_id", member.user_id);
+                  transferAction(fd);
+                }}
+              />
+            ) : null}
 
-          {canRemove ? (
-            <ConfirmDialog
-              trigger={
-                <button
-                  type="button"
-                  disabled={removePending}
-                  className="text-xs text-destructive hover:text-destructive/80 underline disabled:opacity-50"
-                >
-                  {removePending ? "Removendo..." : "Remover"}
-                </button>
-              }
-              title="Remover membro"
-              description={`Remover ${member.full_name ?? "este membro"} da residência?`}
-              confirmLabel="Remover"
-              destructive
-              onConfirm={() => {
-                const fd = new FormData();
-                fd.set("user_id", member.user_id);
-                removeAction(fd);
-              }}
-            />
-          ) : null}
+            {canRemove ? (
+              <ConfirmDialog
+                trigger={
+                  <button
+                    type="button"
+                    disabled={removePending}
+                    className="text-destructive hover:text-destructive/80 text-xs underline disabled:opacity-50"
+                  >
+                    {removePending ? "Removendo..." : "Remover"}
+                  </button>
+                }
+                title="Remover membro"
+                description={`Remover ${member.full_name ?? "este membro"} da residência?`}
+                confirmLabel="Remover"
+                destructive
+                onConfirm={() => {
+                  const fd = new FormData();
+                  fd.set("user_id", member.user_id);
+                  removeAction(fd);
+                }}
+              />
+            ) : null}
+          </div>
         </td>
       ) : null}
     </tr>

@@ -1,5 +1,6 @@
 import { parseISO } from "date-fns";
 import type { FrequencyType, OccurrenceWithTask } from "@/features/tasks/queries";
+import type { Event } from "@/features/events/queries";
 
 /** Formatação e agrupamento puros da tela Rotina (sem acesso a banco). */
 
@@ -82,6 +83,57 @@ export function timeSortKey(time: string | null | undefined): string {
   if (!time) return "99:99";
   const h = Number.parseInt(time.slice(0, 2), 10);
   return h < 5 ? `${String(h + 24).padStart(2, "0")}${time.slice(2, 5)}` : time.slice(0, 5);
+}
+
+// ── Status otimista ───────────────────────────────────────────────────────────
+
+export type StatusOverrides = Record<string, "completed" | "pending">;
+
+/**
+ * Aplica à lista o que a pessoa acabou de fazer (concluir/desfazer) sem esperar o servidor.
+ * Sem overrides devolve a MESMA lista; ocorrências não tocadas mantêm a identidade (memo/React).
+ */
+export function applyStatusOverrides(list: OccurrenceWithTask[], overrides: StatusOverrides): OccurrenceWithTask[] {
+  if (Object.keys(overrides).length === 0) return list;
+  return list.map((o) => {
+    const status = overrides[o.id];
+    if (!status || o.status === status) return o;
+    return {
+      ...o,
+      status,
+      completed_at: status === "completed" ? (o.completed_at ?? new Date().toISOString()) : null,
+    };
+  });
+}
+
+// ── Eventos na semana ─────────────────────────────────────────────────────────
+
+type EventSpan = Pick<Event, "start_date" | "end_date">;
+
+/** O evento acontece neste dia? (intervalo inclusivo; sem término = só o início) */
+export function eventCovers(e: EventSpan, date: string): boolean {
+  return e.start_date <= date && (e.end_date ?? e.start_date) >= date;
+}
+
+/**
+ * Eventos por dia da semana (só dias com evento, na ordem recebida). Evento de vários
+ * dias entra em cada dia que cobre dentro da semana. No dia: por horário, depois título.
+ */
+export function groupEventsByDay<E extends EventSpan & Pick<Event, "start_time" | "title">>(
+  events: E[],
+  weekDates: string[],
+): Array<{ date: string; events: E[] }> {
+  const days: Array<{ date: string; events: E[] }> = [];
+  for (const date of weekDates) {
+    const list = events
+      .filter((e) => eventCovers(e, date))
+      .sort(
+        (a, b) =>
+          timeSortKey(a.start_time).localeCompare(timeSortKey(b.start_time)) || a.title.localeCompare(b.title, "pt"),
+      );
+    if (list.length > 0) days.push({ date, events: list });
+  }
+  return days;
 }
 
 // ── Resumo da semana ──────────────────────────────────────────────────────────

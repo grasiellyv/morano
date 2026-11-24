@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import type { LinkedEventItem } from "@/features/events/event-items";
 
 export type Event = {
   id: string;
@@ -56,4 +57,34 @@ export async function getNextUpcomingEvent(
 
   if (error) throw error;
   return data ?? null;
+}
+
+/**
+ * Itens de compras vinculados a cada evento (para a edição e o aviso de exclusão).
+ * A RLS de shopping_items é por membro da casa (is_home_member), não por permissão de Compras:
+ * quem só gerencia eventos também enxerga esses itens.
+ */
+export async function getEventShoppingItems(
+  supabase: SupabaseClient<Database>,
+  eventIds: string[],
+): Promise<Record<string, LinkedEventItem[]>> {
+  if (eventIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("shopping_items")
+    .select("id, event_id, name, quantity, unit, is_purchased")
+    .in("event_id", eventIds);
+  if (error || !data) return {};
+
+  const byEvent: Record<string, LinkedEventItem[]> = {};
+  for (const row of data) {
+    if (!row.event_id) continue;
+    (byEvent[row.event_id] ??= []).push({
+      id: row.id,
+      name: row.name,
+      quantity: row.quantity,
+      unit: row.unit,
+      is_purchased: row.is_purchased,
+    });
+  }
+  return byEvent;
 }

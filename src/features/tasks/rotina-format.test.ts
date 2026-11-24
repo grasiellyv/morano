@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
-import { describeRecurrence, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
+import { applyStatusOverrides, describeRecurrence, eventCovers, groupEventsByDay, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
 
 function occ(id: string, taskId: string, date: string, status: OccurrenceWithTask["status"], room: string | null, time: string | null = null): OccurrenceWithTask {
   return {
@@ -70,5 +70,67 @@ describe("describeRecurrence", () => {
     expect(describeRecurrence({ ...base, frequency_type: "monthly", month_day: 15 })).toBe("Todo dia 15 do mês");
     expect(describeRecurrence({ ...base, frequency_type: "custom", interval_value: 3, interval_unit: "day" })).toBe("A cada 3 dias");
     expect(describeRecurrence(null)).toBe("Só uma vez");
+  });
+});
+
+const WEEK = ["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29"];
+const ev = (title: string, start_date: string, end_date: string | null = null, start_time: string | null = null) =>
+  ({ title, start_date, end_date, start_time });
+
+describe("eventCovers", () => {
+  it("evento de um dia cobre só o próprio dia", () => {
+    expect(eventCovers(ev("x", "2026-11-25"), "2026-11-25")).toBe(true);
+    expect(eventCovers(ev("x", "2026-11-25"), "2026-11-26")).toBe(false);
+  });
+  it("evento de vários dias cobre o intervalo inclusive", () => {
+    expect(eventCovers(ev("x", "2026-11-25", "2026-11-27"), "2026-11-27")).toBe(true);
+    expect(eventCovers(ev("x", "2026-11-25", "2026-11-27"), "2026-11-28")).toBe(false);
+  });
+});
+
+describe("groupEventsByDay", () => {
+  it("agrupa por dia, ordena por horário e ignora dias vazios", () => {
+    const r = groupEventsByDay([ev("Jantar", "2026-11-25", null, "20:00:00"), ev("Visita", "2026-11-25", null, "09:00:00")], WEEK);
+    expect(r).toEqual([
+      { date: "2026-11-25", events: [expect.objectContaining({ title: "Visita" }), expect.objectContaining({ title: "Jantar" })] },
+    ]);
+  });
+  it("evento de vários dias aparece só nos dias desta semana", () => {
+    const r = groupEventsByDay([ev("Viagem", "2026-11-27", "2026-12-01")], WEEK);
+    expect(r.map((d) => d.date)).toEqual(["2026-11-27", "2026-11-28", "2026-11-29"]);
+  });
+  it("evento que começou na semana anterior também aparece", () => {
+    expect(groupEventsByDay([ev("Obra", "2026-11-20", "2026-11-24")], WEEK).map((d) => d.date)).toEqual(["2026-11-23", "2026-11-24"]);
+  });
+  it("sem eventos devolve lista vazia", () => {
+    expect(groupEventsByDay([], WEEK)).toEqual([]);
+  });
+});
+
+describe("applyStatusOverrides", () => {
+  const a = occ("o1", "t1", "2026-11-23", "pending", null);
+  const b = occ("o2", "t2", "2026-11-23", "pending", null);
+
+  it("sem overrides devolve a própria lista (sem recriar nada)", () => {
+    const list = [a, b];
+    expect(applyStatusOverrides(list, {})).toBe(list);
+  });
+
+  it("marca só as ocorrências sobrescritas e preserva a identidade das demais", () => {
+    const r = applyStatusOverrides([a, b], { o1: "completed" });
+    expect(r[0]!.status).toBe("completed");
+    expect(r[0]!.completed_at).not.toBeNull();
+    expect(r[1]).toBe(b);
+  });
+
+  it("desfazer: concluída volta a pendente e perde completed_at", () => {
+    const done = { ...a, status: "completed" as const, completed_at: "2026-11-23T10:00:00Z" };
+    const r = applyStatusOverrides([done], { o1: "pending" });
+    expect(r[0]!.status).toBe("pending");
+    expect(r[0]!.completed_at).toBeNull();
+  });
+
+  it("override de id que não está na lista é ignorado", () => {
+    expect(applyStatusOverrides([a], { zzz: "completed" })).toEqual([a]);
   });
 });

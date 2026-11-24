@@ -22,3 +22,15 @@ export function formatHourShort(t: string | null | undefined): string | null {
   const hour = String(Number(h));
   return m && m !== "00" ? `${hour}h${m}` : `${hour}h`;
 }
+
+export const GREETING_LABEL: Record<HeroPeriod, string> = {
+  morning: "Bom dia",
+  afternoon: "Boa tarde",
+  night: "Boa noite",
+};
+
+/** "Boa tarde, Gustavo"; sem nome disponível → "Olá". */
+export function greetingFor(period: HeroPeriod, fullName: string | null | undefined): string {
+  const first = fullName?.trim().split(/\s+/)[0];
+  return first ? `${GREETING_LABEL[period]}, ${first}` : "Olá";
+}

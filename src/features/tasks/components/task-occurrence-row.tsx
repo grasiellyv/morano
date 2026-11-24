@@ -11,6 +11,7 @@ import {
   unclaimOccurrence,
   updateOccurrenceNotes,
 } from "@/features/tasks/actions";
+import { toast } from "sonner";
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
@@ -28,6 +29,11 @@ type Props = {
   onEdit?: () => void;
   /** Chamado quando a conclusão é confirmada pelo servidor (para o aviso "Desfazer"). */
   onCompleted?: (o: OccurrenceWithTask) => void;
+  /**
+   * Concluir/desfazer é otimista: a lista pai troca o status na hora ("completed"/"pending")
+   * e volta ao que era (`null`) se o servidor recusar ou a rede falhar.
+   */
+  onStatusChange?: (id: string, status: "completed" | "pending" | null) => void;
   rooms?: Array<{ id: string; name: string }>;
   homeMembers?: Array<{ id: string; name: string | null }>;
 };
@@ -44,6 +50,7 @@ export function TaskOccurrenceRow({
   rotationInfo,
   onEdit,
   onCompleted,
+  onStatusChange,
   rooms,
   homeMembers,
 }: Props) {
@@ -59,15 +66,49 @@ export function TaskOccurrenceRow({
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
 
+  // Concluir/desfazer: o status muda na tela ANTES da resposta do servidor (no onSubmit do
+  // formulário, fora da transição da action — setState dentro de uma action assíncrona só
+  // aparece quando ela termina) e a action roda com `no_refresh` (sem reler a página inteira).
+  // Erro ou queda de rede reverte e avisa.
   const [, completeDispatch, completePending] = useActionState(
     async (prev: Awaited<ReturnType<typeof completeOccurrence>>, fd: FormData) => {
-      const res = await completeOccurrence(prev, fd);
-      if (res.status !== "error") onCompleted?.(occurrence);
-      return res;
+      fd.set("no_refresh", "1");
+      try {
+        const res = await completeOccurrence(prev, fd);
+        if (res.status === "error") {
+          onStatusChange?.(occurrence.id, null);
+          toast.error(res.message ?? "Não foi possível concluir. Tente novamente.");
+        } else {
+          onCompleted?.(occurrence);
+        }
+        return res;
+      } catch {
+        // Não relança: erro em action vai para o error boundary e derrubaria a página.
+        onStatusChange?.(occurrence.id, null);
+        toast.error("Não foi possível concluir. Verifique a conexão e tente novamente.");
+        return { status: "error" as const, message: "Falha de conexão." };
+      }
     },
     initialFormState,
   );
-  const [undoState, undoDispatch, undoPending] = useActionState(undoComplete, initialFormState);
+  const [undoState, undoDispatch, undoPending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof undoComplete>>, fd: FormData) => {
+      fd.set("no_refresh", "1");
+      try {
+        const res = await undoComplete(prev, fd);
+        if (res.status === "error") {
+          onStatusChange?.(occurrence.id, null);
+          toast.error(res.message ?? "Não foi possível desfazer. Tente novamente.");
+        }
+        return res;
+      } catch {
+        onStatusChange?.(occurrence.id, null);
+        toast.error("Não foi possível desfazer. Verifique a conexão e tente novamente.");
+        return { status: "error" as const, message: "Falha de conexão." };
+      }
+    },
+    initialFormState,
+  );
   // Ações disparadas pelo menu fecham o menu quando terminam. Não fechamos no
   // clique: desmontar o <form> antes do submit cancelaria o envio.
   const closingAfter =
@@ -162,7 +203,11 @@ export function TaskOccurrenceRow({
     >
       <div style={{ minHeight: 58, display: "flex", alignItems: "center", gap: 4, padding: "0 4px 0 2px" }}>
         {/* Concluir / desfazer — área de toque 44, bolinha visual 24 */}
-        <form action={isCompleted ? undoDispatch : completeDispatch} style={{ flexShrink: 0 }}>
+        <form
+          action={isCompleted ? undoDispatch : completeDispatch}
+          onSubmit={() => onStatusChange?.(occurrence.id, isCompleted ? "pending" : "completed")}
+          style={{ flexShrink: 0 }}
+        >
           <input type="hidden" name="occurrence_id" value={occurrence.id} />
           <button
             type="submit"

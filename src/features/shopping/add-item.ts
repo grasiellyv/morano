@@ -12,11 +12,15 @@ export type AddItemInput = {
   roomId?: string | null;
   mission?: string | null;
   priority?: "normal" | "urgente";
+  /** Evento que pediu o item; itens somados a um já existente não são vinculados. */
+  eventId?: string | null;
 };
 
 export type AddItemResult =
   | { result: "inserted" }
   | { result: "merged"; name: string; quantity: number; unit: string }
+  /** O mesmo evento já tinha este item: reenvio idempotente, nada mudou. */
+  | { result: "unchanged"; name: string; quantity: number; unit: string }
   | { result: "conflict"; name: string; quantity: number; unit: string }
   | { result: "error"; forbidden: boolean };
 
@@ -44,7 +48,12 @@ export async function addShoppingItem(
     p_mission: input.mission ?? null,
     p_priority: input.priority ?? "normal",
   } as unknown as Database["public"]["Functions"]["add_shopping_item"]["Args"];
-  const { data, error } = await supabase.rpc("add_shopping_item", args);
+  // p_event_id só vai quando há evento: a função tem default null, então a chamada comum
+  // funciona antes e depois da migration do vínculo.
+  const { data, error } = await supabase.rpc(
+    "add_shopping_item",
+    input.eventId ? ({ ...args, p_event_id: input.eventId } as typeof args) : args,
+  );
   if (error || !data) return { result: "error", forbidden: error?.code === "42501" };
   return data as unknown as AddItemResult;
 }

@@ -1205,6 +1205,7 @@ export type Database = {
           category_id: string | null;
           created_at: string;
           created_by: string | null;
+          event_id: string | null;
           home_id: string;
           id: string;
           is_purchased: boolean;
@@ -1224,6 +1225,7 @@ export type Database = {
           category_id?: string | null;
           created_at?: string;
           created_by?: string | null;
+          event_id?: string | null;
           home_id: string;
           id?: string;
           is_purchased?: boolean;
@@ -1242,6 +1244,7 @@ export type Database = {
           category_id?: string | null;
           created_at?: string;
           created_by?: string | null;
+          event_id?: string | null;
           home_id?: string;
           id?: string;
           is_purchased?: boolean;
@@ -1269,6 +1272,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopping_items_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
             referencedColumns: ["id"];
           },
           {
@@ -1816,6 +1826,7 @@ export type Database = {
       add_shopping_item: {
         Args: {
           p_category_id: string;
+          p_event_id?: string;
           p_home_id: string;
           p_mission: string;
           p_name: string;

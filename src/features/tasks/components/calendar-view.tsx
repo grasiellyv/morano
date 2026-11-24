@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { Event } from "@/features/events/queries";
+import { formatTime } from "@/features/tasks/rotina-format";
 
 type MonthDay = { date: string; pendingCount: number; completedCount: number };
 
@@ -223,8 +224,8 @@ export function CalendarView({ year, month, monthData, today, events = [] }: Pro
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500 }} className="truncate">{event.title}</div>
-                    {event.start_time ? (
-                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{event.start_time}</div>
+                    {formatTime(event.start_time) ? (
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{formatTime(event.start_time)}</div>
                     ) : null}
                   </div>
                 </div>

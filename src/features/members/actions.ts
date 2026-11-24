@@ -80,7 +80,6 @@ export async function inviteMember(
   const invite = Array.isArray(data) ? data[0] : data;
 
   revalidatePath("/casa/membros");
-  revalidatePath("/casa/membros/convites");
 
   return {
     status: "success",
@@ -131,7 +130,7 @@ export async function revokeInvite(
     return { status: "error", message: extractErrorMessage(error) };
   }
 
-  revalidatePath("/casa/membros/convites");
+  revalidatePath("/casa/membros");
   return { status: "success", message: "Convite revogado" };
 }
 

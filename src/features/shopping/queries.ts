@@ -2,6 +2,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import type { Mission } from "@/features/shopping/schemas";
+import { getCategories } from "@/features/shopping/queries-categories";
+import { historyProducts } from "@/features/shopping/dedupe";
+import type { SuggestionSources } from "@/features/shopping/suggest";
 
 export type ShoppingItem = {
   id: string;
@@ -23,6 +26,8 @@ export type ShoppingItem = {
   added_by_name: string | null;
   purchased_by: string | null;
   purchased_by_name: string | null;
+  /** Evento que pediu o item (null = adicionado direto na lista). */
+  event: { id: string; title: string } | null;
 };
 
 export async function getShoppingItems(
@@ -37,6 +42,7 @@ export async function getShoppingItems(
       mission, priority, created_by, purchased_by,
       category:shopping_categories(id, name, icon),
       room:rooms(id, name),
+      event:events(id, title),
       added_by_profile:profiles!shopping_items_created_by_fkey(full_name),
       purchased_by_profile:profiles!shopping_items_purchased_by_fkey(full_name)
     `)
@@ -55,6 +61,7 @@ export async function getShoppingItems(
       mission: Mission | null; priority: "normal" | "urgente"; created_by: string | null; purchased_by: string | null;
       category: { id: string; name: string; icon: string } | null;
       room: { id: string; name: string } | null;
+      event: { id: string; title: string } | null;
       added_by_profile: { full_name: string | null } | null;
       purchased_by_profile: { full_name: string | null } | null;
     };
@@ -78,6 +85,7 @@ export async function getShoppingItems(
       added_by_name: item.added_by_profile?.full_name ?? null,
       purchased_by: item.purchased_by,
       purchased_by_name: item.purchased_by_profile?.full_name ?? null,
+      event: item.event,
     };
     if (typedItem.is_purchased) {
       purchased.push(typedItem);
@@ -144,4 +152,36 @@ export async function getShoppingHistorySessions(
     .limit(limit);
   if (error || !data) return [];
   return data;
+}
+
+export const ITEM_SOURCE_LIMIT = 300;
+export const SESSION_SOURCE_LIMIT = 10;
+
+/**
+ * Fontes do autocomplete de produtos (categorias + o que a casa já usou), sob demanda.
+ * Três consultas leves e limitadas, em paralelo: sem os embeds de `getShoppingItems`
+ * e sem varrer o histórico inteiro. Fica fora do render das páginas (Rotina, tarefa).
+ */
+export async function getProductSuggestionSources(
+  supabase: SupabaseClient<Database>,
+  homeId: string,
+): Promise<SuggestionSources> {
+  const [categories, itemsResult, sessions] = await Promise.all([
+    getCategories(supabase, homeId),
+    supabase
+      .from("shopping_items")
+      .select("name, category_id, unit")
+      .eq("home_id", homeId)
+      .order("created_at", { ascending: false })
+      .limit(ITEM_SOURCE_LIMIT),
+    getShoppingHistorySessions(supabase, homeId, SESSION_SOURCE_LIMIT),
+  ]);
+
+  return {
+    categories: categories.map((c) => ({ id: c.id, default_slug: c.default_slug })),
+    home: [
+      ...(itemsResult.data ?? []).map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
+      ...historyProducts(sessions).map((h) => ({ name: h.name, category_id: h.category_id, unit: h.unit })),
+    ],
+  };
 }

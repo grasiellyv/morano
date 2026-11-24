@@ -2,13 +2,14 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, DoorOpen, Plus, SlidersHorizontal, Star, TriangleAlert } from "lucide-react";
+import { ChevronDown, DoorOpen, Plus, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { addItem } from "@/features/shopping/actions";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
-import { SHOPPING_CATALOG } from "@/features/shopping/catalog";
+import { ProductAutocomplete } from "@/features/shopping/components/product-autocomplete";
+import type { ProductSuggestion, ShoppingUnit, SuggestionSources } from "@/features/shopping/suggest";
 import { MISSIONS, MISSION_LABELS, type Mission } from "@/features/shopping/schemas";
 import { CategoryIcon } from "@/features/shopping/category-icon";
 import { findDuplicate } from "@/features/shopping/dedupe";
@@ -36,18 +37,17 @@ function FieldLabel({ id, children }: { id?: string; children: React.ReactNode }
   );
 }
 
-type PersonalSuggestion = { name: string; category_id: string | null };
-
 type Props = {
   categories: ShoppingCategory[];
   rooms: { id: string; name: string }[];
-  personalSuggestions?: PersonalSuggestion[];
+  /** Fontes do autocomplete: o que a casa já usou + categorias (para o catálogo padrão). */
+  sources: SuggestionSources;
   /** Itens pendentes: usados para avisar de duplicados enquanto a pessoa digita. */
   pendingItems?: { name: string; quantity: number; unit: string }[];
   onSuccess?: () => void;
 };
 
-export function AddItemForm({ categories, rooms, personalSuggestions = [], pendingItems = [], onSuccess }: Props) {
+export function AddItemForm({ categories, rooms, sources, pendingItems = [], onSuccess }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const detailsId = useId();
@@ -59,9 +59,7 @@ export function AddItemForm({ categories, rooms, personalSuggestions = [], pendi
   const [roomId, setRoomId] = useState("");
   const [mission, setMission] = useState<Mission | "">("");
   const [priority, setPriority] = useState<"normal" | "urgente">("normal");
-  const [suggestions, setSuggestions] = useState<{ name: string; categoryId: string | null; isPersonal: boolean }[]>([]);
-
-  const personalNames = new Set(personalSuggestions.map((s) => s.name.toLowerCase()));
+  const [unit, setUnit] = useState<ShoppingUnit>("un");
 
   const wrappedAdd = async (prev: FormState, fd: FormData): Promise<FormState> => {
     const result = await addItem(prev, fd);
@@ -72,9 +70,9 @@ export function AddItemForm({ categories, rooms, personalSuggestions = [], pendi
       setRoomId("");
       setMission("");
       setPriority("normal");
+      setUnit("un");
       setExpanded(false);
       userToggled.current = false;
-      setSuggestions([]);
       onSuccess?.();
     }
     return result;
@@ -89,32 +87,15 @@ export function AddItemForm({ categories, rooms, personalSuggestions = [], pendi
     }
   }, [state]);
 
-  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
+  function handleNameChange(val: string) {
     setNameValue(val);
     if (val.trim().length > 0 && !userToggled.current) setExpanded(true);
-    if (val.length >= 2) {
-      const lower = val.toLowerCase();
-      const personal = personalSuggestions
-        .filter((s) => s.name.toLowerCase().includes(lower))
-        .map((s) => ({ name: s.name, categoryId: s.category_id, isPersonal: true }));
-      const catalog = SHOPPING_CATALOG
-        .filter((s) => s.name.toLowerCase().includes(lower) && !personalNames.has(s.name.toLowerCase()))
-        .map((s) => ({
-          name: s.name,
-          categoryId: categories.find((c) => c.default_slug === s.category_slug)?.id ?? null,
-          isPersonal: false,
-        }));
-      setSuggestions([...personal, ...catalog].slice(0, 8));
-    } else {
-      setSuggestions([]);
-    }
   }
 
-  function selectSuggestion(item: { name: string; categoryId: string | null }) {
+  function selectSuggestion(item: ProductSuggestion) {
     setNameValue(item.name);
-    setSuggestions([]);
     if (item.categoryId) setCategoryId(item.categoryId);
+    if (item.unit) setUnit(item.unit);
     if (!userToggled.current) setExpanded(true);
     nameRef.current?.focus();
   }
@@ -136,41 +117,23 @@ export function AddItemForm({ categories, rooms, personalSuggestions = [], pendi
   return (
     <form ref={formRef} action={dispatch} className="space-y-3">
       {/* Name */}
-      <div className="relative">
-        <Input
-          ref={nameRef}
-          name="name"
-          value={nameValue}
-          onChange={handleNameChange}
-          onBlur={() => setTimeout(() => setSuggestions([]), 150)}
-          placeholder="Nome do produto…"
-          autoComplete="off"
-          required
-          disabled={pending}
-          aria-label="Nome do produto"
-          aria-invalid={!!state.fieldErrors?.name}
-          className="w-full text-base"
-          style={{ height: 44 }}
-        />
-        {suggestions.length > 0 ? (
-          <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-            {suggestions.map((s) => (
-              <li key={s.name}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
-                >
-                  <span className="flex-1">{s.name}</span>
-                  {s.isPersonal ? (
-                    <Star size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground" aria-label="Já usado em casa" />
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      <ProductAutocomplete
+        name="name"
+        value={nameValue}
+        onValueChange={handleNameChange}
+        onSelect={selectSuggestion}
+        sources={sources}
+        placeholder="Nome do produto…"
+        inputRef={nameRef}
+        inputProps={{
+          required: true,
+          disabled: pending,
+          "aria-label": "Nome do produto",
+          "aria-invalid": !!state.fieldErrors?.name,
+          className: "w-full text-base",
+          style: { height: 44 },
+        }}
+      />
 
       {state.fieldErrors?.name ? (
         <p className="text-xs text-destructive">{state.fieldErrors.name}</p>
@@ -198,7 +161,7 @@ export function AddItemForm({ categories, rooms, personalSuggestions = [], pendi
             style={{ height: 36 }}
           />
         </label>
-        <select name="unit" defaultValue="un" disabled={pending} className={selectClass} aria-label="Unidade">
+        <select name="unit" value={unit} onChange={(e) => setUnit(e.target.value as ShoppingUnit)} disabled={pending} className={selectClass} aria-label="Unidade">
           <option value="un">un</option>
           <option value="kg">kg</option>
           <option value="g">g</option>

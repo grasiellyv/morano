@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import type { InviteRecord } from "@/features/members/invite-status";
 
 export type HomeMember = {
   user_id: string;
@@ -40,6 +41,24 @@ export async function getPendingInvites(
 
   if (error) throw error;
   return (data ?? []) as PendingInvite[];
+}
+
+/**
+ * Convites da casa em qualquer status (a RLS só deixa dono/admin ler). Uma consulta só:
+ * `splitInvites` separa pendentes de histórico e trata o pendente vencido como expirado.
+ */
+export async function getHomeInvites(
+  supabase: SupabaseClient<Database>,
+  limit = 100,
+): Promise<InviteRecord[]> {
+  const { data, error } = await supabase
+    .from("home_invites")
+    .select("id, invited_email, role, status, expires_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as InviteRecord[];
 }
 
 export async function getInviteByToken(
