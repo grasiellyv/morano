@@ -1,4 +1,5 @@
 import type { Event } from "@/features/events/queries";
+import { formatTime } from "@/features/tasks/rotina-format";
 
 const TYPE_LABELS: Record<Event["event_type"], string> = {
   aniversario: "Aniversário",
@@ -52,8 +53,8 @@ export function EventChip({ event, compact = false }: Props) {
     >
       <span className="text-xs font-medium opacity-70 shrink-0">{label}</span>
       <span className="text-sm font-medium">{event.title}</span>
-      {event.start_time ? (
-        <span className="ml-auto text-xs opacity-70">{event.start_time}</span>
+      {formatTime(event.start_time) ? (
+        <span className="ml-auto text-xs opacity-70">{formatTime(event.start_time)}</span>
       ) : null}
     </div>
   );

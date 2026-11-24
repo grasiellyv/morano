@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import type { Event } from "@/features/events/queries";
+import { formatTime } from "@/features/tasks/rotina-format";
 import {
   type FormState,
   initialFormState,
@@ -267,7 +268,7 @@ export function EventForm({
             id="event-start-time"
             name="start_time"
             type="time"
-            defaultValue={initialValues?.start_time ?? ""}
+            defaultValue={formatTime(initialValues?.start_time) ?? ""}
             className={inputClass}
           />
           {state.fieldErrors?.start_time ? (
@@ -289,7 +290,7 @@ export function EventForm({
             id="event-end-time"
             name="end_time"
             type="time"
-            defaultValue={initialValues?.end_time ?? ""}
+            defaultValue={formatTime(initialValues?.end_time) ?? ""}
             className={inputClass}
           />
           {state.fieldErrors?.end_time ? (
