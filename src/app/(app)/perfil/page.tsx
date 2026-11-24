@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { KeyRound, Plane } from "lucide-react";
+import { Bell, KeyRound, Plane } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
 import { getMyAbsence } from "@/features/absence/queries";
@@ -10,6 +10,10 @@ import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { UpdateNameForm } from "@/features/auth/components/update-name-form";
 import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
 import { PageHeader } from "@/components/feedback/page-header";
+import { NOTIFICATION_TYPE_LABEL } from "@/features/notifications/schemas";
+import type { NotificationType } from "@/features/notifications/display";
+import { setNotificationPreferences } from "@/features/notifications/actions";
+import { NotificationPreferencesForm } from "@/features/notifications/components/notification-preferences-form";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
@@ -48,12 +52,27 @@ export default async function Page() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [currentAbsence, profileResult] = await Promise.all([
+  const [currentAbsence, profileResult, preferencesResult] = await Promise.all([
     getMyAbsence(supabase, user.id),
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("notification_preferences").select("type, enabled").eq("user_id", user.id),
   ]);
   const fullName = profileResult.data?.full_name ?? null;
   const palette = AVATAR_PALETTE[0]!;
+
+  // notification_preferences só guarda EXCEÇÕES ao default (que é "ligado"
+  // para todo tipo) — um tipo sem linha na tabela é "ligado".
+  const disabledTypes = new Set(
+    (preferencesResult.data ?? [])
+      .filter((row) => !row.enabled)
+      .map((row) => row.type),
+  );
+  const notificationPreferences = Object.fromEntries(
+    (Object.keys(NOTIFICATION_TYPE_LABEL) as NotificationType[]).map((type) => [
+      type,
+      !disabledTypes.has(type),
+    ]),
+  ) as Record<NotificationType, boolean>;
 
   return (
     <>
@@ -93,6 +112,22 @@ export default async function Page() {
             currentAbsence={currentAbsence}
             setAbsenceAction={setAbsence}
             clearAbsenceAction={clearAbsence}
+          />
+        </div>
+      </section>
+
+      {/* Notificações */}
+      <section aria-labelledby="notificacoes" className="mb-6">
+        <SectionTitle
+          id="notificacoes"
+          icon={<Bell size={16} aria-hidden />}
+          title="Notificações"
+          hint="O que você quer ser avisado."
+        />
+        <div style={card}>
+          <NotificationPreferencesForm
+            preferences={notificationPreferences}
+            action={setNotificationPreferences}
           />
         </div>
       </section>
