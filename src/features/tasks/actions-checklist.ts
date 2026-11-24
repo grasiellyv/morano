@@ -100,10 +100,8 @@ export async function removeChecklistItem(_: FormState, fd: FormData): Promise<F
  * Não mexe em outras ocorrências: amanhã a checklist começa limpa.
  */
 export async function setChecklistItemState(_: FormState, fd: FormData): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
-  const homeId = await getHomeId(supabase, userId);
-  if (!homeId) return { status: "error", message: "Casa não encontrada. Tente novamente." };
 
   const parsed = setChecklistStateSchema.safeParse({
     occurrence_id: textField(fd, "occurrence_id"),
@@ -113,20 +111,16 @@ export async function setChecklistItemState(_: FormState, fd: FormData): Promise
   if (!parsed.success) return { status: "error", message: "Dados inválidos." };
   const { occurrence_id, item_id, status } = parsed.data;
 
-  if (status === "clear") {
-    const { error } = await supabase
-      .from("occurrence_checklist_states")
-      .delete()
-      .eq("occurrence_id", occurrence_id)
-      .eq("item_id", item_id)
-      .eq("home_id", homeId);
-    if (error) return { status: "error", message: "Não foi possível atualizar o item." };
-  } else {
-    const { error } = await supabase.from("occurrence_checklist_states").upsert(
-      { occurrence_id, item_id, home_id: homeId, status, updated_at: new Date().toISOString(), updated_by: userId },
-      { onConflict: "occurrence_id,item_id" },
-    );
-    if (error) return { status: "error", message: "Não foi possível atualizar o item." };
+  // Uma ida só ao banco: a casa vem da própria ocorrência e o item precisa ser da tarefa dela.
+  // (Antes: uma consulta só para descobrir a casa e outra para gravar.)
+  const { data, error } = await supabase.rpc("set_checklist_item_state", {
+    p_occurrence_id: occurrence_id,
+    p_item_id: item_id,
+    p_status: status,
+  });
+  const result = (data as { result?: string } | null)?.result;
+  if (error || (result !== "set" && result !== "cleared")) {
+    return { status: "error", message: "Não foi possível atualizar o item." };
   }
 
   revalidateRotina();

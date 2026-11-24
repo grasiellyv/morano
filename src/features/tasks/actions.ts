@@ -333,7 +333,7 @@ export async function postponeOccurrence(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
@@ -344,95 +344,40 @@ export async function postponeOccurrence(
     return { status: "error", fieldErrors: { new_date: "Data inválida." } };
   }
 
-  // Fetch occurrence
-  const { data: occurrence, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, task_id, scheduled_for, status")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Uma ida só ao banco: confere membro, permissão e escopo, a data da casa e as regras de data
+  // (futuro, depois da original, antes da próxima ocorrência) e adia. Antes eram ~7 idas.
+  const { data, error } = await supabase.rpc("postpone_task_occurrence", {
+    p_occurrence_id: occurrenceId,
+    p_new_date: newDate,
+  });
+  if (error || !data) return { status: "error", message: "Erro ao adiar. Tente novamente." };
 
-  if (fetchError || !occurrence) {
-    return { status: "error", message: "Ocorrência não encontrada." };
-  }
-
-  const postponePerms = await getMemberPermissions(supabase, userId, occurrence.home_id);
-  if (!postponePerms.bypass && !postponePerms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão para adiar tarefas." };
-  }
-  if (!postponePerms.bypass && postponePerms.task_room_ids.length > 0) {
-    const { data: postponeTask } = await supabase
-      .from("tasks")
-      .select("room_id")
-      .eq("id", occurrence.task_id)
-      .maybeSingle();
-    if (postponeTask?.room_id && !postponePerms.task_room_ids.includes(postponeTask.room_id)) {
+  switch ((data as { result?: string }).result) {
+    case "postponed":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para adiar tarefas." };
+    case "forbidden_room":
       return { status: "error", message: "Sem acesso a este cômodo." };
-    }
-  }
-
-  // Buscar timezone para today
-  const { data: home, error: homeError } = await supabase
-    .from("homes")
-    .select("timezone")
-    .eq("id", occurrence.home_id)
-    .maybeSingle();
-
-  if (homeError || !home) {
-    return { status: "error", message: "Casa não encontrada." };
-  }
-
-  const today = getLocalDateString(home.timezone);
-
-  // new_date must be > today (future only)
-  if (newDate <= today) {
-    return {
-      status: "error",
-      fieldErrors: { new_date: "A nova data deve ser no futuro." },
-    };
-  }
-
-  // new_date must be > occurrence.scheduled_for (cannot move to an earlier date)
-  if (newDate <= occurrence.scheduled_for) {
-    return {
-      status: "error",
-      message: "A nova data deve ser posterior à data original.",
-    };
-  }
-
-  // Find the next pending occurrence of the same task after current scheduled_for
-  const { data: nextOccurrences } = await supabase
-    .from("task_occurrences")
-    .select("id, scheduled_for")
-    .eq("task_id", occurrence.task_id)
-    .eq("status", "pending")
-    .gt("scheduled_for", occurrence.scheduled_for)
-    .order("scheduled_for", { ascending: true })
-    .limit(1);
-
-  const nextOccurrence = nextOccurrences?.[0] ?? null;
-
-  // If next exists: new_date must be strictly less than next.scheduled_for
-  if (nextOccurrence && newDate >= nextOccurrence.scheduled_for) {
-    return {
-      status: "error",
-      fieldErrors: {
-        new_date:
-          "Não é possível adiar para depois da próxima ocorrência — evita duas na mesma data efetiva.",
-      },
-    };
-  }
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ scheduled_for: newDate })
-    .eq("id", occurrenceId);
-
-  if (error) {
-    return { status: "error", message: "Erro ao adiar. Tente novamente." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    case "not_future":
+      return { status: "error", fieldErrors: { new_date: "A nova data deve ser no futuro." } };
+    case "before_original":
+      return { status: "error", message: "A nova data deve ser posterior à data original." };
+    case "beyond_next":
+      return {
+        status: "error",
+        fieldErrors: {
+          new_date:
+            "Não é possível adiar para depois da próxima ocorrência — evita duas na mesma data efetiva.",
+        },
+      };
+    default:
+      return { status: "error", message: "Erro ao adiar. Tente novamente." };
   }
 
   revalidatePath("/rotina");
-
   revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
@@ -715,62 +660,56 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
 // ---------------------------------------------------------------------------
 
 export async function claimOccurrence(_: FormState, fd: FormData): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  const { data: occ } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, assigned_to")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Atômico: só assume se ainda estiver pendente e livre (duas pessoas não assumem ao mesmo tempo).
+  const { data, error } = await supabase.rpc("claim_task_occurrence", { p_occurrence_id: occurrenceId });
+  if (error || !data) return { status: "error", message: "Erro ao atribuir tarefa. Tente novamente." };
 
-  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
-  if (occ.status !== "pending") return { status: "error", message: "Ocorrência não está pendente." };
-  if (occ.assigned_to !== null) return { status: "error", message: "Já atribuída a outro membro." };
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ assigned_to: userId })
-    .eq("id", occurrenceId)
-    .eq("home_id", occ.home_id);
-
-  if (error) return { status: "error", message: "Erro ao atribuir tarefa. Tente novamente." };
+  switch ((data as { result?: string }).result) {
+    case "claimed":
+      break;
+    case "not_pending":
+      return { status: "error", message: "Ocorrência não está pendente." };
+    case "already_assigned":
+      return { status: "error", message: "Já atribuída a outro membro." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao atribuir tarefa. Tente novamente." };
+  }
 
   revalidatePath("/rotina");
-
   revalidatePath("/rotina/ocorrencia/[id]", "page");
   return { status: "success", message: "" };
 }
 
 export async function unclaimOccurrence(_: FormState, fd: FormData): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  const { data: occ } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, assigned_to")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("unclaim_task_occurrence", { p_occurrence_id: occurrenceId });
+  if (error || !data) return { status: "error", message: "Erro ao liberar tarefa. Tente novamente." };
 
-  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
-  if (occ.assigned_to !== userId) return { status: "error", message: "Esta tarefa não está atribuída a você." };
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ assigned_to: null })
-    .eq("id", occurrenceId)
-    .eq("home_id", occ.home_id);
-
-  if (error) return { status: "error", message: "Erro ao liberar tarefa. Tente novamente." };
+  switch ((data as { result?: string }).result) {
+    case "released":
+      break;
+    case "not_yours":
+      return { status: "error", message: "Esta tarefa não está atribuída a você." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao liberar tarefa. Tente novamente." };
+  }
 
   revalidatePath("/rotina");
-
   revalidatePath("/rotina/ocorrencia/[id]", "page");
   return { status: "success", message: "" };
 }
@@ -779,7 +718,7 @@ export async function updateOccurrenceNotes(
   _: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
@@ -790,28 +729,28 @@ export async function updateOccurrenceNotes(
     return { status: "error", message: "Nota muito longa (máx. 2000 caracteres)." };
   }
 
-  const { data: occ, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("update_occurrence_notes", {
+    p_occurrence_id: occurrenceId,
+    p_notes: notes,
+  } as never);
+  if (error || !data) return { status: "error", message: "Erro ao salvar nota." };
 
-  if (fetchError || !occ) return { status: "error", message: "Ocorrência não encontrada." };
-
-  const perms = await getMemberPermissions(supabase, userId, occ.home_id);
-  if (!perms.bypass && !perms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão." };
+  switch ((data as { result?: string }).result) {
+    case "saved":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão." };
+    case "forbidden_room":
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    case "too_long":
+      return { status: "error", message: "Nota muito longa (máx. 2000 caracteres)." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao salvar nota." };
   }
 
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ notes })
-    .eq("id", occurrenceId);
-
-  if (error) return { status: "error", message: "Erro ao salvar nota." };
-
   revalidatePath("/rotina");
-
   revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/historico");
   return { status: "success", message: "Nota salva." };
@@ -822,44 +761,38 @@ export async function updateOccurrenceNotes(
  * Quem gerencia tarefas atribui a qualquer morador; os demais só a si mesmos ou liberam a própria.
  */
 export async function assignOccurrence(_: FormState, fd: FormData): Promise<FormState> {
-  const { id: userId } = await requireUser();
+  await requireUser();
   const supabase = await createClient();
 
   const occurrenceId = textField(fd, "occurrence_id");
   const target = textField(fd, "assigned_to") || null;
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
-
-  const { data: occ } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, assigned_to")
-    .eq("id", occurrenceId)
-    .maybeSingle();
-  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
-  if (occ.status !== "pending") return { status: "error", message: "Só dá para trocar o responsável de uma tarefa pendente." };
-  if (occ.assigned_to === target) return { status: "success", message: "" };
-
-  const perms = await getMemberPermissions(supabase, userId, occ.home_id);
-  const selfService = target === userId || (target === null && occ.assigned_to === userId);
-  if (!perms.bypass && !perms.can_manage_tasks && !selfService) {
-    return { status: "error", message: "Sem permissão para atribuir tarefas a outros moradores." };
+  if (target && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target)) {
+    return { status: "error", message: "Morador não encontrado nesta casa." };
   }
 
-  if (target) {
-    const { data: member } = await supabase
-      .from("home_members")
-      .select("user_id")
-      .eq("home_id", occ.home_id)
-      .eq("user_id", target)
-      .maybeSingle();
-    if (!member) return { status: "error", message: "Morador não encontrado nesta casa." };
-  }
+  const { data, error } = await supabase.rpc("assign_task_occurrence", {
+    p_occurrence_id: occurrenceId,
+    p_assigned_to: target,
+  } as never);
+  if (error || !data) return { status: "error", message: "Erro ao trocar o responsável. Tente novamente." };
 
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({ assigned_to: target })
-    .eq("id", occurrenceId)
-    .eq("home_id", occ.home_id);
-  if (error) return { status: "error", message: "Erro ao trocar o responsável. Tente novamente." };
+  switch ((data as { result?: string }).result) {
+    case "unchanged":
+      return { status: "success", message: "" };
+    case "assigned":
+      break;
+    case "not_pending":
+      return { status: "error", message: "Só dá para trocar o responsável de uma tarefa pendente." };
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para atribuir tarefas a outros moradores." };
+    case "member_not_found":
+      return { status: "error", message: "Morador não encontrado nesta casa." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao trocar o responsável. Tente novamente." };
+  }
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/ocorrencia/[id]", "page");
