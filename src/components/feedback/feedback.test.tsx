@@ -17,6 +17,12 @@ describe("PageHeader", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Rotina" })).toBeInTheDocument();
     expect(screen.getByText("Tarefas da casa")).toBeInTheDocument();
   });
+
+  it("quebra linha em vez de vazar quando há várias ações", () => {
+    render(<PageHeader title="Membros" actions={<><button>A</button><button>B</button></>} />);
+    expect(screen.getByRole("banner").className).toMatch(/flex-wrap/);
+    expect(screen.getByText("A").parentElement!.className).toMatch(/flex-wrap/);
+  });
 });
 
 describe("EmptyState", () => {

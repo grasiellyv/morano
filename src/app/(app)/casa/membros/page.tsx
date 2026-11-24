@@ -34,7 +34,7 @@ export default async function Page() {
         title="Membros"
         actions={
           isAdminOrOwner ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm">
                 <Link href="/casa/membros/convites">Convites pendentes</Link>
               </Button>

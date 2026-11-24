@@ -34,7 +34,7 @@ export default async function Page() {
         title="Convites pendentes"
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link href="/casa/membros">Voltar</Link>
+            <Link href="/casa">Voltar</Link>
           </Button>
         }
       />
