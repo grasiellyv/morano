@@ -174,7 +174,7 @@ export default async function Page() {
     await Promise.all([
       getTodayOccurrences(supabase, home.id, today),
       getOverdueOccurrences(supabase, home.id, today),
-      getShoppingItems(supabase, home.id),
+      getShoppingItems(supabase, home.id, { purchasedLimit: 0 }),
       getMaintenanceItems(supabase, home.id),
       getReorderSuggestions(supabase, home.id, today),
       getHomeMembers(supabase),

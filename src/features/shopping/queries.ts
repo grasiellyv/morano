@@ -30,13 +30,10 @@ export type ShoppingItem = {
   event: { id: string; title: string } | null;
 };
 
-export async function getShoppingItems(
-  supabase: SupabaseClient<Database>,
-  homeId: string,
-): Promise<{ pending: ShoppingItem[]; purchased: ShoppingItem[] }> {
-  const { data, error } = await supabase
-    .from("shopping_items")
-    .select(`
+/** Quantos itens JÁ COMPRADOS a lista mostra (os mais recentes); pendentes vêm todos. */
+export const PURCHASED_ITEMS_LIMIT = 100;
+
+const ITEM_SELECT = `
       id, name, category_id, notes, room_id, quantity, unit,
       is_purchased, purchased_at, created_at, updated_at,
       mission, priority, created_by, purchased_by,
@@ -45,55 +42,81 @@ export async function getShoppingItems(
       event:events(id, title),
       added_by_profile:profiles!shopping_items_created_by_fkey(full_name),
       purchased_by_profile:profiles!shopping_items_purchased_by_fkey(full_name)
-    `)
-    .eq("home_id", homeId)
-    .order("created_at", { ascending: false });
+    `;
 
-  if (error || !data) return { pending: [], purchased: [] };
+function toShoppingItem(raw: unknown): ShoppingItem {
+  const item = raw as unknown as {
+    id: string;
+    name: string;
+    category_id: string | null;
+    notes: string | null;
+    room_id: string | null;
+    quantity: number;
+    unit: Database["public"]["Enums"]["shopping_unit"];
+    is_purchased: boolean;
+    purchased_at: string | null;
+    created_at: string;
+    updated_at: string;
+    mission: Mission | null;
+    priority: "normal" | "urgente";
+    created_by: string | null;
+    purchased_by: string | null;
+    category: { id: string; name: string; icon: string } | null;
+    room: { id: string; name: string } | null;
+    event: { id: string; title: string } | null;
+    added_by_profile: { full_name: string | null } | null;
+    purchased_by_profile: { full_name: string | null } | null;
+  };
+  const typedItem: ShoppingItem = {
+    id: item.id,
+    name: item.name,
+    category_id: item.category_id,
+    category: item.category,
+    notes: item.notes,
+    room_id: item.room_id,
+    room: item.room,
+    quantity: item.quantity,
+    unit: item.unit,
+    is_purchased: item.is_purchased,
+    purchased_at: item.purchased_at,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    mission: item.mission,
+    priority: item.priority ?? "normal",
+    created_by: item.created_by,
+    added_by_name: item.added_by_profile?.full_name ?? null,
+    purchased_by: item.purchased_by,
+    purchased_by_name: item.purchased_by_profile?.full_name ?? null,
+    event: item.event,
+  };
+  return typedItem;
+}
 
-  const pending: ShoppingItem[] = [];
-  const purchased: ShoppingItem[] = [];
-  for (const raw of data) {
-    const item = raw as unknown as {
-      id: string; name: string; category_id: string | null; notes: string | null;
-      room_id: string | null; quantity: number; unit: Database["public"]["Enums"]["shopping_unit"];
-      is_purchased: boolean; purchased_at: string | null; created_at: string; updated_at: string;
-      mission: Mission | null; priority: "normal" | "urgente"; created_by: string | null; purchased_by: string | null;
-      category: { id: string; name: string; icon: string } | null;
-      room: { id: string; name: string } | null;
-      event: { id: string; title: string } | null;
-      added_by_profile: { full_name: string | null } | null;
-      purchased_by_profile: { full_name: string | null } | null;
-    };
-    const typedItem: ShoppingItem = {
-      id: item.id,
-      name: item.name,
-      category_id: item.category_id,
-      category: item.category,
-      notes: item.notes,
-      room_id: item.room_id,
-      room: item.room,
-      quantity: item.quantity,
-      unit: item.unit,
-      is_purchased: item.is_purchased,
-      purchased_at: item.purchased_at,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      mission: item.mission,
-      priority: item.priority ?? "normal",
-      created_by: item.created_by,
-      added_by_name: item.added_by_profile?.full_name ?? null,
-      purchased_by: item.purchased_by,
-      purchased_by_name: item.purchased_by_profile?.full_name ?? null,
-      event: item.event,
-    };
-    if (typedItem.is_purchased) {
-      purchased.push(typedItem);
-    } else {
-      pending.push(typedItem);
-    }
-  }
-  return { pending, purchased };
+export async function getShoppingItems(
+  supabase: SupabaseClient<Database>,
+  homeId: string,
+  opts: { purchasedLimit?: number } = {},
+): Promise<{ pending: ShoppingItem[]; purchased: ShoppingItem[] }> {
+  const purchasedLimit = opts.purchasedLimit ?? PURCHASED_ITEMS_LIMIT;
+  const base = () => supabase.from("shopping_items").select(ITEM_SELECT).eq("home_id", homeId);
+
+  // Pendentes: todos. Comprados: só os mais recentes (e nenhum quando a tela não os usa).
+  // Duas consultas em paralelo, em vez de ler a lista inteira (incluindo todo o histórico de comprados).
+  const [pendingRes, purchasedRes] = await Promise.all([
+    base().eq("is_purchased", false).order("created_at", { ascending: false }),
+    purchasedLimit > 0
+      ? base()
+          .eq("is_purchased", true)
+          .order("purchased_at", { ascending: false, nullsFirst: false })
+          .limit(purchasedLimit)
+      : Promise.resolve({ data: [] as unknown[], error: null }),
+  ]);
+
+  return {
+    pending: pendingRes.error || !pendingRes.data ? [] : pendingRes.data.map(toShoppingItem),
+    purchased:
+      purchasedRes.error || !purchasedRes.data ? [] : purchasedRes.data.map(toShoppingItem),
+  };
 }
 
 /** Token do link público de visualização da casa (null se não houver link ativo). */
@@ -180,8 +203,16 @@ export async function getProductSuggestionSources(
   return {
     categories: categories.map((c) => ({ id: c.id, default_slug: c.default_slug })),
     home: [
-      ...(itemsResult.data ?? []).map((i) => ({ name: i.name, category_id: i.category_id, unit: i.unit })),
-      ...historyProducts(sessions).map((h) => ({ name: h.name, category_id: h.category_id, unit: h.unit })),
+      ...(itemsResult.data ?? []).map((i) => ({
+        name: i.name,
+        category_id: i.category_id,
+        unit: i.unit,
+      })),
+      ...historyProducts(sessions).map((h) => ({
+        name: h.name,
+        category_id: h.category_id,
+        unit: h.unit,
+      })),
     ],
   };
 }
