@@ -1,11 +1,21 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
 import { updatePresence } from "@/lib/presence";
 import { PostHogProvider } from "@/components/providers/posthog-provider";
+import { LoadingScreen } from "@/components/loading/loading-screen";
 import { redirect } from "next/navigation";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+/**
+ * A verificação de sessão/perfil é a parte mais lenta da navegação (round-trips
+ * sequenciais ao Supabase remoto em produção). Fica num Server Component à
+ * parte, dentro do próprio `<Suspense>` do layout: por convenção do Next.js,
+ * `loading.tsx` NUNCA envolve o layout do mesmo segmento, só `page.tsx` e
+ * layouts aninhados — sem isto, essa espera não teria nenhuma tela de
+ * carregamento, só o bege parado.
+ */
+async function AppGate({ children }: { children: React.ReactNode }) {
   // O proxy já redireciona; aqui a sessão é verificada de novo no servidor (spec §7).
   const user = await requireUser();
 
@@ -24,9 +34,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   void updatePresence(user.id, profile?.last_seen_at ?? null, supabase);
 
+  return <PostHogProvider userId={user.id}>{children}</PostHogProvider>;
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PostHogProvider userId={user.id}>
-      <AppShell>{children}</AppShell>
-    </PostHogProvider>
+    <AppShell>
+      <Suspense fallback={<LoadingScreen area="inicio" message="Preparando tudo para você…" />}>
+        <AppGate>{children}</AppGate>
+      </Suspense>
+    </AppShell>
   );
 }
