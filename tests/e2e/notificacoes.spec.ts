@@ -240,7 +240,7 @@ test("2. dois itens do mesmo autor consolidam; item de outro autor não entra na
 
   await signIn(page, email1, PASSWORD);
   await completeOnboarding(page);
-  await addSecondMemberToHome(user1.id, user2.id);
+  const homeId = await addSecondMemberToHome(user1.id, user2.id);
 
   const itemA = `Item2A ${Date.now()}`;
   const itemB = `Item2B ${Date.now()}`;
@@ -263,6 +263,29 @@ test("2. dois itens do mesmo autor consolidam; item de outro autor não entra na
   // user2 adiciona 1 item próprio — não deve se misturar com a linha de user1.
   const itemC = `Item2C ${Date.now()}`;
   await addShoppingItem(page2, itemC);
+
+  // Prova direta no banco (via admin client, fora do filtro de visibilidade
+  // que cada usuário vê): deve haver exatamente 2 linhas de
+  // `shopping_item_added` nesta casa — a de user1 (consolidada, meta =
+  // último item, itemB) e a de user2 (itemC) — nunca uma mesclada entre
+  // autores. Checar isso só pela UI de cada usuário não bastaria: como cada
+  // um nunca vê a própria notificação, a visão de user1 ("1 linha, mostra
+  // itemC") seria idêntica tanto no caso correto (2 linhas separadas) quanto
+  // num bug hipotético em que o add de user2 mesclasse itemC na linha de
+  // user1 (ela ficaria com meta=itemC e ainda apareceria como "1 linha" pra
+  // user1, que nunca veria a própria linha de qualquer forma).
+  const admin = createTestAdminClient();
+  const { data: rows, error: rowsError } = await admin
+    .from("notifications")
+    .select("actor_id, meta")
+    .eq("home_id", homeId)
+    .eq("type", "shopping_item_added")
+    .order("created_at", { ascending: true });
+  expect(rowsError).toBeNull();
+  expect(rows).toHaveLength(2);
+  const metaByActor = new Map((rows ?? []).map((r) => [r.actor_id, r.meta]));
+  expect(metaByActor.get(user1.id)).toBe(itemB);
+  expect(metaByActor.get(user2.id)).toBe(itemC);
 
   // user1 (autor dos itens A/B) recarrega /notificacoes: a própria linha não
   // aparece (é autor); a de user2 aparece separada, com o item C.
