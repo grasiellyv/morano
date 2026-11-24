@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  Bell,
   Plus,
   ChevronRight,
   Sun,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { AccountButton } from "@/components/layout/account-button";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
@@ -285,21 +285,10 @@ export default async function Page() {
       {/* ── CABEÇALHO ─────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 h-11 mb-3">
         <span className="flex-1 text-[22px] font-semibold tracking-[-0.6px]">Morano</span>
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="relative flex size-10 items-center justify-center rounded-full border border-border"
-          style={{ background: "var(--card)" }}
-        >
-          <Bell aria-hidden size={19} strokeWidth={1.75} />
-          {overdueCount > 0 ? (
-            <span
-              aria-hidden
-              className="absolute rounded-full border-2"
-              style={{ top: 9, right: 10, width: 8, height: 8, background: "#C8643C", borderColor: "var(--card)" }}
-            />
-          ) : null}
-        </button>
+        <NotificationBell
+          homeId={home.id}
+          items={attention.map(({ key, href, title, meta, badge, tone }) => ({ key, href, title, meta, badge, tone }))}
+        />
         <AccountButton name={fullName} />
       </div>
 
