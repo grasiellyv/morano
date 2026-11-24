@@ -15,6 +15,8 @@ import {
 } from "@/features/events/schemas";
 import { getMemberPermissions } from "@/features/members/permissions";
 import { trackEvent } from "@/lib/telemetry";
+import { parseEventItems, summarizeEventItemResults } from "@/features/events/event-items";
+import { addEventItems } from "@/features/events/save-items";
 
 export async function createEvent(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -46,7 +48,11 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { error } = await supabase.from("events").insert({
+  // Itens de compras são validados ANTES de gravar o evento: item inválido não deixa evento pela metade.
+  const itemsParsed = parseEventItems(textField(fd, "items"));
+  if (!itemsParsed.ok) return { status: "error", fieldErrors: { items: itemsParsed.message } };
+
+  const { data: created, error } = await supabase.from("events").insert({
     home_id: homeId,
     title: parsed.data.title,
     event_type: parsed.data.event_type,
@@ -55,17 +61,26 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
     start_time: parsed.data.start_time,
     end_time: parsed.data.end_time,
     description: parsed.data.description,
-  });
+  }).select("id").single();
 
-  if (error) {
+  if (error || !created) {
     return { status: "error", message: "Erro ao criar evento. Tente novamente." };
   }
+
+  const itemResults = await addEventItems(supabase, {
+    homeId,
+    eventId: created.id,
+    title: parsed.data.title,
+    items: itemsParsed.items,
+    canManageShopping: createEventPerms.bypass || createEventPerms.can_manage_shopping,
+  });
 
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
+  if (itemResults.length > 0) revalidatePath("/compras");
   await trackEvent(userId, homeId, "event_created");
-  return { status: "success", message: "Evento criado." };
+  return { status: "success", message: summarizeEventItemResults("criado", itemResults) };
 }
 
 export async function updateEvent(_: FormState, fd: FormData): Promise<FormState> {
@@ -99,6 +114,9 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
+  const itemsParsed = parseEventItems(textField(fd, "items"));
+  if (!itemsParsed.ok) return { status: "error", fieldErrors: { items: itemsParsed.message } };
+
   const { data: updated, error } = await supabase
     .from("events")
     .update({
@@ -118,10 +136,19 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
     return { status: "error", message: "Evento não encontrado." };
   }
 
+  const itemResults = await addEventItems(supabase, {
+    homeId,
+    eventId: parsed.data.id,
+    title: parsed.data.title,
+    items: itemsParsed.items,
+    canManageShopping: updateEventPerms.bypass || updateEventPerms.can_manage_shopping,
+  });
+
   revalidatePath("/rotina");
   revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
-  return { status: "success", message: "Evento atualizado." };
+  if (itemResults.length > 0) revalidatePath("/compras");
+  return { status: "success", message: summarizeEventItemResults("atualizado", itemResults) };
 }
 
 export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState> {
