@@ -19,4 +19,11 @@ describe("EventChip", () => {
     const { container } = render(<EventChip event={{ ...base, start_time: null }} />);
     expect(container.textContent).not.toMatch(/\d{2}:\d{2}|null/);
   });
+
+  it("selo Evento só aparece quando pedido", () => {
+    const { rerender } = render(<EventChip event={base} />);
+    expect(screen.queryByText("Evento")).toBeNull();
+    rerender(<EventChip event={base} showKindTag />);
+    expect(screen.getByText("Evento")).toBeInTheDocument();
+  });
 });

@@ -28,9 +28,11 @@ const TYPE_COLORS: Record<Event["event_type"], ColorPair> = {
 type Props = {
   event: Event;
   compact?: boolean;
+  /** Mostra o selo "Evento" (para não confundir com tarefas na visão da semana). */
+  showKindTag?: boolean;
 };
 
-export function EventChip({ event, compact = false }: Props) {
+export function EventChip({ event, compact = false, showKindTag = false }: Props) {
   const colors = TYPE_COLORS[event.event_type];
   const label = TYPE_LABELS[event.event_type];
 
@@ -51,6 +53,11 @@ export function EventChip({ event, compact = false }: Props) {
       className="rounded-[14px] px-3 py-2 flex items-center gap-2"
       style={{ background: colors.bg, color: colors.text }}
     >
+      {showKindTag ? (
+        <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ background: "rgba(0,0,0,0.08)" }}>
+          Evento
+        </span>
+      ) : null}
       <span className="text-xs font-medium opacity-70 shrink-0">{label}</span>
       <span className="text-sm font-medium">{event.title}</span>
       {formatTime(event.start_time) ? (

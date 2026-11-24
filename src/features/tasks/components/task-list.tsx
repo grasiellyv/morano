@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { parseISO } from "date-fns";
@@ -35,9 +35,12 @@ import {
   formatDayHeading,
   formatTime,
   formatWeekRange,
+  formatShortDate,
   periodOf,
   summarizeWeek,
   groupWeekByCategory,
+  groupEventsByDay,
+  eventCovers,
   type WeekTaskRow,
   timeSortKey,
   type DayPeriod,
@@ -85,10 +88,6 @@ type Props = {
 };
 
 const NO_FILTERS: RotinaFilters = { member: null, room: null, essential: false };
-
-function eventCovers(e: Event, date: string) {
-  return e.start_date <= date && (e.end_date ?? e.start_date) >= date;
-}
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
@@ -399,6 +398,7 @@ export function TaskList({
     const weekEnd = weekDates[6]!;
     const thisWeek = weekDates.includes(currentDate);
     const categories = groupWeekByCategory(displayWeek, rooms);
+    const eventDays = groupEventsByDay(events, weekDates);
     const firstOpen = categories.find((c) => c.done < c.total)?.key ?? null;
 
     return (
@@ -423,13 +423,41 @@ export function TaskList({
           hrefForDay={(d) => buildHref({ view: "dia", date: d })}
         />
 
-        {categories.length === 0 ? (
+        {eventDays.length > 0 ? (
+          <section aria-labelledby="eventos-semana" className="mt-4 rounded-2xl border border-border bg-card p-3">
+            <h3 id="eventos-semana" className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+              <CalendarDays size={15} strokeWidth={1.75} aria-hidden className="text-muted-foreground" />
+              Eventos da semana
+            </h3>
+            <ul className="space-y-2">
+              {eventDays.map((d) => (
+                <li key={d.date}>
+                  <Link
+                    href={buildHref({ view: "dia", date: d.date })}
+                    className="mb-1 inline-block text-xs font-medium text-muted-foreground no-underline hover:underline"
+                  >
+                    {formatShortDate(d.date)}
+                  </Link>
+                  <div className="space-y-1.5">
+                    {d.events.map((e) => (
+                      <Link key={e.id} href={buildHref({ view: "dia", date: d.date })} className="block no-underline">
+                        <EventChip event={e} showKindTag />
+                      </Link>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {categories.length === 0 && eventDays.length === 0 ? (
           <div className="mt-4">
             <EmptyCard>
               {activeFilterCount > 0 ? "Nenhuma tarefa com esses filtros nesta semana." : "Nada planejado para esta semana."}
             </EmptyCard>
           </div>
-        ) : (
+        ) : categories.length === 0 ? null : (
           <div className="mt-4 space-y-2">
             {categories.map((c) => (
               <Collapsible

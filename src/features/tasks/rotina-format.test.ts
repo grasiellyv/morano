@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
-import { describeRecurrence, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
+import { describeRecurrence, eventCovers, groupEventsByDay, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
 
 function occ(id: string, taskId: string, date: string, status: OccurrenceWithTask["status"], room: string | null, time: string | null = null): OccurrenceWithTask {
   return {
@@ -70,5 +70,39 @@ describe("describeRecurrence", () => {
     expect(describeRecurrence({ ...base, frequency_type: "monthly", month_day: 15 })).toBe("Todo dia 15 do mês");
     expect(describeRecurrence({ ...base, frequency_type: "custom", interval_value: 3, interval_unit: "day" })).toBe("A cada 3 dias");
     expect(describeRecurrence(null)).toBe("Só uma vez");
+  });
+});
+
+const WEEK = ["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29"];
+const ev = (title: string, start_date: string, end_date: string | null = null, start_time: string | null = null) =>
+  ({ title, start_date, end_date, start_time });
+
+describe("eventCovers", () => {
+  it("evento de um dia cobre só o próprio dia", () => {
+    expect(eventCovers(ev("x", "2026-11-25"), "2026-11-25")).toBe(true);
+    expect(eventCovers(ev("x", "2026-11-25"), "2026-11-26")).toBe(false);
+  });
+  it("evento de vários dias cobre o intervalo inclusive", () => {
+    expect(eventCovers(ev("x", "2026-11-25", "2026-11-27"), "2026-11-27")).toBe(true);
+    expect(eventCovers(ev("x", "2026-11-25", "2026-11-27"), "2026-11-28")).toBe(false);
+  });
+});
+
+describe("groupEventsByDay", () => {
+  it("agrupa por dia, ordena por horário e ignora dias vazios", () => {
+    const r = groupEventsByDay([ev("Jantar", "2026-11-25", null, "20:00:00"), ev("Visita", "2026-11-25", null, "09:00:00")], WEEK);
+    expect(r).toEqual([
+      { date: "2026-11-25", events: [expect.objectContaining({ title: "Visita" }), expect.objectContaining({ title: "Jantar" })] },
+    ]);
+  });
+  it("evento de vários dias aparece só nos dias desta semana", () => {
+    const r = groupEventsByDay([ev("Viagem", "2026-11-27", "2026-12-01")], WEEK);
+    expect(r.map((d) => d.date)).toEqual(["2026-11-27", "2026-11-28", "2026-11-29"]);
+  });
+  it("evento que começou na semana anterior também aparece", () => {
+    expect(groupEventsByDay([ev("Obra", "2026-11-20", "2026-11-24")], WEEK).map((d) => d.date)).toEqual(["2026-11-23", "2026-11-24"]);
+  });
+  it("sem eventos devolve lista vazia", () => {
+    expect(groupEventsByDay([], WEEK)).toEqual([]);
   });
 });
