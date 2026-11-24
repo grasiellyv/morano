@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarCheck, Clock, Users } from "lucide-react";
 
 const BENEFITS = [
@@ -13,6 +13,24 @@ const BENEFITS = [
 export function BenefitsCarousel() {
   const track = useRef<HTMLUListElement>(null);
   const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
+  // Rolagem automática: pausa com o mouse em cima e para de vez quando a pessoa
+  // toca, arrasta ou foca o carrossel. Não roda com "reduzir movimento".
+  const hovering = useRef(false);
+  const stopped = useRef(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      if (stopped.current || hovering.current || document.hidden) return;
+      goTo((activeRef.current + 1) % BENEFITS.length);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, []);
 
   function onScroll() {
     const el = track.current;
@@ -41,7 +59,22 @@ export function BenefitsCarousel() {
   }
 
   return (
-    <section aria-roledescription="carrossel" aria-label="Benefícios do Morano">
+    <section
+      aria-roledescription="carrossel"
+      aria-label="Benefícios do Morano"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") hovering.current = true;
+      }}
+      onPointerLeave={() => {
+        hovering.current = false;
+      }}
+      onTouchStart={() => {
+        stopped.current = true;
+      }}
+      onFocus={() => {
+        stopped.current = true;
+      }}
+    >
       <ul ref={track} className="welcome-track a-in" style={{ animationDelay: "1.6s" }} onScroll={onScroll} tabIndex={0}>
         {BENEFITS.map(({ tone, Icon, title, description }, i) => (
           <li key={title} className="welcome-feat" aria-label={`${i + 1} de ${BENEFITS.length}`}>
