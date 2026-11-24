@@ -23,6 +23,8 @@ export type ShoppingItem = {
   added_by_name: string | null;
   purchased_by: string | null;
   purchased_by_name: string | null;
+  /** Evento que pediu o item (null = adicionado direto na lista). */
+  event: { id: string; title: string } | null;
 };
 
 export async function getShoppingItems(
@@ -37,6 +39,7 @@ export async function getShoppingItems(
       mission, priority, created_by, purchased_by,
       category:shopping_categories(id, name, icon),
       room:rooms(id, name),
+      event:events(id, title),
       added_by_profile:profiles!shopping_items_created_by_fkey(full_name),
       purchased_by_profile:profiles!shopping_items_purchased_by_fkey(full_name)
     `)
@@ -55,6 +58,7 @@ export async function getShoppingItems(
       mission: Mission | null; priority: "normal" | "urgente"; created_by: string | null; purchased_by: string | null;
       category: { id: string; name: string; icon: string } | null;
       room: { id: string; name: string } | null;
+      event: { id: string; title: string } | null;
       added_by_profile: { full_name: string | null } | null;
       purchased_by_profile: { full_name: string | null } | null;
     };
@@ -78,6 +82,7 @@ export async function getShoppingItems(
       added_by_name: item.added_by_profile?.full_name ?? null,
       purchased_by: item.purchased_by,
       purchased_by_name: item.purchased_by_profile?.full_name ?? null,
+      event: item.event,
     };
     if (typedItem.is_purchased) {
       purchased.push(typedItem);
