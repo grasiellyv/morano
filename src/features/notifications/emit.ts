@@ -42,12 +42,18 @@ export async function createNotification(args: EmitArgs): Promise<void> {
       if (selectError) throw selectError;
 
       if (existing) {
-        const { error: updateError } = await supabase
+        const { data: updated, error: updateError } = await supabase
           .from("notifications")
           .update({ title, meta: meta ?? null, created_at: new Date().toISOString() })
-          .eq("id", existing.id);
+          .eq("id", existing.id)
+          .select("id");
         if (updateError) throw updateError;
-        return;
+        // `notifications_update_own` só permite atualizar linhas cujo actor_id é o
+        // próprio caller. `notifications_select` (usado na busca acima) não filtra por
+        // actor_id, então a linha encontrada pode pertencer a outro actor — nesse caso
+        // o update acima afeta 0 linhas, sem erro. Sem o `.select("id")` isso passaria
+        // em silêncio e a notificação seria perdida; com ele, cai no insert abaixo.
+        if (updated && updated.length > 0) return;
       }
     }
 
