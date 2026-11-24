@@ -3,11 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/shopping/actions", () => ({ addItem: vi.fn().mockResolvedValue({ status: "success" }) }));
+const loadProductSources = vi.fn();
+vi.mock("@/features/shopping/actions-suggest", () => ({ loadProductSources: (...a: unknown[]) => loadProductSources(...a) }));
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 
 import { ShoppingShortcut } from "./shopping-shortcut";
+import { resetProductSourcesCache } from "@/features/shopping/use-product-sources";
 
 const sources = {
   categories: [{ id: "cat-ali", default_slug: "alimentacao" }],
@@ -53,5 +56,18 @@ describe("ShoppingShortcut", () => {
     expect(fd.get("name")).toBe("detergente");
     expect(fd.get("room_id")).toBe("room-1");
     expect(fd.get("category_id")).toBeNull();
+  });
+
+  it("sem `sources`, só busca as fontes quando o formulário abre (página da tarefa não paga por isso)", async () => {
+    resetProductSourcesCache();
+    loadProductSources.mockReset();
+    loadProductSources.mockResolvedValue(sources);
+    const user = userEvent.setup();
+    render(<ShoppingShortcut taskTitle="Lavar" roomId={null} />);
+    expect(loadProductSources).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
+    await vi.waitFor(() => expect(loadProductSources).toHaveBeenCalledTimes(1));
+    await user.type(screen.getByRole("combobox"), "lei");
+    expect(await screen.findByRole("option", { name: /^Leite\s?Já usado em casa$/ })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/queries";
 import { formatTime } from "@/features/tasks/rotina-format";
 import {
@@ -12,7 +12,6 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { toast } from "sonner";
 import { EventItemsField } from "@/features/events/components/event-items-field";
 import { pendingCountText, type LinkedEventItem } from "@/features/events/event-items";
-import type { SuggestionSources } from "@/features/shopping/suggest";
 
 // 4 visual tiles mapping to DB event_type values
 const EVENT_TILES: Array<{
@@ -98,8 +97,8 @@ type Props = {
   updateAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   onSuccess?: () => void;
-  /** Fontes do autocomplete dos itens de compras; sem elas a seção não aparece. */
-  productSources?: SuggestionSources;
+  /** Quem tem permissão de Compras vê a seção de itens; os demais não (em vez de preencher e falhar). */
+  canAddItems?: boolean;
   /** Itens que o evento já pôs na lista de compras (edição). */
   linkedItems?: LinkedEventItem[];
   /** Remove um item vinculado (do evento e da lista de compras). */
@@ -120,7 +119,7 @@ export function EventForm({
   updateAction,
   deleteAction,
   onSuccess,
-  productSources,
+  canAddItems = false,
   linkedItems = [],
   removeItemAction,
   canRemoveItems = true,
@@ -131,7 +130,17 @@ export function EventForm({
       : (updateAction ?? noopAction);
 
   // O formulário fecha no sucesso: avisos de itens que não entraram na lista vão por toast.
+  // Trava de envio: duplo clique / Enter repetido não pode enfileirar um segundo envio
+  // (o `pending` só vira verdadeiro depois de uma renderização).
+  const submittingRef = useRef(false);
   const actionWithNotice = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    try {
+      return await runMainAction(prev, fd);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+  const runMainAction = async (prev: FormState, fd: FormData): Promise<FormState> => {
     const result = await mainAction(prev, fd);
     if (result.status === "success" && result.message && !/^Evento (criado|atualizado)\.$/.test(result.message)) {
       toast(result.message, { duration: 8000 });
@@ -157,7 +166,15 @@ export function EventForm({
 
   return (
     <>
-      <form id="event-main-form" action={dispatch} className="space-y-4">
+      <form
+        id="event-main-form"
+        action={dispatch}
+        className="space-y-4"
+        onSubmit={(e) => {
+          if (submittingRef.current) e.preventDefault();
+          else submittingRef.current = true;
+        }}
+      >
         {mode === "edit" && initialValues?.id ? (
           <input type="hidden" name="id" value={initialValues.id} />
         ) : null}
@@ -324,13 +341,14 @@ export function EventForm({
           ) : null}
         </div>
 
-        {productSources ? <EventItemsField
-            sources={productSources}
+        {canAddItems ? (
+          <EventItemsField
             linked={linkedItems}
             error={state.fieldErrors?.items}
             removeAction={removeItemAction}
             canRemove={canRemoveItems}
-          /> : null}
+          />
+        ) : null}
 
         <div>
           <label

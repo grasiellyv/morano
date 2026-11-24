@@ -20,9 +20,6 @@ import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-l
 import { getEventsForRange, getEventShoppingItems } from "@/features/events/queries";
 import { removeEventItem } from "@/features/events/actions-items";
 import { getMemberPermissions } from "@/features/members/permissions";
-import { getShoppingItems, getShoppingHistorySessions } from "@/features/shopping/queries";
-import { getCategories } from "@/features/shopping/queries-categories";
-import { historyProducts } from "@/features/shopping/dedupe";
 import {
   createEvent,
   updateEvent,
@@ -104,7 +101,7 @@ export default async function Page({
   // Os itens de compras dos eventos dependem dos ids dos eventos: encadeados num só ramo,
   // em paralelo com as demais leituras.
   const weekEventsPromise = getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []);
-  const [weekOcc, overdueOcc, weekEvents, eventItems, categories, shopping, historySessions, absence, rotations, homeMembers, perms] =
+  const [weekOcc, overdueOcc, weekEvents, eventItems, absence, rotations, homeMembers, perms] =
     await Promise.all([
       getOccurrencesForWeek(supabase, home.id, weekStart),
       view === "dia" && selectedDate === currentDate
@@ -112,23 +109,11 @@ export default async function Page({
         : Promise.resolve([]),
       weekEventsPromise,
       weekEventsPromise.then((events) => getEventShoppingItems(supabase, events.map((e) => e.id))),
-      getCategories(supabase, home.id),
-      getShoppingItems(supabase, home.id),
-      getShoppingHistorySessions(supabase, home.id),
       getMyAbsence(supabase, userId),
       getRotations(supabase, home.id),
       getHomeMembers(supabase),
       getMemberPermissions(supabase, userId, home.id),
     ]);
-
-  const productSources = {
-    categories,
-    home: [...shopping.pending, ...shopping.purchased, ...historyProducts(historySessions)].map((i) => ({
-      name: i.name,
-      category_id: i.category_id,
-      unit: i.unit,
-    })),
-  };
 
   const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
   const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
@@ -167,7 +152,7 @@ export default async function Page({
       rooms={home.rooms}
       absenceBanner={absenceBanner}
       events={weekEvents}
-      productSources={productSources}
+      canAddEventItems={perms.bypass || perms.can_manage_shopping}
       eventItems={eventItems}
       removeEventItemAction={removeEventItem}
       canRemoveEventItems={perms.bypass || perms.can_manage_shopping}

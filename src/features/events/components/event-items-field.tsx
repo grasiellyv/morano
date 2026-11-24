@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { normalizeName } from "@/features/shopping/dedupe";
+import { useProductSources } from "@/features/shopping/use-product-sources";
 import { ProductAutocomplete } from "@/features/shopping/components/product-autocomplete";
 import type { ProductSuggestion, ShoppingUnit, SuggestionSources } from "@/features/shopping/suggest";
 import { MAX_EVENT_ITEMS, type EventItemInput, type LinkedEventItem } from "@/features/events/event-items";
@@ -17,6 +18,7 @@ const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 const MAX_QUANTITY = 9999;
+const EMPTY_SOURCES: SuggestionSources = { categories: [], home: [] };
 
 /** Soma ao item de mesmo nome (sem acento/caixa) e unidade, ou acrescenta um novo. */
 function mergeItem(prev: EventItemInput[], draft: EventItemInput): EventItemInput[] {
@@ -30,7 +32,8 @@ function mergeItem(prev: EventItemInput[], draft: EventItemInput): EventItemInpu
 }
 
 type Props = {
-  sources: SuggestionSources;
+  /** Fontes do autocomplete. Sem elas, são buscadas sob demanda (e em cache) quando o campo aparece. */
+  sources?: SuggestionSources;
   /** Itens que o evento já pôs na lista de compras (edição). */
   linked?: LinkedEventItem[];
   /** Erro de validação de `items` devolvido pela action ao salvar. */
@@ -42,7 +45,9 @@ type Props = {
 };
 
 /** "Itens / Compras necessárias": o que entra na lista de compras quando o evento for salvo. */
-export function EventItemsField({ sources, linked = [], error, removeAction, canRemove = true }: Props) {
+export function EventItemsField({ sources: sourcesProp, linked = [], error, removeAction, canRemove = true }: Props) {
+  const loadedSources = useProductSources(!sourcesProp);
+  const sources = sourcesProp ?? loadedSources ?? EMPTY_SOURCES;
   const [items, setItems] = useState<EventItemInput[]>([]);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");

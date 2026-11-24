@@ -3,20 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
-import {
-  type FormState,
-  fieldErrorsFrom,
-  textField,
-} from "@/features/auth/form-state";
-import {
-  createEventSchema,
-  updateEventSchema,
-  deleteEventSchema,
-} from "@/features/events/schemas";
+import { type FormState, fieldErrorsFrom, textField } from "@/features/auth/form-state";
+import { createEventSchema, updateEventSchema, deleteEventSchema } from "@/features/events/schemas";
 import { getMemberPermissions } from "@/features/members/permissions";
 import { trackEvent } from "@/lib/telemetry";
 import { parseEventItems, summarizeEventItemResults } from "@/features/events/event-items";
 import { addEventItems } from "@/features/events/save-items";
+
+/** Janela em que um envio idêntico é tratado como reenvio do mesmo evento. */
+const DUPLICATE_WINDOW_MS = 15_000;
 
 export async function createEvent(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -26,7 +21,8 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
     .select("current_home_id")
     .eq("id", userId)
     .maybeSingle();
-  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+  if (!profile?.current_home_id)
+    return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
   const createEventPerms = await getMemberPermissions(supabase, userId, homeId);
@@ -52,16 +48,37 @@ export async function createEvent(_: FormState, fd: FormData): Promise<FormState
   const itemsParsed = parseEventItems(textField(fd, "items"));
   if (!itemsParsed.ok) return { status: "error", fieldErrors: { items: itemsParsed.message } };
 
-  const { data: created, error } = await supabase.from("events").insert({
-    home_id: homeId,
-    title: parsed.data.title,
-    event_type: parsed.data.event_type,
-    start_date: parsed.data.start_date,
-    end_date: parsed.data.end_date,
-    start_time: parsed.data.start_time,
-    end_time: parsed.data.end_time,
-    description: parsed.data.description,
-  }).select("id").single();
+  // Idempotência: o mesmo envio repetido em poucos segundos (duplo clique, reenvio por rede
+  // lenta) reaproveita o evento que acabou de ser criado em vez de duplicá-lo.
+  // Os itens também são idempotentes (a RPC devolve "unchanged"), então o reenvio é seguro.
+  const { data: recent } = await supabase
+    .from("events")
+    .select("id")
+    .eq("home_id", homeId)
+    .eq("created_by", userId)
+    .eq("title", parsed.data.title)
+    .eq("start_date", parsed.data.start_date)
+    .eq("event_type", parsed.data.event_type)
+    .gte("created_at", new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString())
+    .limit(1)
+    .maybeSingle();
+
+  const { data: created, error } = recent
+    ? { data: recent, error: null }
+    : await supabase
+        .from("events")
+        .insert({
+          home_id: homeId,
+          title: parsed.data.title,
+          event_type: parsed.data.event_type,
+          start_date: parsed.data.start_date,
+          end_date: parsed.data.end_date,
+          start_time: parsed.data.start_time,
+          end_time: parsed.data.end_time,
+          description: parsed.data.description,
+        })
+        .select("id")
+        .single();
 
   if (error || !created) {
     return { status: "error", message: "Erro ao criar evento. Tente novamente." };
@@ -91,7 +108,8 @@ export async function updateEvent(_: FormState, fd: FormData): Promise<FormState
     .select("current_home_id")
     .eq("id", userId)
     .maybeSingle();
-  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+  if (!profile?.current_home_id)
+    return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
   const updateEventPerms = await getMemberPermissions(supabase, userId, homeId);
@@ -159,7 +177,8 @@ export async function deleteEvent(_: FormState, fd: FormData): Promise<FormState
     .select("current_home_id")
     .eq("id", userId)
     .maybeSingle();
-  if (!profile?.current_home_id) return { status: "error", message: "Casa não encontrada. Tente novamente." };
+  if (!profile?.current_home_id)
+    return { status: "error", message: "Casa não encontrada. Tente novamente." };
   const homeId = profile.current_home_id;
 
   const deleteEventPerms = await getMemberPermissions(supabase, userId, homeId);

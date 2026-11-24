@@ -6,6 +6,9 @@ import { addItem as addShoppingItem } from "@/features/shopping/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import { ProductAutocomplete } from "@/features/shopping/components/product-autocomplete";
 import type { ProductSuggestion, SuggestionSources } from "@/features/shopping/suggest";
+import { useProductSources } from "@/features/shopping/use-product-sources";
+
+const EMPTY_SOURCES: SuggestionSources = { categories: [], home: [] };
 
 const icon = {
   width: 18,
@@ -23,13 +26,16 @@ const icon = {
 export function ShoppingShortcut({
   taskTitle,
   roomId,
-  sources,
+  sources: sourcesProp,
 }: {
   taskTitle: string;
   roomId: string | null;
-  sources: SuggestionSources;
+  /** Sem isto, as fontes são buscadas sob demanda quando o formulário abre. */
+  sources?: SuggestionSources;
 }) {
   const [open, setOpen] = useState(false);
+  const loadedSources = useProductSources(open && !sourcesProp);
+  const sources = sourcesProp ?? loadedSources ?? EMPTY_SOURCES;
   const [added, setAdded] = useState<string[]>([]);
   const [name, setName] = useState("");
   // Categoria/unidade só valem enquanto o texto é o da sugestão escolhida.

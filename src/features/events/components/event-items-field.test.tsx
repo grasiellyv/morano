@@ -2,11 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+const loadProductSources = vi.fn();
+vi.mock("@/features/shopping/actions-suggest", () => ({ loadProductSources: (...a: unknown[]) => loadProductSources(...a) }));
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 
 import { EventItemsField } from "./event-items-field";
+import { resetProductSourcesCache } from "@/features/shopping/use-product-sources";
 import type { SuggestionSources } from "@/features/shopping/suggest";
 
 const sources: SuggestionSources = {
@@ -175,5 +178,25 @@ describe("EventItemsField", () => {
   it("mostra o erro de items devolvido pela action", () => {
     render(<EventItemsField sources={sources} error="Itens inválidos. Confira nome, quantidade e unidade." />);
     expect(screen.getByRole("alert")).toHaveTextContent("Itens inválidos. Confira nome, quantidade e unidade.");
+  });
+
+  describe("fontes sob demanda", () => {
+    it("sem `sources` busca no servidor ao aparecer e passa a sugerir itens da casa", async () => {
+      resetProductSourcesCache();
+      loadProductSources.mockReset();
+      loadProductSources.mockResolvedValue(sources);
+      const user = userEvent.setup();
+      render(<EventItemsField />);
+      await user.type(screen.getByLabelText("Produto do evento"), "lei");
+      expect(await screen.findByRole("option", { name: /^Leite\s?Já usado em casa$/ })).toBeInTheDocument();
+      expect(loadProductSources).toHaveBeenCalledTimes(1);
+    });
+
+    it("com `sources` explícito não vai ao servidor", () => {
+      resetProductSourcesCache();
+      loadProductSources.mockReset();
+      render(<EventItemsField sources={sources} />);
+      expect(loadProductSources).not.toHaveBeenCalled();
+    });
   });
 });

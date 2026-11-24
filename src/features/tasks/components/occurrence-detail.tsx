@@ -9,7 +9,6 @@ import {
   unclaimOccurrence,
 } from "@/features/tasks/actions";
 import { ShoppingShortcut } from "@/features/tasks/components/shopping-shortcut";
-import type { SuggestionSources } from "@/features/shopping/suggest";
 import { EditOccurrenceButton } from "@/features/tasks/components/edit-occurrence-sheet";
 import { initialFormState } from "@/features/auth/form-state";
 import type { OccurrenceDetail } from "@/features/tasks/queries";
@@ -39,13 +38,11 @@ export function OccurrenceDetailView({
   today,
   userId,
   members,
-  productSources,
 }: {
   occurrence: OccurrenceDetail;
   today: string;
   userId: string;
   members: Member[];
-  productSources: SuggestionSources;
 }) {
   const task = occurrence.task;
   const isCompleted = occurrence.status === "completed";
@@ -199,7 +196,7 @@ export function OccurrenceDetailView({
       </section>
 
       {/* Lista de compras */}
-      <ShoppingShortcut taskTitle={task.title} roomId={task.room_id} sources={productSources} />
+      <ShoppingShortcut taskTitle={task.title} roomId={task.room_id} />
 
       {/* Concluir */}
       {/* Fixo acima da barra de navegação; o fundo em degradê evita que o texto rolando passe por baixo do aviso. */}
