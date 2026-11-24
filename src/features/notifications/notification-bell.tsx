@@ -120,19 +120,19 @@ export function NotificationBell({ homeId, items }: { homeId: string; items: Not
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="flex min-h-[60px] items-center gap-3 no-underline"
+                      className="flex min-h-[48px] items-center gap-3 no-underline"
                       style={{ color: "var(--foreground)" }}
                     >
                       <span
                         aria-hidden
                         className="flex shrink-0 items-center justify-center rounded-[10px]"
-                        style={{ width: 34, height: 34, ...TONE_STYLE[item.tone] }}
+                        style={{ width: 30, height: 30, ...TONE_STYLE[item.tone] }}
                       >
-                        <Icon size={17} strokeWidth={1.75} />
+                        <Icon size={16} strokeWidth={1.75} />
                       </span>
-                      <span className="min-w-0 flex-1 py-2.5">
-                        <span className="block truncate text-[14px] font-medium">{item.title}</span>
-                        <span className="block truncate text-[12px]" style={{ color: "var(--muted-foreground)" }}>
+                      <span className="min-w-0 flex-1 py-1.5">
+                        <span className="block truncate text-[14px] font-medium leading-5">{item.title}</span>
+                        <span className="block truncate text-[12px] leading-4" style={{ color: "var(--muted-foreground)" }}>
                           {item.meta}
                         </span>
                       </span>

@@ -27,11 +27,13 @@ export default async function Page() {
   return (
     <>
       {/* Back button */}
-      <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ padding: "4px 20px 0", display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Área de toque de 44x44 (o visual não muda: o recuo negativo compensa o padding). */}
         <Link
           href="/compras"
           aria-label="Voltar para compras"
-          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 14, color: "var(--muted-foreground)" }}
+          className="-ml-3 inline-flex min-h-11 min-w-11 items-center gap-1 pl-3 pr-4"
+          style={{ fontSize: 14, color: "var(--muted-foreground)" }}
         >
           <ArrowLeft size={16} />
           Lista
