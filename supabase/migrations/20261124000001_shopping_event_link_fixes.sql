@@ -2,6 +2,8 @@
 -- para produção; as duas sobem juntas, nesta ordem).
 --  * Soma de outra origem em item já vinculado a um evento DESVINCULA o item: antes, excluir
 --    o evento apagava também a quantidade somada por outra pessoa/evento.
+--  * Salvar o evento de novo é idempotente: o mesmo evento pedindo o mesmo item já vinculado
+--    devolve 'unchanged' em vez de somar a quantidade outra vez.
 --  * O gatilho de exclusão só apaga itens da casa do evento (event_id forjado por INSERT
 --    direto em outra casa não é apagado).
 
@@ -71,6 +73,17 @@ begin
     if v_existing.unit <> p_unit then
       return jsonb_build_object(
         'result', 'conflict',
+        'name', v_existing.name,
+        'quantity', v_existing.quantity,
+        'unit', v_existing.unit
+      );
+    end if;
+
+    -- Salvar de novo (duplo clique, reenvio) é idempotente: o MESMO evento pedindo o mesmo
+    -- item que já está vinculado a ele não soma outra vez.
+    if v_event is not null and v_existing.event_id is not distinct from v_event then
+      return jsonb_build_object(
+        'result', 'unchanged',
         'name', v_existing.name,
         'quantity', v_existing.quantity,
         'unit', v_existing.unit

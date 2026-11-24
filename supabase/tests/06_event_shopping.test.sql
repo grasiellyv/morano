@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(19);
 
 do $$
 begin
@@ -108,11 +108,21 @@ select is(
 );
 -- O mesmo evento pedindo de novo mantém o vínculo
 select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Sal A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid);
-select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Sal A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid);
+-- Salvar de novo (duplo clique, reenvio) é idempotente: o mesmo evento pedindo o mesmo item não soma
+select is(
+  (select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Sal A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid)->>'result'),
+  'unchanged',
+  'o mesmo evento pedindo o mesmo item de novo não faz nada (idempotente)'
+);
+select is(
+  (select quantity from public.shopping_items where home_id = current_setting('t.home_a')::uuid and name = 'Sal A6'),
+  1::numeric,
+  'quantidade não dobra no reenvio'
+);
 select is(
   (select event_id from public.shopping_items where home_id = current_setting('t.home_a')::uuid and name = 'Sal A6'),
   current_setting('t.ev1')::uuid,
-  'o mesmo evento pedindo de novo mantém o vínculo'
+  'o item continua vinculado ao evento'
 );
 
 -- Exclusão do evento por quem NÃO gerencia Compras -------------------------------

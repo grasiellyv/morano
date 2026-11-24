@@ -60,6 +60,7 @@ export function summarizeEventItemResults(
 ): string {
   const failed: string[] = [];
   const summed: string[] = [];
+  const already: string[] = [];
   for (const { name, result } of results) {
     if (result.result === "error") {
       failed.push(`${name} (${result.forbidden ? "sem permissão para Compras" : "erro ao adicionar"})`);
@@ -67,11 +68,14 @@ export function summarizeEventItemResults(
       failed.push(`${name} (já está na lista em outra unidade: ${result.quantity} ${result.unit})`);
     } else if (result.result === "merged") {
       summed.push(name);
+    } else if (result.result === "unchanged") {
+      already.push(name);
     }
   }
   const parts = [`Evento ${verb}.`];
   if (failed.length > 0) parts.push(`Não entraram na lista de compras: ${failed.join("; ")}.`);
   if (summed.length > 0) parts.push(`${summed.join(", ")} já estava na lista: quantidade somada.`);
+  if (already.length > 0) parts.push(`${already.join(", ")} já estava na lista deste evento.`);
   return parts.join(" ");
 }
 

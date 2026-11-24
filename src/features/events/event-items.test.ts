@@ -73,6 +73,13 @@ describe("summarizeEventItemResults", () => {
     expect(summarizeEventItemResults("criado", [])).toBe("Evento criado.");
   });
 
+  it("item já vinculado ao evento (reenvio) não vira erro nem soma: só é informado", () => {
+    const msg = summarizeEventItemResults("atualizado", [
+      { name: "Leite", result: { result: "unchanged", name: "Leite", quantity: 1, unit: "un" } },
+    ]);
+    expect(msg).toBe("Evento atualizado. Leite já estava na lista deste evento.");
+  });
+
   it("item somado a um que já existia é informado", () => {
     const msg = summarizeEventItemResults("criado", [
       { name: "Leite", result: { result: "merged", name: "Leite", quantity: 3, unit: "un" } },

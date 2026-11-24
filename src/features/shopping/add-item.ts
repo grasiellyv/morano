@@ -19,6 +19,8 @@ export type AddItemInput = {
 export type AddItemResult =
   | { result: "inserted" }
   | { result: "merged"; name: string; quantity: number; unit: string }
+  /** O mesmo evento já tinha este item: reenvio idempotente, nada mudou. */
+  | { result: "unchanged"; name: string; quantity: number; unit: string }
   | { result: "conflict"; name: string; quantity: number; unit: string }
   | { result: "error"; forbidden: boolean };
 
