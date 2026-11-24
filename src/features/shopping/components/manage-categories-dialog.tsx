@@ -7,10 +7,20 @@ import {
   deleteCategory,
 } from "@/features/shopping/actions-categories";
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
-import { initialFormState } from "@/features/auth/form-state";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
+import {
+  CATEGORY_ICON_KEYS,
+  CATEGORY_ICON_LABELS,
+  CATEGORY_ICONS,
+  CategoryIcon,
+  DEFAULT_CATEGORY_ICON,
+  resolveCategoryIcon,
+  type CategoryIconKey,
+} from "@/features/shopping/category-icon";
 
 type Props = {
   categories: ShoppingCategory[];
@@ -18,10 +28,52 @@ type Props = {
   onClose: () => void;
 };
 
+// ---- Icon Picker ----
+function IconPicker({ defaultValue, disabled }: { defaultValue: CategoryIconKey; disabled?: boolean }) {
+  const [value, setValue] = useState<CategoryIconKey>(defaultValue);
+  return (
+    <div role="radiogroup" aria-label="Ícone da categoria" className="flex w-full flex-wrap gap-1">
+      <input type="hidden" name="icon" value={value} />
+      {CATEGORY_ICON_KEYS.map((key) => {
+        const Icon = CATEGORY_ICONS[key];
+        const selected = key === value;
+        return (
+          <button
+            key={key}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={CATEGORY_ICON_LABELS[key]}
+            title={CATEGORY_ICON_LABELS[key]}
+            disabled={disabled}
+            onClick={() => setValue(key)}
+            className={
+              "inline-flex size-9 items-center justify-center rounded-lg border outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 " +
+              (selected
+                ? "border-transparent bg-[var(--nav-active)] text-[var(--nav-active-ink)]"
+                : "border-border bg-card text-foreground hover:bg-secondary")
+            }
+          >
+            <Icon size={16} strokeWidth={1.75} aria-hidden />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ---- Create Category Form ----
 function CreateCategoryForm() {
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, dispatch, pending] = useActionState(createCategory, initialFormState);
+  const [pickerKey, setPickerKey] = useState(0);
+  const [state, dispatch, pending] = useActionState(
+    async (prev: FormState, fd: FormData): Promise<FormState> => {
+      const result = await createCategory(prev, fd);
+      if (result.status === "success") setPickerKey((k) => k + 1);
+      return result;
+    },
+    initialFormState,
+  );
 
   useEffect(() => {
     if (state.status === "success") formRef.current?.reset();
@@ -29,14 +81,7 @@ function CreateCategoryForm() {
 
   return (
     <form ref={formRef} action={dispatch} className="flex flex-wrap items-center gap-2">
-      <Input
-        name="icon"
-        placeholder="🛒"
-        className="w-14 text-center"
-        disabled={pending}
-        maxLength={8}
-        aria-label="Ícone da categoria"
-      />
+      <IconPicker key={pickerKey} defaultValue={DEFAULT_CATEGORY_ICON} disabled={pending} />
       <Input
         name="name"
         placeholder="Nome"
@@ -45,7 +90,8 @@ function CreateCategoryForm() {
         disabled={pending}
         aria-label="Nome da nova categoria"
       />
-      <Button type="submit" size="sm" disabled={pending}>
+      <Button type="submit" size="sm" variant="add" disabled={pending}>
+        <Plus aria-hidden strokeWidth={1.75} />
         {pending ? "…" : "Adicionar"}
       </Button>
       {state.fieldErrors?.name ? (
@@ -131,14 +177,7 @@ function CategoryRow({
         className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
       >
         <input type="hidden" name="id" value={cat.id} />
-        <Input
-          name="icon"
-          defaultValue={cat.icon}
-          className="w-14 text-center"
-          disabled={updatePending}
-          maxLength={8}
-          aria-label="Ícone"
-        />
+        <IconPicker defaultValue={resolveCategoryIcon(cat.icon)} disabled={updatePending} />
         <Input
           name="name"
           defaultValue={cat.name}
@@ -169,8 +208,9 @@ function CategoryRow({
 
   return (
     <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2">
-      <span className="flex-1 text-sm">
-        {cat.icon} {cat.name}
+      <span className="flex flex-1 items-center gap-2 text-sm">
+        <CategoryIcon icon={cat.icon} size={16} className="text-muted-foreground" />
+        {cat.name}
       </span>
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -180,7 +220,7 @@ function CategoryRow({
           className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
           aria-label="Mover para cima"
         >
-          ↑
+          <ArrowUp size={14} strokeWidth={1.75} aria-hidden />
         </button>
         <button
           type="button"
@@ -189,7 +229,7 @@ function CategoryRow({
           className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
           aria-label="Mover para baixo"
         >
-          ↓
+          <ArrowDown size={14} strokeWidth={1.75} aria-hidden />
         </button>
         <button
           type="button"
@@ -253,9 +293,10 @@ export function ManageCategoriesDialog({ categories, open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            ✕ Fechar
+            <X size={15} strokeWidth={1.75} aria-hidden />
+            Fechar
           </button>
         </div>
 

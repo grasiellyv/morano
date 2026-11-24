@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -114,9 +115,10 @@ export default async function Page({
                 {page > 0 ? (
                   <Link
                     href={buildHref({ page: page - 1 })}
-                    className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
                   >
-                    ← Mais recentes
+                    <ArrowLeft size={16} aria-hidden />
+                    Mais recentes
                   </Link>
                 ) : <span />}
                 <span className="text-xs text-muted-foreground">
@@ -125,9 +127,10 @@ export default async function Page({
                 {hasMore ? (
                   <Link
                     href={buildHref({ page: page + 1 })}
-                    className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-accent"
                   >
-                    Mais antigas →
+                    Mais antigas
+                    <ArrowRight size={16} aria-hidden />
                   </Link>
                 ) : <span />}
               </div>

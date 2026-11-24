@@ -32,7 +32,7 @@ export function WeekNav({ selectedDate, today, taskDates }: Props) {
           style={{ width: 28, height: 28, background: "var(--card)", color: "var(--muted-foreground)" }}
           aria-label="Semana anterior"
         >
-          <ChevronLeft size={14} strokeWidth={2} />
+          <ChevronLeft size={14} strokeWidth={1.75} />
         </Link>
 
         <div className="flex flex-1 gap-1">
@@ -89,7 +89,7 @@ export function WeekNav({ selectedDate, today, taskDates }: Props) {
           style={{ width: 28, height: 28, background: "var(--card)", color: "var(--muted-foreground)" }}
           aria-label="Próxima semana"
         >
-          <ChevronRight size={14} strokeWidth={2} />
+          <ChevronRight size={14} strokeWidth={1.75} />
         </Link>
       </div>
     </nav>

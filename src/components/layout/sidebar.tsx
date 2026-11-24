@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { isNavItemActive } from "@/components/layout/nav-active";
-import { PRIMARY_NAV, SETTINGS_NAV } from "@/components/layout/nav-items";
+import { PRIMARY_NAV, ACCOUNT_NAV } from "@/components/layout/nav-items";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { cn } from "@/lib/utils";
 
@@ -13,8 +13,8 @@ const rowClass =
 
 export function Sidebar() {
   const pathname = usePathname() ?? "";
-  const settingsActive = isNavItemActive(pathname, SETTINGS_NAV.href);
-  const SettingsIcon = SETTINGS_NAV.icon;
+  const accountActive = isNavItemActive(pathname, ACCOUNT_NAV.href);
+  const AccountIcon = ACCOUNT_NAV.icon;
   return (
     <div className="bg-background border-border fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r py-6 pr-4 pl-[max(1rem,env(safe-area-inset-left))] md:flex">
       <Link
@@ -47,15 +47,15 @@ export function Sidebar() {
         </ul>
         <div className="mt-auto space-y-1">
           <Link
-            href={SETTINGS_NAV.href}
-            aria-current={settingsActive ? "page" : undefined}
+            href={ACCOUNT_NAV.href}
+            aria-current={accountActive ? "page" : undefined}
             className={cn(
               rowClass,
-              settingsActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60",
+              accountActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60",
             )}
           >
-            <SettingsIcon aria-hidden className="size-5" />
-            {SETTINGS_NAV.label}
+            <AccountIcon aria-hidden className="size-5" />
+            {ACCOUNT_NAV.label}
           </Link>
           <SignOutButton />
         </div>

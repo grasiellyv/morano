@@ -93,7 +93,7 @@ export function CalendarView({ year, month, monthData, today, events = [] }: Pro
             style={{ width: 32, height: 32, background: "var(--secondary)", color: "var(--foreground)" }}
             aria-label="Mês anterior"
           >
-            <ChevronLeft size={16} strokeWidth={2} />
+            <ChevronLeft size={16} strokeWidth={1.75} />
           </Link>
           <Link
             href={nextMonthHref(year, month)}
@@ -101,7 +101,7 @@ export function CalendarView({ year, month, monthData, today, events = [] }: Pro
             style={{ width: 32, height: 32, background: "var(--secondary)", color: "var(--foreground)" }}
             aria-label="Próximo mês"
           >
-            <ChevronRight size={16} strokeWidth={2} />
+            <ChevronRight size={16} strokeWidth={1.75} />
           </Link>
         </div>
 

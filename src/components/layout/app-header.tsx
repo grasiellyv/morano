@@ -10,8 +10,8 @@ export function AppHeader() {
       <div className="-mr-2 flex items-center">
         <SignOutButton variant="icon" />
         <Link
-          href="/configuracoes"
-          aria-label="Configurações"
+          href="/perfil"
+          aria-label="Minha conta"
           className="focus-visible:ring-ring flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-2"
         >
           <span className="bg-secondary text-foreground flex size-8 items-center justify-center rounded-full">

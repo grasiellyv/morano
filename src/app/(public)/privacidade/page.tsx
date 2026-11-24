@@ -60,7 +60,7 @@ export default function Page() {
       <LegalSection title="Seus direitos (LGPD)">
         <p>
           Você poderá exportar todos os seus dados (em JSON) e excluir sua conta de verdade, direto
-          nas Configurações. Essas opções estão sendo construídas e estarão disponíveis antes do
+          em Minha conta. Essas opções estão sendo construídas e estarão disponíveis antes do
           lançamento.
         </p>
       </LegalSection>

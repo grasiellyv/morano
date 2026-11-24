@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import { useActionState, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -119,7 +120,8 @@ export function RotinaForm() {
       </div>
 
       <SubmitButton pending={pending} pendingLabel="Calculando…">
-        Ver sugestões →
+        Ver sugestões
+        <ArrowRight aria-hidden />
       </SubmitButton>
     </form>
   );

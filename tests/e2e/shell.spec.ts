@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const LABELS = ["Início", "Rotina", "Casa", "Manutenção", "Compras"];
-const ROUTES = ["/inicio", "/rotina", "/casa", "/manutencao", "/compras", "/configuracoes"];
+const ROUTES = ["/inicio", "/rotina", "/casa", "/manutencao", "/compras", "/perfil"];
 
 test("root redirects to /inicio when logged in", async ({ page }) => {
   await page.goto("/");
@@ -21,18 +21,25 @@ test("mobile: bottom nav shows 5 items and marks the active one", async ({ page 
   await expect(nav.getByRole("link", { name: "Rotina" })).toHaveAttribute("aria-current", "page");
 });
 
-test("mobile: avatar opens Configurações", async ({ page }, testInfo) => {
+test("mobile: avatar abre Minha conta (único ponto de entrada)", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile");
   await page.goto("/inicio");
-  await page.getByRole("link", { name: "Configurações" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Configurações" })).toHaveCount(0); // sem engrenagem
+  await page.getByRole("link", { name: "Minha conta" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Minha conta" })).toBeVisible();
 });
 
 test("desktop: sidebar shows nav and settings", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop");
   await page.goto("/inicio");
   await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Configurações" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Minha conta" })).toBeVisible();
+});
+
+test("/configuracoes antiga redireciona para Minha conta", async ({ page }) => {
+  await page.goto("/configuracoes");
+  await expect(page).toHaveURL(/\/perfil$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Minha conta" })).toBeVisible();
 });
 
 test("no horizontal scroll at 320px", async ({ page }) => {

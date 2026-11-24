@@ -12,6 +12,7 @@ import { FormFeedback, SubmitButton } from "@/features/auth/components/form-part
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import type { RoomType } from "@/features/onboarding/catalog";
 
@@ -100,7 +101,8 @@ export function AddRoomForm() {
         </div>
       </div>
 
-      <SubmitButton pending={pending} pendingLabel="Adicionando…" className="w-full sm:w-auto">
+      <SubmitButton pending={pending} pendingLabel="Adicionando…" variant="add" className="w-full sm:w-auto">
+        <Plus aria-hidden strokeWidth={1.75} />
         Adicionar cômodo
       </SubmitButton>
     </form>

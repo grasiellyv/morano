@@ -187,6 +187,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
     priority: textField(fd, "priority"),
     is_essential: textField(fd, "is_essential"),
     room_id: textField(fd, "room_id") || null,
+    due_time: textField(fd, "due_time") || null,
     frequency_type: textField(fd, "frequency_type"),
     interval_value: textField(fd, "interval_value") || null,
     interval_unit: textField(fd, "interval_unit") || null,
@@ -217,6 +218,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
       priority: parsed.data.priority,
       is_essential: parsed.data.is_essential,
       room_id: parsed.data.room_id ?? null,
+      due_time: parsed.data.due_time ?? null,
       source: "manual",
       status: "active",
     })
@@ -293,6 +295,7 @@ export async function createTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, homeId, "task_created");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
   revalidatePath("/casa");
@@ -355,6 +358,7 @@ export async function completeOccurrence(
 
   await trackEvent(userId, occurrence.home_id, "occurrence_completed");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
@@ -429,6 +433,8 @@ export async function undoComplete(
   }
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
@@ -480,6 +486,8 @@ export async function skipOccurrence(
   }
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
@@ -589,6 +597,8 @@ export async function postponeOccurrence(
   }
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/inicio");
   return { status: "success" };
@@ -623,6 +633,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
     priority: textField(fd, "priority"),
     is_essential: textField(fd, "is_essential"),
     room_id: textField(fd, "room_id") || null,
+    due_time: textField(fd, "due_time") || null,
   });
 
   if (!parsed.success) {
@@ -652,6 +663,7 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
       priority: parsed.data.priority,
       is_essential: parsed.data.is_essential,
       room_id: parsed.data.room_id ?? null,
+      due_time: parsed.data.due_time ?? null,
     })
     .eq("id", parsed.data.id);
 
@@ -660,6 +672,8 @@ export async function updateTask(_: FormState, fd: FormData): Promise<FormState>
   }
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   return { status: "success", message: "Tarefa atualizada." };
 }
@@ -758,6 +772,8 @@ export async function editTaskRule(_: FormState, fd: FormData): Promise<FormStat
   await extendWindowForHome(routine.home_id, homeTimezone);
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   return { status: "success", message: "Regra de recorrência atualizada." };
 }
@@ -815,6 +831,8 @@ export async function archiveTask(_: FormState, fd: FormData): Promise<FormState
   }
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
@@ -849,6 +867,7 @@ export async function deleteTask(_: FormState, fd: FormData): Promise<FormState>
 
   await trackEvent(userId, deleteProfile.current_home_id, "task_deleted");
   revalidatePath("/rotina");
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/calendario");
   revalidatePath("/rotina/historico");
   revalidatePath("/inicio");
@@ -886,6 +905,8 @@ export async function claimOccurrence(_: FormState, fd: FormData): Promise<FormS
   if (error) return { status: "error", message: "Erro ao atribuir tarefa. Tente novamente." };
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   return { status: "success", message: "" };
 }
 
@@ -914,6 +935,8 @@ export async function unclaimOccurrence(_: FormState, fd: FormData): Promise<For
   if (error) return { status: "error", message: "Erro ao liberar tarefa. Tente novamente." };
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   return { status: "success", message: "" };
 }
 
@@ -953,6 +976,58 @@ export async function updateOccurrenceNotes(
   if (error) return { status: "error", message: "Erro ao salvar nota." };
 
   revalidatePath("/rotina");
+
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
   revalidatePath("/rotina/historico");
   return { status: "success", message: "Nota salva." };
+}
+
+/**
+ * Define quem faz ESTA ocorrência (só esta vez). `assigned_to` vazio = compartilhada.
+ * Quem gerencia tarefas atribui a qualquer morador; os demais só a si mesmos ou liberam a própria.
+ */
+export async function assignOccurrence(_: FormState, fd: FormData): Promise<FormState> {
+  const { id: userId } = await requireUser();
+  const supabase = await createClient();
+
+  const occurrenceId = textField(fd, "occurrence_id");
+  const target = textField(fd, "assigned_to") || null;
+  if (!occurrenceId) return { status: "error", message: "ID inválido." };
+
+  const { data: occ } = await supabase
+    .from("task_occurrences")
+    .select("id, home_id, status, assigned_to")
+    .eq("id", occurrenceId)
+    .maybeSingle();
+  if (!occ) return { status: "error", message: "Ocorrência não encontrada." };
+  if (occ.status !== "pending") return { status: "error", message: "Só dá para trocar o responsável de uma tarefa pendente." };
+  if (occ.assigned_to === target) return { status: "success", message: "" };
+
+  const perms = await getMemberPermissions(supabase, userId, occ.home_id);
+  const selfService = target === userId || (target === null && occ.assigned_to === userId);
+  if (!perms.bypass && !perms.can_manage_tasks && !selfService) {
+    return { status: "error", message: "Sem permissão para atribuir tarefas a outros moradores." };
+  }
+
+  if (target) {
+    const { data: member } = await supabase
+      .from("home_members")
+      .select("user_id")
+      .eq("home_id", occ.home_id)
+      .eq("user_id", target)
+      .maybeSingle();
+    if (!member) return { status: "error", message: "Morador não encontrado nesta casa." };
+  }
+
+  const { error } = await supabase
+    .from("task_occurrences")
+    .update({ assigned_to: target })
+    .eq("id", occurrenceId)
+    .eq("home_id", occ.home_id);
+  if (error) return { status: "error", message: "Erro ao trocar o responsável. Tente novamente." };
+
+  revalidatePath("/rotina");
+  revalidatePath("/rotina/ocorrencia/[id]", "page");
+  revalidatePath("/inicio");
+  return { status: "success", message: "" };
 }

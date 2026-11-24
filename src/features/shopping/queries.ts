@@ -16,6 +16,7 @@ export type ShoppingItem = {
   is_purchased: boolean;
   purchased_at: string | null;
   created_at: string;
+  updated_at: string;
   mission: Mission | null;
   priority: "normal" | "urgente";
   created_by: string | null;
@@ -32,7 +33,7 @@ export async function getShoppingItems(
     .from("shopping_items")
     .select(`
       id, name, category_id, notes, room_id, quantity, unit,
-      is_purchased, purchased_at, created_at,
+      is_purchased, purchased_at, created_at, updated_at,
       mission, priority, created_by, purchased_by,
       category:shopping_categories(id, name, icon),
       room:rooms(id, name),
@@ -50,7 +51,7 @@ export async function getShoppingItems(
     const item = raw as unknown as {
       id: string; name: string; category_id: string | null; notes: string | null;
       room_id: string | null; quantity: number; unit: Database["public"]["Enums"]["shopping_unit"];
-      is_purchased: boolean; purchased_at: string | null; created_at: string;
+      is_purchased: boolean; purchased_at: string | null; created_at: string; updated_at: string;
       mission: Mission | null; priority: "normal" | "urgente"; created_by: string | null; purchased_by: string | null;
       category: { id: string; name: string; icon: string } | null;
       room: { id: string; name: string } | null;
@@ -70,6 +71,7 @@ export async function getShoppingItems(
       is_purchased: item.is_purchased,
       purchased_at: item.purchased_at,
       created_at: item.created_at,
+      updated_at: item.updated_at,
       mission: item.mission,
       priority: item.priority ?? "normal",
       created_by: item.created_by,
@@ -84,4 +86,62 @@ export async function getShoppingItems(
     }
   }
   return { pending, purchased };
+}
+
+/** Token do link público de visualização da casa (null se não houver link ativo). */
+export async function getShareToken(
+  supabase: SupabaseClient<Database>,
+  homeId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("shopping_share_links")
+    .select("token")
+    .eq("home_id", homeId)
+    .maybeSingle();
+  return data?.token ?? null;
+}
+
+export type SharedListItem = {
+  name: string;
+  quantity: number;
+  unit: string;
+  is_purchased: boolean;
+  priority: "normal" | "urgente";
+  category: string | null;
+  category_icon: string | null;
+  added_by: string | null;
+  purchased_by: string | null;
+};
+
+export type SharedList = {
+  home_name: string;
+  updated_at: string | null;
+  items: SharedListItem[];
+};
+
+/** Leitura pública (visitante sem conta) pelo token. Só existe via RPC read-only. */
+export async function getSharedList(
+  supabase: SupabaseClient<Database>,
+  token: string,
+): Promise<SharedList | null> {
+  if (!/^[a-f0-9]{64}$/.test(token)) return null;
+  const { data, error } = await supabase.rpc("get_shared_shopping_list", { p_token: token });
+  if (error || !data) return null;
+  return data as unknown as SharedList;
+}
+
+/** Produtos de compras finalizadas, para recuperar itens do histórico. */
+export async function getShoppingHistorySessions(
+  supabase: SupabaseClient<Database>,
+  homeId: string,
+  limit = 30,
+): Promise<Array<{ finished_at: string; items: unknown }>> {
+  const { data, error } = await supabase
+    .from("shopping_sessions")
+    .select("finished_at, items")
+    .eq("home_id", homeId)
+    .order("finished_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data;
 }

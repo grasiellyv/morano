@@ -33,7 +33,7 @@ export async function setAbsence(_: FormState, fd: FormData): Promise<FormState>
   }
 
   revalidatePath("/rotina");
-  revalidatePath("/configuracoes");
+  revalidatePath("/perfil");
   return { status: "success", message: "Modo ausência ativado" };
 }
 
@@ -49,5 +49,5 @@ export async function clearAbsence(_fd: FormData): Promise<void> {
   await supabase.rpc("clear_my_absence");
 
   revalidatePath("/rotina");
-  revalidatePath("/configuracoes");
+  revalidatePath("/perfil");
 }

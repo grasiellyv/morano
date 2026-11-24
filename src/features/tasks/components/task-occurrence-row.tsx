@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   completeOccurrence,
   undoComplete,
@@ -14,102 +15,8 @@ import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
 import type { RotationInfo } from "@/features/tasks/queries-rotations";
-
-function daysBetween(dateFrom: string, dateTo: string): number {
-  const a = new Date(dateFrom + "T00:00:00Z").getTime();
-  const b = new Date(dateTo + "T00:00:00Z").getTime();
-  return Math.round((b - a) / 86_400_000);
-}
-
-// ── Avatar ────────────────────────────────────────────────────────────────────
-
-const AVATAR_PALETTES = [
-  { bg: "#EBD5BE", text: "#6B3A17" },
-  { bg: "#F3CFCF", text: "#8A2F3A" },
-  { bg: "#D5DEEA", text: "#2C4A6E" },
-  { bg: "#F5E4D2", text: "#7A5030" },
-  { bg: "#E0EADB", text: "#2C5633" },
-];
-
-function memberColor(id: string) {
-  let h = 5381;
-  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) & 0xffff;
-  return AVATAR_PALETTES[Math.abs(h) % AVATAR_PALETTES.length] ?? AVATAR_PALETTES[0]!;
-}
-
-function initials(name: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return parts.length >= 2
-    ? ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase()
-    : parts[0]?.slice(0, 2).toUpperCase() ?? "?";
-}
-
-function MemberAvatar({ id, name, size }: { id: string; name: string | null; size: number }) {
-  const { bg, text } = memberColor(id);
-  return (
-    <div
-      title={name ?? undefined}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        background: bg,
-        color: text,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: 600,
-        fontSize: Math.round(size * 0.44),
-        flexShrink: 0,
-      }}
-    >
-      {initials(name)}
-    </div>
-  );
-}
-
-// ── Category icon ─────────────────────────────────────────────────────────────
-
-function CategoryIcon({ roomName }: { roomName: string | null }) {
-  const n = (roomName ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-
-  const sw = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
-
-  if (n.includes("cozinha") || n.includes("kitchen")) {
-    // Plate / double circle
-    return <svg {...sw}><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>;
-  }
-  if (n.includes("sala") || n.includes("living")) {
-    // Sofa
-    return <svg {...sw}><path d="M5 11V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M4 13a2 2 0 0 1 4 0v1h8v-1a2 2 0 0 1 4 0v4H4zM6 18v2M18 18v2"/></svg>;
-  }
-  if (n.includes("quarto") || n.includes("dormitorio") || n.includes("bedroom")) {
-    // Bed
-    return <svg {...sw}><path d="M3 19v-8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8M3 15h18M7 9V7h4v2"/></svg>;
-  }
-  if (n.includes("banhe") || n.includes("lavabo") || n.includes("wc")) {
-    // Wash / appliance
-    return <svg {...sw}><rect x="5" y="3" width="14" height="18" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6.5h.01M11 6.5h.01"/></svg>;
-  }
-  if (n.includes("varanda") || n.includes("jardim") || n.includes("terraco") || n.includes("planta")) {
-    // Sprout
-    return <svg {...sw}><path d="M12 20v-8M12 12c0-4 3-6 6-6 0 4-2 6-6 6zM12 15c0-3-2-5-5-5 0 3 2 5 5 5zM8 20h8"/></svg>;
-  }
-  if (n.includes("servico") || n.includes("lavanderia") || n.includes("area")) {
-    // Washing machine
-    return <svg {...sw}><rect x="5" y="3" width="14" height="18" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6.5h.01M11 6.5h.01"/></svg>;
-  }
-  if (n.includes("garagem") || n.includes("garage")) {
-    // Wrench
-    return <svg {...sw}><path d="M15 5a4 4 0 0 0-4.5 5.4L4 17l3 3 6.6-6.5A4 4 0 0 0 19 9l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>;
-  }
-  // Default: list
-  return <svg {...sw}><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>;
-}
+import { FREQUENCY_SHORT, formatTime, formatShortDate, firstName } from "@/features/tasks/rotina-format";
+import { ChecklistList, checklistProgress } from "@/features/tasks/components/checklist-list";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -119,16 +26,24 @@ type Props = {
   userId?: string;
   rotationInfo?: RotationInfo;
   onEdit?: () => void;
+  /** Chamado quando a conclusão é confirmada pelo servidor (para o aviso "Desfazer"). */
+  onCompleted?: (o: OccurrenceWithTask) => void;
   rooms?: Array<{ id: string; name: string }>;
   homeMembers?: Array<{ id: string; name: string | null }>;
 };
 
+/**
+ * Linha de tarefa da visão diária.
+ * [ bolinha de concluir ] título / quem · horário · cômodo · recorrência [ ⋯ ]
+ * Concluir afeta só esta ocorrência — a recorrência continua gerando as próximas.
+ */
 export function TaskOccurrenceRow({
   occurrence,
   today,
   userId,
   rotationInfo,
   onEdit,
+  onCompleted,
   rooms,
   homeMembers,
 }: Props) {
@@ -142,13 +57,30 @@ export function TaskOccurrenceRow({
   const [showPostpone, setShowPostpone] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
-  const [, completeDispatch, completePending] = useActionState(completeOccurrence, initialFormState);
+  const [, completeDispatch, completePending] = useActionState(
+    async (prev: Awaited<ReturnType<typeof completeOccurrence>>, fd: FormData) => {
+      const res = await completeOccurrence(prev, fd);
+      if (res.status !== "error") onCompleted?.(occurrence);
+      return res;
+    },
+    initialFormState,
+  );
   const [undoState, undoDispatch, undoPending] = useActionState(undoComplete, initialFormState);
-  const [, skipDispatch, skipPending] = useActionState(skipOccurrence, initialFormState);
+  // Ações disparadas pelo menu fecham o menu quando terminam. Não fechamos no
+  // clique: desmontar o <form> antes do submit cancelaria o envio.
+  const closingAfter =
+    (action: typeof skipOccurrence) =>
+    async (prev: Awaited<ReturnType<typeof skipOccurrence>>, fd: FormData) => {
+      const res = await action(prev, fd);
+      setMenuOpen(false);
+      return res;
+    };
+  const [, skipDispatch, skipPending] = useActionState(closingAfter(skipOccurrence), initialFormState);
   const [postponeState, postponeDispatch, postponePending] = useActionState(postponeOccurrence, initialFormState);
-  const [claimState, claimDispatch, claimPending] = useActionState(claimOccurrence, initialFormState);
-  const [, unclaimDispatch, unclaimPending] = useActionState(unclaimOccurrence, initialFormState);
+  const [claimState, claimDispatch, claimPending] = useActionState(closingAfter(claimOccurrence), initialFormState);
+  const [, unclaimDispatch, unclaimPending] = useActionState(closingAfter(unclaimOccurrence), initialFormState);
   const [notesState, notesDispatch, notesPending] = useActionState(updateOccurrenceNotes, initialFormState);
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -158,7 +90,7 @@ export function TaskOccurrenceRow({
     const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]');
     firstItem?.focus();
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { closeMenu(); return; }
+      if (e.key === "Escape") { setMenuOpen(false); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
@@ -169,7 +101,7 @@ export function TaskOccurrenceRow({
       }
     }
     function handlePointer(e: PointerEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     }
     document.addEventListener("keydown", handleKey);
     document.addEventListener("pointerdown", handlePointer);
@@ -184,21 +116,33 @@ export function TaskOccurrenceRow({
   }, [notesState.status]);
 
   const isCompleted = occurrence.status === "completed";
-  const isOverdue = occurrence.scheduled_for < today;
-  const daysOverdue = isOverdue ? daysBetween(occurrence.scheduled_for, today) : 0;
+  const isOverdue = !isCompleted && occurrence.scheduled_for < today;
+  const isMine = !!userId && occurrence.assigned_to === userId;
+  const isShared = occurrence.assigned_to === null;
+  const time = formatTime(occurrence.task.due_time);
+  const freq = occurrence.task.routine?.frequency_type;
+  const isHigh = occurrence.task.priority === "alta";
 
-  function closeMenu() { setMenuOpen(false); }
+  // Quem: responsável, ou "Compartilhada" quando ninguém pegou (qualquer morador pode fazer).
+  const who = isMine
+    ? "Você"
+    : assignedMember
+      ? firstName(assignedMember.name)
+      : rotationInfo?.currentMemberName
+        ? firstName(rotationInfo.currentMemberName)
+        : "Compartilhada";
 
-  // Meta line parts
-  const metaParts: string[] = [];
-  if (isOverdue && !isCompleted) metaParts.push(`Atrasada ${daysOverdue}${daysOverdue === 1 ? " dia" : " dias"}`);
+  const metaParts: string[] = [who];
+  if (isOverdue) metaParts.push(`desde ${formatShortDate(occurrence.scheduled_for)}`);
+  if (time) metaParts.push(time);
   if (roomName) metaParts.push(roomName);
-  if (rotationInfo) metaParts.push("↺");
 
-  // Whether to render the expanded section
+  const checklist = occurrence.task.checklist ?? [];
+  const cl = checklistProgress(checklist, occurrence.checklist_states);
+  const detailHref = `/rotina/ocorrencia/${occurrence.id}`;
+
   const showExpanded =
-    (!isCompleted && occurrence.assigned_to === null) ||
-    (!isCompleted && occurrence.assigned_to === userId) ||
+    showChecklist ||
     showPostpone ||
     showNoteEditor ||
     showInstructions ||
@@ -206,324 +150,269 @@ export function TaskOccurrenceRow({
     (undoState.status === "error" && !!undoState.message) ||
     (claimState.status === "error" && !!claimState.message);
 
+  const checked = isCompleted || completePending;
+
   return (
     <div
-      className="rounded-lg border border-border bg-card overflow-hidden"
+      style={{
+        borderRadius: 14,
+        border: "1px solid var(--border)",
+        background: "var(--card)",
+      }}
     >
-      {/* ── 54 px main row ─────────────────────────────────────────────── */}
-      <div
-        style={{
-          minHeight: 54,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "0 12px",
-        }}
-      >
-        {/* Category icon tile */}
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "var(--secondary)",
-            color: "var(--foreground)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <CategoryIcon roomName={roomName} />
-        </div>
-
-        {/* Title + meta */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
+      <div style={{ minHeight: 58, display: "flex", alignItems: "center", gap: 4, padding: "0 4px 0 2px" }}>
+        {/* Concluir / desfazer — área de toque 44, bolinha visual 24 */}
+        <form action={isCompleted ? undoDispatch : completeDispatch} style={{ flexShrink: 0 }}>
+          <input type="hidden" name="occurrence_id" value={occurrence.id} />
+          <button
+            type="submit"
+            disabled={completePending || undoPending}
+            aria-label={isCompleted ? `Desfazer conclusão: ${occurrence.task.title}` : `Concluir: ${occurrence.task.title}`}
+            aria-pressed={isCompleted}
+            className="group focus-visible:outline-2 focus-visible:outline-offset-[-4px] rounded-full"
             style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: isCompleted ? "var(--muted-foreground)" : "var(--foreground)",
-              textDecoration: isCompleted ? "line-through" : "none",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              width: 44,
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              cursor: completePending || undoPending ? "default" : "pointer",
             }}
           >
-            {occurrence.task.title}
-          </div>
-          {metaParts.length > 0 ? (
-            <div
+            <span
               style={{
-                fontSize: 12,
-                color:
-                  isOverdue && !isCompleted
-                    ? "var(--destructive)"
-                    : "var(--muted-foreground)",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {metaParts.join(" · ")}
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Assigned member avatar */}
-        {assignedMember ? (
-          <MemberAvatar id={assignedMember.id} name={assignedMember.name} size={24} />
-        ) : null}
-
-        {/* Complete / Undo button */}
-        {isCompleted ? (
-          <form action={undoDispatch}>
-            <input type="hidden" name="occurrence_id" value={occurrence.id} />
-            <button
-              type="submit"
-              disabled={undoPending}
-              aria-label="Desfazer conclusão"
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 13,
-                background: "var(--foreground)",
-                color: "var(--background)",
-                border: "none",
+                width: 24,
+                height: 24,
+                borderRadius: 12,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                flexShrink: 0,
+                background: checked ? "var(--done-bg)" : "transparent",
+                color: "var(--done-ink)",
+                boxShadow: checked ? "inset 0 0 0 1.5px var(--done-ring)" : "none",
+                border: checked ? "none" : "1.5px solid var(--muted-foreground)",
                 opacity: undoPending ? 0.5 : 1,
-                cursor: undoPending ? "not-allowed" : "pointer",
+                transition: "background 140ms ease, transform 140ms ease",
+                transform: completePending ? "scale(0.92)" : "none",
               }}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-            </button>
-          </form>
-        ) : (
-          <form action={completeDispatch}>
-            <input type="hidden" name="occurrence_id" value={occurrence.id} />
-            <button
-              type="submit"
-              disabled={completePending}
-              aria-label={`Concluir: ${occurrence.task.title}`}
+              {checked ? (
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              ) : null}
+            </span>
+          </button>
+        </form>
+
+        {/* Título + meta */}
+        <div style={{ flex: 1, minWidth: 0, padding: "9px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <span
               style={{
-                width: 26,
-                height: 26,
-                borderRadius: 13,
-                background: "transparent",
-                border: "1.5px solid var(--muted-foreground)",
-                display: "block",
-                flexShrink: 0,
-                opacity: completePending ? 0.4 : 1,
-                cursor: completePending ? "not-allowed" : "pointer",
+                fontSize: 14.5,
+                fontWeight: 600,
+                color: isCompleted ? "var(--muted-foreground)" : "var(--foreground)",
+                textDecoration: isCompleted ? "line-through" : "none",
+                textDecorationThickness: 1.5,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
-            />
-          </form>
-        )}
+            >
+              <Link href={detailHref} className="hover:underline focus-visible:underline focus-visible:outline-none underline-offset-4">
+                {occurrence.task.title}
+              </Link>
+            </span>
+            {isHigh && !isCompleted ? (
+              <span
+                title="Prioridade alta"
+                style={{ width: 6, height: 6, borderRadius: 3, background: "#C8643C", flexShrink: 0 }}
+              >
+                <span className="sr-only">Prioridade alta</span>
+              </span>
+            ) : null}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              marginTop: 2,
+              color: isOverdue ? "var(--warn-ink)" : "var(--muted-foreground)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              minWidth: 0,
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {metaParts.join(" · ")}
+            </span>
+            {freq && freq !== "once" ? (
+              <span
+                title={rotationInfo ? `${FREQUENCY_SHORT[freq]} · rodízio ${rotationInfo.name}` : FREQUENCY_SHORT[freq]}
+                style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}
+              >
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M17 2l3 3-3 3" />
+                  <path d="M4 11v-1a5 5 0 0 1 5-5h11" />
+                  <path d="M7 22l-3-3 3-3" />
+                  <path d="M20 13v1a5 5 0 0 1-5 5H4" />
+                </svg>
+                {FREQUENCY_SHORT[freq]}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Subtarefas: progresso + abrir/recolher */}
+        {checklist.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowChecklist((v) => !v)}
+            aria-expanded={showChecklist}
+            aria-label={`Checklist: ${cl.done} de ${cl.total} feitos. ${showChecklist ? "Recolher" : "Mostrar"}`}
+            className="flex shrink-0 items-center gap-1 rounded-lg px-2 focus-visible:outline-2"
+            style={{ height: 32, fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", background: "var(--secondary)" }}
+          >
+            {cl.done}/{cl.total}
+            <svg
+              width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden
+              style={{ transform: showChecklist ? "rotate(180deg)" : "none", transition: "transform 160ms ease" }}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        ) : null}
 
         {/* ⋯ Menu */}
         <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => { setMenuOpen((v) => !v); setShowPostpone(false); }}
-            aria-label="Mais opções"
+            aria-label={`Mais opções: ${occurrence.task.title}`}
+            aria-haspopup="menu"
             aria-expanded={menuOpen}
+            className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-[-4px]"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
+              width: 44,
+              height: 44,
               background: "transparent",
               border: "none",
               color: "var(--muted-foreground)",
-              fontSize: 18,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
             }}
           >
-            ⋯
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <circle cx="5" cy="12" r="1.6" />
+              <circle cx="12" cy="12" r="1.6" />
+              <circle cx="19" cy="12" r="1.6" />
+            </svg>
           </button>
 
           {menuOpen ? (
             <div
               role="menu"
-              className="absolute right-0 top-full z-10 mt-1 min-w-[140px] overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+              className="absolute right-1 top-full z-20 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-border bg-card py-1"
+              style={{ boxShadow: "0 10px 30px rgba(60,35,15,0.14)" }}
             >
-              {onEdit ? (
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => { onEdit(); closeMenu(); }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                >
-                  Editar
-                </button>
+              <Link
+                role="menuitem"
+                href={detailHref}
+                className="block w-full px-4 py-2.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
+                Abrir tarefa
+              </Link>
+              {!isCompleted && isShared ? (
+                <form action={claimDispatch}>
+                  <input type="hidden" name="occurrence_id" value={occurrence.id} />
+                  <MenuItem type="submit" disabled={claimPending}>
+                    {claimPending ? "Aguarde…" : "Eu pego"}
+                  </MenuItem>
+                </form>
+              ) : null}
+              {!isCompleted && isMine ? (
+                <form action={unclaimDispatch}>
+                  <input type="hidden" name="occurrence_id" value={occurrence.id} />
+                  <MenuItem type="submit" disabled={unclaimPending}>
+                    Liberar para a casa
+                  </MenuItem>
+                </form>
               ) : null}
               {!isCompleted ? (
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => { setShowPostpone(true); closeMenu(); }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                >
-                  Adiar
-                </button>
+                <MenuItem onClick={() => { setShowPostpone(true); setMenuOpen(false); }}>Adiar</MenuItem>
               ) : null}
               {!isCompleted ? (
                 <form action={skipDispatch}>
                   <input type="hidden" name="occurrence_id" value={occurrence.id} />
-                  <button
-                    role="menuitem"
-                    type="submit"
-                    disabled={skipPending}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                  >
-                    {skipPending ? "Pulando…" : "Pular"}
-                  </button>
+                  <MenuItem type="submit" disabled={skipPending}>
+                    {skipPending ? "Pulando…" : "Pular desta vez"}
+                  </MenuItem>
                 </form>
               ) : null}
               {occurrence.task.instructions ? (
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => { setShowInstructions((v) => !v); closeMenu(); }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
-                >
+                <MenuItem onClick={() => { setShowInstructions((v) => !v); setMenuOpen(false); }}>
                   {showInstructions ? "Ocultar instruções" : "Como fazer"}
-                </button>
+                </MenuItem>
               ) : null}
-              <button
-                role="menuitem"
-                type="button"
-                onClick={() => { setShowNoteEditor(true); closeMenu(); }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
-              >
+              <MenuItem onClick={() => { setShowNoteEditor(true); setMenuOpen(false); }}>
                 {occurrence.notes ? "Editar nota" : "Adicionar nota"}
-              </button>
+              </MenuItem>
+              <div role="separator" style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+              {onEdit ? (
+                <MenuItem onClick={() => { onEdit(); setMenuOpen(false); }}>Editar tarefa</MenuItem>
+              ) : null}
+              <Link
+                role="menuitem"
+                href={`/rotina/tarefas/${occurrence.task.id}/editar`}
+                className="block w-full px-4 py-2.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
+                Editar recorrência
+              </Link>
             </div>
           ) : null}
         </div>
       </div>
 
-      {/* ── Expanded section (60px indent = 12 pad + 36 tile + 12 gap) ─── */}
+      {/* ── Detalhes (alinhados ao título: 2 + 44 + 4 = 50px) ─────────────── */}
       {showExpanded ? (
-        <div
-          style={{
-            padding: "0 12px 12px 60px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          {/* Claim / Unclaim */}
-          {!isCompleted ? (
-            occurrence.assigned_to === null ? (
-              <div>
-                <form action={claimDispatch}>
-                  <input type="hidden" name="occurrence_id" value={occurrence.id} />
-                  <button
-                    type="submit"
-                    disabled={claimPending}
-                    style={{
-                      height: 28,
-                      padding: "0 12px",
-                      borderRadius: 8,
-                      border: "1px solid var(--border)",
-                      background: "var(--card)",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--foreground)",
-                      cursor: claimPending ? "not-allowed" : "pointer",
-                      opacity: claimPending ? 0.6 : 1,
-                    }}
-                  >
-                    {claimPending ? "Aguarde…" : "Eu pego"}
-                  </button>
-                </form>
-                {claimState.status === "error" && claimState.message ? (
-                  <p style={{ fontSize: 12, color: "var(--destructive)" }}>
-                    {claimState.message}
-                  </p>
-                ) : null}
-              </div>
-            ) : occurrence.assigned_to === userId ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--foreground)" }}>
-                  Você pegou
-                </span>
-                <form action={unclaimDispatch}>
-                  <input type="hidden" name="occurrence_id" value={occurrence.id} />
-                  <button
-                    type="submit"
-                    disabled={unclaimPending}
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted-foreground)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                  >
-                    Liberar
-                  </button>
-                </form>
-              </div>
-            ) : null
+        <div style={{ padding: "0 14px 12px 50px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {showChecklist ? (
+            <div style={{ marginLeft: -10, borderTop: "1px solid var(--border)", paddingTop: 4 }}>
+              <ChecklistList
+                occurrenceId={occurrence.id}
+                taskId={occurrence.task.id}
+                items={checklist}
+                states={occurrence.checklist_states ?? []}
+                disabled={isCompleted}
+                size="compact"
+              />
+              <Link href={detailHref} className="ml-2.5 inline-block text-muted-foreground underline-offset-4 hover:underline" style={{ fontSize: 12.5, marginTop: 2 }}>
+                Abrir tarefa
+              </Link>
+            </div>
+          ) : null}
+          {claimState.status === "error" && claimState.message ? (
+            <p style={{ fontSize: 12, color: "var(--destructive)" }}>{claimState.message}</p>
           ) : null}
 
-          {/* Instructions */}
           {showInstructions && occurrence.task.instructions ? (
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "pre-wrap" }}>
+            <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
               {occurrence.task.instructions}
             </p>
           ) : null}
 
-          {/* Note display */}
           {occurrence.notes && !showNoteEditor ? (
             <p style={{ fontSize: 12, color: "var(--muted-foreground)", fontStyle: "italic" }}>
               &ldquo;{occurrence.notes}&rdquo;
             </p>
           ) : null}
 
-          {/* Note editor */}
           {showNoteEditor ? (
             <form action={notesDispatch}>
               <input type="hidden" name="occurrence_id" value={occurrence.id} />
@@ -534,19 +423,14 @@ export function TaskOccurrenceRow({
                 maxLength={2000}
                 rows={2}
                 autoFocus
-                placeholder="Adicione uma nota..."
-                className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-sm"
+                placeholder="Ex.: faltou sabão, comprar amanhã"
+                className="w-full resize-none rounded-lg border border-input bg-background px-2 py-1 text-sm"
               />
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <Button type="submit" size="sm" disabled={notesPending}>
                   {notesPending ? "Salvando…" : "Salvar nota"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowNoteEditor(false)}
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowNoteEditor(false)}>
                   Cancelar
                 </Button>
                 {notesState.status === "error" ? (
@@ -556,7 +440,6 @@ export function TaskOccurrenceRow({
             </form>
           ) : null}
 
-          {/* Postpone form */}
           {showPostpone ? (
             <form action={postponeDispatch} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="occurrence_id" value={occurrence.id} />
@@ -565,18 +448,13 @@ export function TaskOccurrenceRow({
                 name="new_date"
                 min={today}
                 required
-                aria-label="nova data"
-                className="rounded border border-input bg-background px-2 py-1 text-sm"
+                aria-label="Nova data"
+                className="rounded-lg border border-input bg-background px-2 py-1 text-sm"
               />
               <Button type="submit" size="sm" disabled={postponePending}>
                 {postponePending ? "Adiando…" : "Adiar"}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPostpone(false)}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowPostpone(false)}>
                 Cancelar
               </Button>
               {postponeState.status === "error" ? (
@@ -587,12 +465,35 @@ export function TaskOccurrenceRow({
             </form>
           ) : null}
 
-          {/* Undo error */}
           {undoState.status === "error" && undoState.message ? (
             <p style={{ fontSize: 12, color: "var(--destructive)" }}>{undoState.message}</p>
           ) : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function MenuItem({
+  children,
+  onClick,
+  type = "button",
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      role="menuitem"
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className="block w-full px-4 py-2.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:opacity-50"
+    >
+      {children}
+    </button>
   );
 }

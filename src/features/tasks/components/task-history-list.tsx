@@ -3,6 +3,7 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { OccurrenceWithRoom } from "@/features/tasks/queries";
+import { Check, SkipForward, X } from "lucide-react";
 
 type Props = {
   occurrences: OccurrenceWithRoom[];
@@ -12,20 +13,20 @@ function StatusIcon({ status }: { status: OccurrenceWithRoom["status"] }) {
   switch (status) {
     case "completed":
       return (
-        <span className="text-muted-foreground font-semibold" aria-label="Concluída">
-          ✓
+        <span className="inline-flex text-muted-foreground" aria-label="Concluída">
+          <Check size={15} strokeWidth={1.75} aria-hidden />
         </span>
       );
     case "skipped":
       return (
-        <span className="text-stone" aria-label="Pulada">
-          →
+        <span className="inline-flex text-stone" aria-label="Pulada">
+          <SkipForward size={15} strokeWidth={1.75} aria-hidden />
         </span>
       );
     case "missed":
       return (
-        <span className="text-alert-ink" aria-label="Perdida">
-          ✗
+        <span className="inline-flex text-alert-ink" aria-label="Perdida">
+          <X size={15} strokeWidth={1.75} aria-hidden />
         </span>
       );
     default:

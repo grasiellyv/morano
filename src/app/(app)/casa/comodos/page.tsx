@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -24,7 +25,7 @@ export default async function Page() {
         description={`${home.rooms.length} ${home.rooms.length === 1 ? "cômodo" : "cômodos"} em ${home.name}`}
         actions={
           <Button asChild variant="ghost" size="sm">
-            <Link href="/casa">← Voltar</Link>
+            <Link href="/casa" className="inline-flex items-center gap-1"><ArrowLeft size={16} aria-hidden />Voltar</Link>
           </Button>
         }
       />

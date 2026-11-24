@@ -73,7 +73,7 @@ test("fluxo completo de onboarding aterra em /inicio", async ({ page }) => {
 
   // Seleciona a intensidade "Equilibrada" pelo botão
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByRole("button", { name: "Ver sugestões →" }).click();
+  await page.getByRole("button", { name: "Ver sugestões" }).click();
 
   // — Passo 4: Revisão —
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
@@ -156,7 +156,7 @@ test("página /casa exibe o nome da residência após onboarding", async ({ page
   // Passo 3
   await expect(page).toHaveURL(/\/onboarding\/rotina$/);
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByRole("button", { name: "Ver sugestões →" }).click();
+  await page.getByRole("button", { name: "Ver sugestões" }).click();
 
   // Passo 4
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
@@ -192,7 +192,7 @@ test("adicionar cômodo em /casa/comodos aparece na lista", async ({ page }) => 
 
   await expect(page).toHaveURL(/\/onboarding\/rotina$/);
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByRole("button", { name: "Ver sugestões →" }).click();
+  await page.getByRole("button", { name: "Ver sugestões" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
   await page.getByRole("button", { name: "Aprovar rotina" }).click();

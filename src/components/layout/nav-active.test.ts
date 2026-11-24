@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRIMARY_NAV, SETTINGS_NAV } from "./nav-items";
+import { PRIMARY_NAV, ACCOUNT_NAV } from "./nav-items";
 import { isNavItemActive } from "./nav-active";
 
 describe("navegação principal", () => {
@@ -26,10 +26,10 @@ describe("navegação principal", () => {
     }
   });
 
-  it("configurações aponta para /configuracoes", () => {
-    expect(SETTINGS_NAV.href).toBe("/configuracoes");
-    expect(SETTINGS_NAV.label).toBe("Configurações");
-    expect(SETTINGS_NAV.icon).toBeDefined();
+  it("a conta da pessoa é um só destino: /perfil", () => {
+    expect(ACCOUNT_NAV.href).toBe("/perfil");
+    expect(ACCOUNT_NAV.label).toBe("Minha conta");
+    expect(ACCOUNT_NAV.icon).toBeDefined();
   });
 });
 

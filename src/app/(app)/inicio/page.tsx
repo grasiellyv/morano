@@ -1,39 +1,42 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { format, parseISO, startOfWeek, addDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Bell, SlidersHorizontal, Plus, ChevronRight, ArrowUpRight } from "lucide-react";
+import {
+  Bell,
+  Plus,
+  ChevronRight,
+  Sun,
+  SunMedium,
+  Moon,
+  CalendarClock,
+  ShoppingBag,
+  Wrench,
+  ListChecks,
+  type LucideIcon,
+} from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
+import { AccountButton } from "@/components/layout/account-button";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString } from "@/lib/dates";
-import { extendWindowForHome, completeOccurrence } from "@/features/tasks/actions";
+import { formatHourShort, getHeroPeriod, type HeroPeriod } from "@/lib/day-period";
+import { extendWindowForHome } from "@/features/tasks/actions";
+import { CompleteCircleButton } from "@/features/tasks/components/complete-circle-button";
 import {
   markMissedOccurrences,
   getTodayOccurrences,
   getOverdueOccurrences,
-  getOccurrencesForWeek,
+  type OccurrenceWithTask,
 } from "@/features/tasks/queries";
+import { formatShortDate } from "@/features/tasks/rotina-format";
 import { getShoppingItems } from "@/features/shopping/queries";
 import { getReorderSuggestions } from "@/features/shopping/queries-lists";
+import { MISSION_LABELS } from "@/features/shopping/schemas";
 import { getMaintenanceItems } from "@/features/manutencao/queries";
 import { getHomeMembers } from "@/features/members/queries";
+import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
 
 export const metadata: Metadata = { title: "Início" };
-
-/** Paleta de avatares: cores para os primeiros moradores */
-const AVATAR_PALETTE = [
-  { bg: "#EBD5BE", color: "#6B3A17" },
-  { bg: "#F3CFCF", color: "#8A2F3A" },
-  { bg: "#D5DEEA", color: "#2C4A6E" },
-  { bg: "#D8E8D6", color: "#2D5428" },
-  { bg: "#E8D5EA", color: "#5A2D6B" },
-];
-
-function getInitial(name: string | null, fallback = "?"): string {
-  return (name ?? fallback).charAt(0).toUpperCase();
-}
 
 function AvatarCircle({
   name,
@@ -72,6 +75,75 @@ function AvatarCircle({
   );
 }
 
+/** Tom do card "Olá" por período do dia (fuso da casa). Tokens em globals.css. */
+const HERO_THEME: Record<HeroPeriod, { a: string; b: string; glow: string; Icon: LucideIcon; label: string }> = {
+  morning: { a: "var(--hero-morning-a)", b: "var(--hero-morning-b)", glow: "var(--hero-morning-glow)", Icon: Sun, label: "Bom dia" },
+  afternoon: { a: "var(--hero-afternoon-a)", b: "var(--hero-afternoon-b)", glow: "var(--hero-afternoon-glow)", Icon: SunMedium, label: "Boa tarde" },
+  night: { a: "var(--hero-night-a)", b: "var(--hero-night-b)", glow: "var(--hero-night-glow)", Icon: Moon, label: "Boa noite" },
+};
+
+const CREAM = "#FBEFE3";
+/** Creme a 85%: ≥ 5.8:1 sobre o tom mais claro (manhã). */
+const CREAM_SOFT = "rgba(251,239,227,0.85)";
+
+type Tone = "warn" | "amber" | "neutral";
+const TONE_STYLE: Record<Tone, React.CSSProperties> = {
+  warn: { background: "var(--warn-bg)", color: "var(--warn-ink)" },
+  amber: { background: "#F6DDB9", color: "#6E420F" },
+  neutral: { background: "var(--secondary)", color: "var(--foreground)" },
+};
+
+type AttentionItem = {
+  key: string;
+  href: string;
+  Icon: LucideIcon;
+  title: string;
+  meta: string;
+  badge: string;
+  tone: Tone;
+};
+
+function AttentionRow({ item, last }: { item: AttentionItem; last: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      className="flex items-center gap-3 px-3.5 no-underline"
+      style={{ minHeight: 60, borderBottom: last ? undefined : "1px solid var(--border)", color: "var(--foreground)" }}
+    >
+      <span
+        aria-hidden
+        className="flex shrink-0 items-center justify-center rounded-[10px]"
+        style={{ width: 34, height: 34, ...TONE_STYLE[item.tone] }}
+      >
+        <item.Icon size={17} />
+      </span>
+      <span className="min-w-0 flex-1 py-2.5">
+        <span className="block truncate text-[14px] font-medium">{item.title}</span>
+        <span className="block truncate text-[12px]" style={{ color: "var(--muted-foreground)" }}>
+          {item.meta}
+        </span>
+      </span>
+      <span className="shrink-0 rounded-[8px] px-2 py-[3px] text-[11.5px] font-semibold" style={TONE_STYLE[item.tone]}>
+        {item.badge}
+      </span>
+    </Link>
+  );
+}
+
+function checklistCount(o: OccurrenceWithTask): { done: number; total: number } | null {
+  const items = o.task.checklist ?? [];
+  if (items.length === 0) return null;
+  const ids = new Set(items.map((i) => i.id));
+  const done = (o.checklist_states ?? []).filter((s) => ids.has(s.item_id) && s.status === "done").length;
+  return { done, total: items.length };
+}
+
+const CheckMark = () => (
+  <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
+
 export default async function Page() {
   const { id: userId } = await requireUser();
   const home = await getHomeWithRooms(userId);
@@ -79,28 +151,24 @@ export default async function Page() {
 
   const supabase = await createClient();
   const today = getLocalDateString(home.timezone);
-  const todayDate = parseISO(today);
+  const period = getHeroPeriod(home.timezone);
+  const theme = HERO_THEME[period];
 
-  await extendWindowForHome(home.id, home.timezone).catch(() => {});
-  await markMissedOccurrences(supabase, home.id, today).catch(() => {});
+  // Operações de manutenção independentes rodam em paralelo (não uma após a outra)
+  // para cortar round-trips sequenciais ao Supabase remoto. Ambas ainda são
+  // aguardadas antes das leituras, garantindo consistência.
+  await Promise.all([
+    extendWindowForHome(home.id, home.timezone).catch(() => {}),
+    markMissedOccurrences(supabase, home.id, today).catch(() => {}),
+  ]);
 
-  // Semana atual (Seg–Dom)
-  const weekStart = startOfWeek(todayDate, { weekStartsOn: 1 });
-  const weekStartStr = format(weekStart, "yyyy-MM-dd");
-  const DAY_ABBRS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  const weekDays = Array.from({ length: 7 }, (_, i) => ({
-    dateStr: format(addDays(weekStart, i), "yyyy-MM-dd"),
-    label: DAY_ABBRS[i],
-  }));
-
-  const [todayOcc, overdueOcc, shopping, maintenance, reorderSuggestions, weekOccs, homeMembers, profileResult] =
+  const [todayOcc, overdueOcc, shopping, maintenance, reorderSuggestions, homeMembers, profileResult] =
     await Promise.all([
       getTodayOccurrences(supabase, home.id, today),
       getOverdueOccurrences(supabase, home.id, today),
       getShoppingItems(supabase, home.id),
       getMaintenanceItems(supabase, home.id),
       getReorderSuggestions(supabase, home.id, today),
-      getOccurrencesForWeek(supabase, home.id, weekStartStr),
       getHomeMembers(supabase),
       supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
     ]);
@@ -112,16 +180,7 @@ export default async function Page() {
   const completedToday = todayOcc.filter((o) => o.status === "completed").length;
   const totalToday = todayOcc.length;
   const pendingToday = totalToday - completedToday;
-
-  // Mapa de conclusão por dia da semana
-  const weekMap = new Map<string, { total: number; completed: number }>();
-  for (const occ of weekOccs) {
-    const d = occ.scheduled_for;
-    const entry = weekMap.get(d) ?? { total: 0, completed: 0 };
-    entry.total++;
-    if (occ.status === "completed") entry.completed++;
-    weekMap.set(d, entry);
-  }
+  const progressPct = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
 
   // Resumos de manutenção e compras
   const maintenanceOverdue = maintenance.filter((m) => m.status === "pendente" || m.status === "em_andamento");
@@ -129,17 +188,14 @@ export default async function Page() {
   const shoppingPending = shopping.pending.length;
   const reorderCount = reorderSuggestions.length;
 
-  // Tarefas pendentes para exibir (até 4)
-  const topTasks = todayOcc.filter((o) => o.status === "pending").slice(0, 4);
   const roomMap = new Map(home.rooms.map((r) => [r.id, r.name]));
   const memberMap = new Map(homeMembers.map((m, i) => [m.user_id, { name: m.full_name, index: i }]));
+  const assigneeName = (id: string | null) => {
+    const name = id ? memberMap.get(id)?.name : null;
+    return name ? name.trim().split(/\s+/)[0] ?? name : null;
+  };
 
-  async function completeTaskAction(fd: FormData) {
-    "use server";
-    await completeOccurrence({ status: "idle" }, fd);
-  }
-
-  // Contagem de tarefas pendentes por morador (para sub-texto do card Moradores)
+  // Contagem de tarefas pendentes por morador (sub-texto do card Moradores)
   const memberTaskCounts = new Map<string, number>();
   for (const occ of todayOcc) {
     if (occ.assigned_to && occ.status === "pending") {
@@ -155,25 +211,75 @@ export default async function Page() {
     })
     .join(" · ");
 
-  // Progress ring
-  const RING_R = 32;
-  const circumference = 2 * Math.PI * RING_R;
-  const arc = totalToday > 0 ? (circumference * completedToday) / totalToday : 0;
+  // Rotina de hoje — pendentes por horário, com o resumo da tarefa
+  const pendingTasks = todayOcc
+    .filter((o) => o.status === "pending")
+    .sort((a, b) => (a.task.due_time ?? "99").localeCompare(b.task.due_time ?? "99"));
+  const ROUTINE_LIMIT = 6;
+  const topTasks = pendingTasks.slice(0, ROUTINE_LIMIT);
 
-  // Headline de tarefas
-  const heroHeadline =
-    pendingToday === 0 && totalToday > 0
-      ? "Tudo feito por hoje 🎉"
-      : pendingToday === 1
-        ? "Falta 1 coisa leve para hoje"
-        : pendingToday > 1
-          ? `Faltam ${pendingToday} coisas leves para hoje`
-          : "Nada programado para hoje";
+  // Precisa de atenção — atrasadas, compras urgentes, reposições vencendo, manutenção pendente
+  const attention: AttentionItem[] = [
+    ...overdueOcc.map((o): AttentionItem => {
+      const who = assigneeName(o.assigned_to);
+      return {
+        key: `t-${o.id}`,
+        href: `/rotina/ocorrencia/${o.id}`,
+        Icon: CalendarClock,
+        title: o.task.title,
+        meta: [who ? `Responsável: ${who}` : null, `Era para ${formatShortDate(o.scheduled_for)}`].filter(Boolean).join(" · "),
+        badge: "Atrasada",
+        tone: "warn",
+      };
+    }),
+    ...shopping.pending
+      .filter((i) => i.priority === "urgente")
+      .map((i): AttentionItem => ({
+        key: `s-${i.id}`,
+        href: "/compras",
+        Icon: ShoppingBag,
+        title: i.name,
+        meta: [i.mission ? MISSION_LABELS[i.mission] : null, "Compras"].filter(Boolean).join(" · "),
+        badge: "Urgente",
+        tone: "warn",
+      })),
+    ...reorderSuggestions
+      .filter((r) => r.overdue || r.due_date <= today)
+      .map((r): AttentionItem => ({
+        key: `r-${r.id}`,
+        href: "/compras",
+        Icon: ShoppingBag,
+        title: r.name,
+        meta: `Reposição · ${r.list_name}`,
+        badge: r.overdue ? "Atrasada" : "Hoje",
+        tone: r.overdue ? "warn" : "amber",
+      })),
+    ...maintenance
+      .filter((m) => m.status === "pendente")
+      .map((m): AttentionItem => ({
+        key: `m-${m.id}`,
+        href: "/manutencao",
+        Icon: Wrench,
+        title: m.title,
+        meta: ["Manutenção", m.room?.name].filter(Boolean).join(" · "),
+        badge: "Pendente",
+        tone: "neutral",
+      })),
+  ];
+  const ATTENTION_LIMIT = 3;
+  const attentionVisible = attention.slice(0, ATTENTION_LIMIT);
+  const attentionMore = attention.slice(ATTENTION_LIMIT);
+  const hasUrgent = attention.some((a) => a.tone === "warn");
 
-  const heroSubtitle =
-    totalToday === 0
-      ? "Aproveite o dia livre"
-      : `${completedToday} já feita${completedToday !== 1 ? "s" : ""} · ${totalToday} no total`;
+  const homeStatus = hasUrgent
+    ? { label: "Pede atenção", style: TONE_STYLE.warn }
+    : { label: "Organizada", style: { background: "var(--done-bg)", color: "var(--done-ink)" } };
+
+  const stats = [
+    { label: "Tarefas", value: pendingToday, href: "/rotina", sr: "tarefas para hoje" },
+    { label: "Compras", value: shoppingPending, href: "/compras", sr: "itens na lista de compras" },
+    { label: "Cuidados", value: maintenanceOverdue.length, href: "/manutencao", sr: "cuidados de manutenção em aberto" },
+  ];
 
   return (
     <>
@@ -186,7 +292,7 @@ export default async function Page() {
           className="relative flex size-10 items-center justify-center rounded-full border border-border"
           style={{ background: "var(--card)" }}
         >
-          <Bell aria-hidden size={19} strokeWidth={1.6} />
+          <Bell aria-hidden size={19} strokeWidth={1.75} />
           {overdueCount > 0 ? (
             <span
               aria-hidden
@@ -195,304 +301,236 @@ export default async function Page() {
             />
           ) : null}
         </button>
-        <Link
-          href="/configuracoes"
-          aria-label="Ajustes da casa"
-          className="flex size-10 items-center justify-center rounded-full border border-border"
-          style={{ background: "var(--card)" }}
-        >
-          <SlidersHorizontal aria-hidden size={19} strokeWidth={1.6} />
-        </Link>
-        <Link
-          href="/perfil"
-          className="flex size-10 items-center justify-center rounded-full text-[15px] font-semibold no-underline"
-          style={{ background: "#EBD5BE", color: "#6B3A17" }}
-          aria-label={`Perfil de ${firstName}`}
-        >
-          {getInitial(fullName)}
-        </Link>
+        <AccountButton name={fullName} />
       </div>
 
-      {/* ── HERO CARD ─────────────────────────────────────────── */}
-      <div
-        className="relative overflow-hidden rounded-[20px] p-4 pb-3.5"
-        style={{
-          background: "linear-gradient(160deg, var(--hero-a), var(--hero-b))",
-          color: "#FBEFE3",
-        }}
+      {/* ── HERO: OLÁ + RESUMO DA CASA (tom muda com a hora) ───── */}
+      <section
+        aria-labelledby="resumo-casa"
+        data-period={period}
+        className="relative overflow-hidden rounded-[20px] p-4"
+        style={{ background: `linear-gradient(160deg, ${theme.a}, ${theme.b})`, color: CREAM }}
       >
-        {/* Glow decorativo */}
         <div
           aria-hidden
           className="pointer-events-none absolute"
           style={{
-            right: -50,
-            top: -60,
-            width: 220,
-            height: 220,
-            borderRadius: 110,
-            background: "radial-gradient(circle, rgba(242,183,122,0.42), rgba(242,183,122,0) 68%)",
+            right: -50, top: -60, width: 220, height: 220, borderRadius: 110,
+            background: `radial-gradient(circle, ${theme.glow}, transparent 68%)`,
           }}
         />
 
-        {/* Saudação + link Rotina */}
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex items-center justify-between gap-2">
           <div
-            className="flex items-center gap-1.5 text-[12.5px] font-medium rounded-[10px] px-2.5 py-[5px]"
+            className="flex items-center gap-1.5 rounded-[10px] px-2.5 py-[5px] text-[12.5px] font-medium"
             style={{ background: "rgba(251,239,227,0.12)" }}
+            title={theme.label}
           >
+            <theme.Icon aria-hidden size={14} />
             <span>Olá, {firstName}</span>
           </div>
+          <span className="rounded-[8px] px-2 py-[3px] text-[11.5px] font-semibold" style={homeStatus.style}>
+            {homeStatus.label}
+          </span>
+        </div>
+
+        <h2 id="resumo-casa" className="relative mt-3.5 text-[15px] font-semibold">
+          Resumo da casa
+        </h2>
+
+        <div className="relative -mx-2 mt-1.5 grid grid-cols-3 gap-1">
+          {stats.map((s) => (
+            <Link
+              key={s.label}
+              href={s.href}
+              className="rounded-[12px] px-2 py-2 no-underline transition-colors hover:bg-[rgba(251,239,227,0.08)]"
+              style={{ color: CREAM }}
+            >
+              <span className="block text-[26px] font-semibold leading-none tracking-[-0.5px]" aria-hidden>
+                {s.value}
+              </span>
+              <span className="mt-1.5 block text-[12.5px]" style={{ color: CREAM_SOFT }} aria-hidden>
+                {s.label}
+              </span>
+              <span className="sr-only">
+                {s.value} {s.sr}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {totalToday > 0 ? (
+          <div className="relative mt-2.5">
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={totalToday}
+              aria-valuenow={completedToday}
+              aria-label="Tarefas de hoje concluídas"
+              className="h-[5px] overflow-hidden rounded-full"
+              style={{ background: "rgba(251,239,227,0.16)" }}
+            >
+              <div className="h-full rounded-full" style={{ width: `${progressPct}%`, background: "#F2C48D" }} />
+            </div>
+            <p className="mt-1.5 text-[12px]" style={{ color: CREAM_SOFT }}>
+              {completedToday} de {totalToday} {totalToday !== 1 ? "tarefas feitas" : "tarefa feita"} hoje
+            </p>
+          </div>
+        ) : null}
+      </section>
+
+      {/* ── PRECISA DE ATENÇÃO ────────────────────────────────── */}
+      {attention.length > 0 ? (
+        <section aria-labelledby="atencao" className="mt-4">
+          <div className="flex h-7 items-center gap-2">
+            <h2 id="atencao" className="flex-1 text-[15px] font-semibold">Precisa de atenção</h2>
+            <span className="text-[12.5px] font-medium" style={{ color: "var(--muted-foreground)" }}>
+              {attention.length} {attention.length === 1 ? "item" : "itens"}
+            </span>
+          </div>
+          <div
+            className="mt-1.5 overflow-hidden rounded-[16px] border border-border"
+            style={{ background: "var(--card)", boxShadow: "var(--shadow)" }}
+          >
+            {attentionVisible.map((item, i) => (
+              <AttentionRow
+                key={item.key}
+                item={item}
+                last={i === attentionVisible.length - 1 && attentionMore.length === 0}
+              />
+            ))}
+            {attentionMore.length > 0 ? (
+              <details className="group">
+                <summary
+                  className="flex cursor-pointer list-none items-center gap-2 px-3.5 text-[12.5px] font-medium [&::-webkit-details-marker]:hidden"
+                  style={{ height: 40, background: "var(--secondary)", color: "var(--muted-foreground)" }}
+                >
+                  <span className="flex-1">
+                    <span className="group-open:hidden">Ver tudo ({attentionMore.length} a mais)</span>
+                    <span className="hidden group-open:inline">Mostrar menos</span>
+                  </span>
+                  <ChevronRight aria-hidden size={15} className="rotate-90 transition-transform group-open:-rotate-90" />
+                </summary>
+                {attentionMore.map((item, i) => (
+                  <AttentionRow key={item.key} item={item} last={i === attentionMore.length - 1} />
+                ))}
+              </details>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── ROTINA DE HOJE ────────────────────────────────────── */}
+      <section aria-labelledby="rotina-hoje">
+        <div className="mt-4 flex items-center gap-2 h-7">
+          <h2 id="rotina-hoje" className="flex-1 text-[15px] font-semibold">Rotina de hoje</h2>
+          <Link href="/rotina" className="text-[12.5px] font-medium" style={{ color: "var(--muted-foreground)" }}>
+            {pendingToday > 0 ? `${pendingToday} ${pendingToday !== 1 ? "tarefas" : "tarefa"}` : "Ver rotina"}
+          </Link>
           <Link
             href="/rotina"
-            aria-label="Abrir rotina"
-            className="flex size-7 items-center justify-center rounded-[14px]"
-            style={{ background: "rgba(251,239,227,0.14)", color: "#FBEFE3" }}
+            aria-label="Adicionar tarefa"
+            className="flex size-7 items-center justify-center rounded-full"
+            style={{ background: "var(--add)", color: "var(--add-foreground)" }}
           >
-            <ArrowUpRight aria-hidden size={15} strokeWidth={1.8} />
+            <Plus aria-hidden size={14} strokeWidth={1.75} />
           </Link>
         </div>
 
-        {/* Headline + Progress ring */}
-        <div className="relative mt-3 flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <p className="text-[22px] font-light leading-[1.2] tracking-[-0.3px] max-w-[200px]">
-              {heroHeadline}
-            </p>
-            <p className="text-[12.5px]" style={{ color: "rgba(251,239,227,0.78)" }}>
-              {heroSubtitle}
-            </p>
-          </div>
-          <div className="relative shrink-0" style={{ width: 68, height: 68 }}>
-            <svg width={68} height={68} viewBox="0 0 80 80" aria-hidden>
-              <circle
-                cx={40} cy={40} r={RING_R}
-                fill="none"
-                stroke="rgba(251,239,227,0.16)"
-                strokeWidth={7}
-              />
-              <circle
-                cx={40} cy={40} r={RING_R}
-                fill="none"
-                stroke="#F2C48D"
-                strokeWidth={7}
-                strokeLinecap="round"
-                strokeDasharray={`${arc.toFixed(1)} ${circumference.toFixed(2)}`}
-                transform="rotate(-90 40 40)"
-              />
-            </svg>
-            <div
-              className="absolute inset-0 flex items-center justify-center text-[15px] font-medium"
-            >
-              {completedToday}/{totalToday}
-            </div>
-          </div>
-        </div>
-
-        {/* Tira semanal */}
-        <div className="relative mt-3 flex gap-1.5">
-          {weekDays.map(({ dateStr, label }) => {
-            const stats = weekMap.get(dateStr);
-            const isToday = dateStr === today;
-            const isPast = dateStr < today;
-            const hasAny = stats && stats.total > 0;
-            const allDone = hasAny && stats!.completed === stats!.total;
-            const someDone = hasAny && stats!.completed > 0;
-
-            if (isToday) {
+        {topTasks.length > 0 ? (
+          <div
+            className="mt-1.5 overflow-hidden rounded-[16px] border border-border"
+            style={{ background: "var(--card)", boxShadow: "var(--shadow)" }}
+          >
+            {topTasks.map((o, idx) => {
+              const who = assigneeName(o.assigned_to);
+              const time = formatHourShort(o.task.due_time);
+              const roomName = o.task.room_id ? roomMap.get(o.task.room_id) ?? null : null;
+              const check = checklistCount(o);
+              const meta = [who, time, roomName].filter(Boolean).join(" · ");
               return (
                 <div
-                  key={dateStr}
-                  className="flex flex-1 flex-col items-center justify-center gap-[3px] rounded-[12px]"
-                  style={{ height: 44, background: "#FBEFE3", color: "#2B1E16" }}
+                  key={o.id}
+                  className="flex items-center gap-1 pl-2"
+                  style={{ minHeight: 60, borderBottom: idx < topTasks.length - 1 ? "1px solid var(--border)" : undefined }}
                 >
-                  <span className="text-[10.5px] font-semibold">{label}</span>
-                  {allDone ? (
-                    <div
-                      className="flex items-center justify-center rounded-full"
-                      style={{ width: 15, height: 15, background: "#F2C48D", color: "#2B1E16" }}
-                    >
-                      <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M5 12.5l4.5 4.5L19 7.5" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div
-                      className="rounded-full box-border"
-                      style={{ width: 15, height: 15, border: "2px solid #C8803F" }}
-                    />
-                  )}
-                </div>
-              );
-            }
-
-            if (isPast) {
-              return (
-                <div
-                  key={dateStr}
-                  className="flex flex-1 flex-col items-center justify-center gap-[3px] rounded-[12px]"
-                  style={{ height: 44, background: "rgba(242,196,141,0.16)" }}
-                >
-                  <span className="text-[10.5px] font-medium" style={{ color: "rgba(251,239,227,0.8)" }}>
-                    {label}
-                  </span>
-                  {allDone || someDone ? (
-                    <div
-                      className="flex items-center justify-center rounded-full"
-                      style={{ width: 15, height: 15, background: "#F2C48D", color: "#2B1E16" }}
-                    >
-                      <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M5 12.5l4.5 4.5L19 7.5" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div
-                      className="rounded-full box-border"
-                      style={{ width: 15, height: 15, border: "1.5px solid rgba(251,239,227,0.3)" }}
-                    />
-                  )}
-                </div>
-              );
-            }
-
-            // Future
-            return (
-              <div
-                key={dateStr}
-                className="flex flex-1 flex-col items-center justify-center gap-[3px] rounded-[12px]"
-                style={{ height: 44, background: "rgba(251,239,227,0.07)" }}
-              >
-                <span className="text-[10.5px] font-medium" style={{ color: "rgba(251,239,227,0.62)" }}>
-                  {label}
-                </span>
-                <div
-                  className="rounded-full box-border"
-                  style={{ width: 15, height: 15, border: "1.5px solid rgba(251,239,227,0.3)" }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── TAREFAS DE HOJE ───────────────────────────────────── */}
-      <div className="mt-4 flex items-center gap-2 h-7">
-        <h2 className="flex-1 text-[15px] font-semibold">Para fazer hoje</h2>
-        <Link
-          href="/rotina"
-          className="text-[12.5px] font-medium"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          Ver rotina
-        </Link>
-        <Link
-          href="/rotina"
-          aria-label="Adicionar tarefa"
-          className="flex size-7 items-center justify-center rounded-full"
-          style={{ background: "var(--foreground)", color: "var(--card)" }}
-        >
-          <Plus aria-hidden size={14} strokeWidth={2.2} />
-        </Link>
-      </div>
-
-      {topTasks.length > 0 ? (
-        <div
-          className="mt-1.5 overflow-hidden rounded-[16px] border border-border"
-          style={{ background: "var(--card)", boxShadow: "var(--shadow)" }}
-        >
-          {topTasks.map((o, idx) => {
-            const memberInfo = o.assigned_to ? memberMap.get(o.assigned_to) : null;
-            const palette = memberInfo ? AVATAR_PALETTE[memberInfo.index % AVATAR_PALETTE.length] : null;
-            const roomName = o.task.room_id ? roomMap.get(o.task.room_id) ?? null : null;
-            return (
-              <div
-                key={o.id}
-                className="flex items-center gap-3 px-3"
-                style={{
-                  height: 54,
-                  boxSizing: "border-box",
-                  borderBottom: idx < topTasks.length - 1 ? "1px solid var(--border)" : undefined,
-                }}
-              >
-                <div
-                  className="flex shrink-0 items-center justify-center rounded-[10px]"
-                  style={{ width: 36, height: 36, background: "var(--secondary)", color: "var(--foreground)" }}
-                >
-                  <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-medium">{o.task.title}</p>
-                  {roomName && (
-                    <p className="text-[12px]" style={{ color: "var(--muted-foreground)" }}>
-                      {roomName}
-                    </p>
-                  )}
-                </div>
-                {memberInfo && palette && (
-                  <div
-                    aria-hidden
-                    className="shrink-0 flex items-center justify-center rounded-full text-[11px] font-semibold"
-                    style={{ width: 24, height: 24, background: palette.bg, color: palette.color }}
+                  <CompleteCircleButton occurrenceId={o.id} title={o.task.title} />
+                  <Link
+                    href={`/rotina/ocorrencia/${o.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-2 self-stretch py-2.5 pr-3 no-underline"
+                    style={{ color: "var(--foreground)" }}
                   >
-                    {getInitial(memberInfo.name)}
-                  </div>
-                )}
-                <form action={completeTaskAction}>
-                  <input type="hidden" name="occurrence_id" value={o.id} />
-                  <button
-                    type="submit"
-                    aria-label={`Concluir: ${o.task.title}`}
-                    className="shrink-0 rounded-full"
-                    style={{ width: 26, height: 26, border: "1.5px solid var(--muted-foreground)", background: "transparent" }}
-                  />
-                </form>
-              </div>
-            );
-          })}
-          {/* "N concluídas hoje" footer */}
-          {completedToday > 0 && (
-            <Link
-              href="/rotina"
-              className="flex w-full items-center gap-2 px-3.5"
-              style={{ height: 40, background: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 12.5, fontWeight: 500 }}
-            >
-              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-              <span className="flex-1">
-                {completedToday} concluída{completedToday !== 1 ? "s" : ""} hoje
-              </span>
-              <ChevronRight aria-hidden size={15} strokeWidth={2} />
-            </Link>
-          )}
-          {topTasks.length === 0 && totalToday === 0 && (
-            <div className="px-4 py-4 text-center text-[13px]" style={{ color: "var(--muted-foreground)" }}>
-              Sem tarefas para hoje
-            </div>
-          )}
-        </div>
-      ) : completedToday > 0 ? (
-        <Link
-          href="/rotina"
-          className="mt-1.5 flex items-center gap-2 rounded-[16px] border border-border px-3.5"
-          style={{ height: 54, background: "var(--card)", boxShadow: "var(--shadow)", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }}
-        >
-          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M5 12.5l4.5 4.5L19 7.5" />
-          </svg>
-          <span className="flex-1">{completedToday} concluída{completedToday !== 1 ? "s" : ""} hoje</span>
-          <ChevronRight aria-hidden size={15} strokeWidth={2} />
-        </Link>
-      ) : (
-        <div
-          className="mt-1.5 rounded-[16px] border border-border px-4 py-4 text-center text-[13px]"
-          style={{ background: "var(--card)", color: "var(--muted-foreground)" }}
-        >
-          Sem tarefas para hoje
-        </div>
-      )}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-[14px] font-medium">{o.task.title}</span>
+                        {o.task.priority === "alta" ? (
+                          <span className="shrink-0 rounded-[6px] px-1.5 py-[1px] text-[10.5px] font-semibold" style={TONE_STYLE.warn}>
+                            Alta
+                          </span>
+                        ) : null}
+                      </span>
+                      {meta || check ? (
+                        <span className="mt-[1px] flex items-center gap-2 text-[12px]" style={{ color: "var(--muted-foreground)" }}>
+                          {meta ? <span className="truncate">{meta}</span> : null}
+                          {check ? (
+                            <span className="inline-flex shrink-0 items-center gap-1">
+                              <ListChecks aria-hidden size={13} />
+                              <span className="sr-only">Checklist:</span>
+                              {check.done}/{check.total}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </span>
+                    <ChevronRight aria-hidden size={16} className="shrink-0" style={{ color: "var(--muted-foreground)" }} />
+                  </Link>
+                </div>
+              );
+            })}
+            {pendingTasks.length > ROUTINE_LIMIT ? (
+              <Link
+                href="/rotina"
+                className="flex w-full items-center gap-2 border-t border-border px-3.5"
+                style={{ height: 40, color: "var(--foreground)", fontSize: 12.5, fontWeight: 500 }}
+              >
+                <span className="flex-1">Ver mais {pendingTasks.length - ROUTINE_LIMIT} na rotina</span>
+                <ChevronRight aria-hidden size={15} strokeWidth={1.75} />
+              </Link>
+            ) : null}
+            {/* "N concluídas hoje" footer */}
+            {completedToday > 0 && (
+              <Link
+                href="/rotina"
+                className="flex w-full items-center gap-2 px-3.5"
+                style={{ height: 40, background: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 12.5, fontWeight: 500 }}
+              >
+                <CheckMark />
+                <span className="flex-1">
+                  {completedToday} concluída{completedToday !== 1 ? "s" : ""} hoje
+                </span>
+                <ChevronRight aria-hidden size={15} strokeWidth={1.75} />
+              </Link>
+            )}
+          </div>
+        ) : completedToday > 0 ? (
+          <Link
+            href="/rotina"
+            className="mt-1.5 flex items-center gap-2 rounded-[16px] border border-border px-3.5"
+            style={{ height: 54, background: "var(--card)", boxShadow: "var(--shadow)", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }}
+          >
+            <CheckMark />
+            <span className="flex-1">{completedToday} concluída{completedToday !== 1 ? "s" : ""} hoje</span>
+            <ChevronRight aria-hidden size={15} strokeWidth={1.75} />
+          </Link>
+        ) : (
+          <div
+            className="mt-1.5 rounded-[16px] border border-border px-4 py-4 text-center text-[13px]"
+            style={{ background: "var(--card)", color: "var(--muted-foreground)" }}
+          >
+            Sem tarefas para hoje
+          </div>
+        )}
+      </section>
 
       {/* ── 2-COL GRID: MANUTENÇÃO + COMPRAS ─────────────────── */}
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -516,12 +554,12 @@ export default async function Page() {
                 color: overdueCount > 0 ? "var(--warn-ink)" : "#6E420F",
               }}
             >
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M15 5a4 4 0 0 0-4.5 5.4L4 17l3 3 6.6-6.5A4 4 0 0 0 19 9l-2.5 2.5-2.5-.5-.5-2.5z" />
               </svg>
             </div>
             <span className="flex-1 text-[13px] font-medium">Manutenção</span>
-            <ChevronRight aria-hidden size={15} strokeWidth={1.8} style={{ opacity: 0.6 }} />
+            <ChevronRight aria-hidden size={15} strokeWidth={1.75} style={{ opacity: 0.6 }} />
           </div>
           <p className="mt-[9px] text-[15px] font-semibold">
             {overdueCount > 0 ? `${overdueCount} vencida${overdueCount !== 1 ? "s" : ""}` : maintenanceOverdue.length > 0 ? `${maintenanceOverdue.length} ativa${maintenanceOverdue.length !== 1 ? "s" : ""}` : "Tudo ok"}
@@ -546,13 +584,13 @@ export default async function Page() {
               className="flex items-center justify-center rounded-[9px]"
               style={{ width: 28, height: 28, background: "#F6DDB9", color: "#6E420F" }}
             >
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M6 8h12l1 12H5z" />
                 <path d="M9 8V7a3 3 0 0 1 6 0v1" />
               </svg>
             </div>
             <span className="flex-1 text-[13px] font-medium">Compras</span>
-            <ChevronRight aria-hidden size={15} strokeWidth={1.8} style={{ color: "var(--muted-foreground)" }} />
+            <ChevronRight aria-hidden size={15} strokeWidth={1.75} style={{ color: "var(--muted-foreground)" }} />
           </div>
           <p className="mt-[9px] text-[15px] font-semibold">
             {shoppingPending === 0 && reorderCount === 0 ? "Lista vazia" : shoppingPending > 0 ? `${shoppingPending} item${shoppingPending !== 1 ? "ns" : ""}` : `${reorderCount} para repor`}
@@ -611,11 +649,11 @@ export default async function Page() {
               className="flex items-center justify-center rounded-full"
               style={{
                 width: 44, height: 44, flexShrink: 0,
-                border: "1.5px dashed var(--muted-foreground)",
-                background: "transparent", color: "var(--foreground)",
+                border: "1.5px dashed var(--add)",
+                background: "transparent", color: "var(--add-ink)",
               }}
             >
-              <Plus aria-hidden size={18} strokeWidth={1.8} />
+              <Plus aria-hidden size={18} strokeWidth={1.75} />
             </Link>
             <div className="flex-1" />
             <Link
@@ -624,7 +662,7 @@ export default async function Page() {
               style={{ height: 38, background: "var(--foreground)", color: "var(--card)" }}
             >
               Ver casa
-              <ChevronRight aria-hidden size={14} strokeWidth={2} />
+              <ChevronRight aria-hidden size={14} strokeWidth={1.75} />
             </Link>
           </div>
         </div>

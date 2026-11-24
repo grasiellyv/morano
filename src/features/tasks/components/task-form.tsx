@@ -34,6 +34,7 @@ export interface TaskFormProps {
     priority?: string;
     is_essential?: boolean;
     room_id?: string | null;
+    due_time?: string | null;
     frequency_type?: string;
     start_date?: string;
     end_date?: string | null;
@@ -72,6 +73,7 @@ export function TaskForm({
       priority: (initialValues?.priority as "baixa" | "media" | "alta") ?? "media",
       is_essential: initialValues?.is_essential ?? false,
       room_id: initialValues?.room_id ?? null,
+      due_time: initialValues?.due_time?.slice(0, 5) ?? "",
       frequency_type:
         (initialValues?.frequency_type as
           | "once"
@@ -136,6 +138,17 @@ export function TaskForm({
         error={errors.title?.message ?? state.fieldErrors?.title}
       />
 
+      {/* Description (optional) */}
+      <div className="space-y-2">
+        <Label htmlFor="description">Descrição (opcional)</Label>
+        <input
+          id="description"
+          className={selectClass}
+          placeholder="Ex.: manter o ambiente organizado para o uso diário"
+          {...form.register("description")}
+        />
+      </div>
+
       {/* Priority */}
       <div className="space-y-2">
         <Label htmlFor="priority">Prioridade</Label>
@@ -152,6 +165,27 @@ export function TaskForm({
         {errors.priority?.message ?? state.fieldErrors?.priority ? (
           <p className="text-destructive text-sm">
             {errors.priority?.message ?? state.fieldErrors?.priority}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Due time (optional) */}
+      <div className="space-y-2">
+        <Label htmlFor="due_time">Horário (opcional)</Label>
+        <input
+          id="due_time"
+          type="time"
+          className={selectClass}
+          aria-invalid={errors.due_time ? true : undefined}
+          aria-describedby="due_time-hint"
+          {...form.register("due_time")}
+        />
+        <p id="due_time-hint" className="text-muted-foreground text-xs">
+          Organiza a tarefa em manhã, tarde ou noite. Sem horário, ela fica em &ldquo;A qualquer hora&rdquo;.
+        </p>
+        {errors.due_time?.message ?? state.fieldErrors?.due_time ? (
+          <p className="text-destructive text-sm">
+            {errors.due_time?.message ?? state.fieldErrors?.due_time}
           </p>
         ) : null}
       </div>
@@ -318,7 +352,7 @@ export function TaskForm({
           error={errors.end_date?.message ?? state.fieldErrors?.end_date}
         />
       ) : null}
-      <SubmitButton pending={pending} pendingLabel="Salvando…">
+      <SubmitButton pending={pending} pendingLabel="Salvando…" variant={mode === "create" ? "add" : "default"}>
         {mode === "create" ? "Criar tarefa" : "Salvar alterações"}
       </SubmitButton>
     </form>

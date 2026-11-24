@@ -17,6 +17,8 @@ import type { ShoppingList, ShoppingListItem } from "@/features/shopping/queries
 import type { ShoppingCategory } from "@/features/shopping/queries-categories";
 import { SHOPPING_CATALOG } from "@/features/shopping/catalog";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { Pencil, Plus, X } from "lucide-react";
+import { CategoryIcon } from "@/features/shopping/category-icon";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -51,8 +53,9 @@ function CreateListForm({ onSuccess }: { onSuccess: () => void }) {
       {state.status === "error" && state.message ? (
         <p className="w-full text-xs text-destructive">{state.message}</p>
       ) : null}
-      <Button type="submit" size="sm" disabled={pending}>
-        {pending ? "Salvando…" : "Salvar"}
+      <Button type="submit" size="sm" variant="add" disabled={pending}>
+        <Plus aria-hidden strokeWidth={1.75} />
+        {pending ? "Criando…" : "Criar lista"}
       </Button>
     </form>
   );
@@ -148,7 +151,8 @@ function AddListItemForm({
             </ul>
           ) : null}
         </div>
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button type="submit" size="sm" variant="add" disabled={pending}>
+          <Plus aria-hidden strokeWidth={1.75} />
           {pending ? "…" : "Adicionar"}
         </Button>
       </div>
@@ -166,7 +170,7 @@ function AddListItemForm({
           <option value="">Sem categoria</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.icon} {cat.name}
+              {cat.name}
             </option>
           ))}
         </select>
@@ -271,7 +275,7 @@ function EditItemForm({
           <option value="">Sem categoria</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.icon} {cat.name}
+              {cat.name}
             </option>
           ))}
         </select>
@@ -374,8 +378,8 @@ function ListItemRow({
   return (
     <div className="flex items-start justify-between gap-2 py-1">
       <div className="min-w-0 flex-1">
-        <p className="text-sm">
-          {item.category?.icon ? `${item.category.icon} ` : ""}
+        <p className="flex items-center gap-1.5 text-sm">
+          {item.category?.icon ? <CategoryIcon icon={item.category.icon} size={14} className="shrink-0 text-muted-foreground" /> : null}
           {item.name}
         </p>
         <p className="text-xs text-muted-foreground">
@@ -397,7 +401,7 @@ function ListItemRow({
           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Editar item"
         >
-          ✏
+          <Pencil size={15} strokeWidth={1.75} aria-hidden />
         </button>
         <ConfirmDialog
           trigger={
@@ -407,7 +411,7 @@ function ListItemRow({
               className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
               aria-label="Remover item"
             >
-              ✕
+              <X size={15} strokeWidth={1.75} aria-hidden />
             </button>
           }
           title="Remover item"
@@ -529,9 +533,10 @@ function NamedListCard({
             type="button"
             onClick={handleApply}
             disabled={applying}
-            className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-lg bg-add px-2.5 py-1.5 text-xs font-semibold text-add-foreground hover:bg-add-hover disabled:opacity-50"
             aria-label="Adicionar à lista de compras"
           >
+            <Plus size={14} strokeWidth={1.75} aria-hidden />
             {applying ? "Adicionando…" : "Adicionar à compra"}
           </button>
 
@@ -542,7 +547,7 @@ function NamedListCard({
               className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label="Editar nome da lista"
             >
-              ✏
+              <Pencil size={15} strokeWidth={1.75} aria-hidden />
             </button>
           ) : null}
 
@@ -554,7 +559,7 @@ function NamedListCard({
                 className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                 aria-label="Excluir lista"
               >
-                ✕
+                <X size={15} strokeWidth={1.75} aria-hidden />
               </button>
             }
             title="Excluir lista"
@@ -613,9 +618,10 @@ export function NamedListsSection({ lists, categories }: Props) {
           <button
             type="button"
             onClick={() => setShowCreateForm(true)}
-            className="rounded px-2 py-1 text-sm text-primary hover:bg-primary/10"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-add px-3 py-2 text-sm font-semibold text-add-foreground hover:bg-add-hover"
           >
-            + Nova lista
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            Nova lista
           </button>
         ) : null}
       </div>

@@ -14,6 +14,13 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { clearPurchased } from "@/features/shopping/actions";
 import { initialFormState } from "@/features/auth/form-state";
 import Link from "next/link";
+import { Plus, Settings, ShoppingCart, X, Search } from "lucide-react";
+import { ShareListButton } from "@/features/shopping/components/share-list-dialog";
+import { HistoryRecover } from "@/features/shopping/components/history-recover";
+import { UpdatedAgo } from "@/features/shopping/components/live-updates";
+import type { HistoryProduct } from "@/features/shopping/dedupe";
+import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
+import { CategoryIcon } from "@/features/shopping/category-icon";
 
 type Props = {
   pending: ShoppingItem[];
@@ -21,6 +28,13 @@ type Props = {
   categories: ShoppingCategory[];
   rooms: { id: string; name: string }[];
   lists: ShoppingList[];
+  /** Moradores da casa (iniciais no cabeçalho). */
+  members: { name: string | null }[];
+  lastUpdatedAt: string | null;
+  /** Link público de visualização ativo (null = nenhum). */
+  shareToken: string | null;
+  canShare: boolean;
+  history: HistoryProduct[];
 };
 
 function chipStyle(active: boolean, accent?: string): React.CSSProperties {
@@ -41,7 +55,7 @@ function firstName(fullName: string | null | undefined): string {
   return fullName.split(" ")[0] ?? fullName;
 }
 
-export function ShoppingList({ pending, purchased, categories, rooms, lists }: Props) {
+export function ShoppingList({ pending, purchased, categories, rooms, lists, members, lastUpdatedAt, shareToken, canShare, history }: Props) {
   const [filterMission, setFilterMission] = useState<Mission | null>(null);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -93,7 +107,7 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
     // Items without category
     const noCategory = items.filter((i) => !i.category);
     if (noCategory.length > 0) {
-      groups.set("none", { label: "Sem categoria", icon: "📦", items: noCategory });
+      groups.set("none", { label: "Sem categoria", icon: "package", items: noCategory });
     }
     // Sort by category sort_order from the categories list
     const ordered: { key: string; label: string; icon: string; items: ShoppingItem[] }[] = [];
@@ -113,6 +127,40 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
 
   return (
     <div className="space-y-5">
+      {/* Cabeçalho */}
+      <header>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11.5px] font-medium uppercase tracking-[0.04em]" style={{ color: "var(--muted-foreground)" }}>
+              Compras{filterMission ? ` · ${MISSION_LABELS[filterMission]}` : ""}
+            </p>
+            <h1 style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1.2 }}>Lista da casa</h1>
+          </div>
+          {canShare ? <ShareListButton token={shareToken} /> : null}
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <p className="flex-1 text-[12.5px]" style={{ color: "var(--muted-foreground)" }}>
+            Atualizada <UpdatedAgo iso={lastUpdatedAt} />
+          </p>
+          <div className="flex items-center" role="img" aria-label={`Moradores: ${members.map((m) => m.name ?? "Morador").join(", ")}`}>
+            {members.slice(0, 5).map((m, i) => {
+              const palette = AVATAR_PALETTE[i % AVATAR_PALETTE.length]!;
+              return (
+                <span
+                  key={i}
+                  aria-hidden
+                  title={m.name ?? "Morador"}
+                  className="flex size-7 items-center justify-center rounded-full text-[11.5px] font-semibold"
+                  style={{ background: palette.bg, color: palette.color, boxShadow: "0 0 0 2px var(--background)", marginLeft: i > 0 ? -6 : 0 }}
+                >
+                  {getInitial(m.name)}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
       {/* Summary bar */}
       {totalCount > 0 ? (
         <div
@@ -129,10 +177,11 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
               href="/compras/modo"
               style={{
                 height: 28, borderRadius: 8, padding: "0 12px", fontSize: 12, fontWeight: 500,
-                background: "var(--nav-active)", color: "var(--nav-active-ink)", display: "flex", alignItems: "center",
+                background: "var(--nav-active)", color: "var(--nav-active-ink)", display: "flex", alignItems: "center", gap: 6,
               }}
             >
-              🛒 Modo compra
+              <ShoppingCart size={14} strokeWidth={1.75} aria-hidden />
+              Modo compra
             </Link>
           </div>
           {/* Progress bar */}
@@ -170,10 +219,12 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
       </div>
 
       {/* Search */}
-      {totalCount > 5 ? (
+      {totalCount > 0 ? (
         <div className="relative">
+          <Search size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
+            className="pl-9"
             placeholder="Buscar produto…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -183,10 +234,10 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 text-muted-foreground"
               aria-label="Limpar busca"
             >
-              ×
+              <X size={16} aria-hidden />
             </button>
           ) : null}
         </div>
@@ -205,15 +256,19 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
               onClick={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)}
               style={chipStyle(filterCategoryId === cat.id)}
             >
-              {cat.icon} {cat.name}
+              <span className="inline-flex items-center gap-1.5">
+                <CategoryIcon icon={cat.icon} size={14} />
+                {cat.name}
+              </span>
             </button>
           ))}
           <button
             type="button"
             onClick={() => setCategoriesOpen(true)}
-            style={{ height: 32, borderRadius: 10, padding: "0 10px", fontSize: 12, background: "transparent", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
+            aria-label="Gerenciar categorias"
+            style={{ height: 32, borderRadius: 10, padding: "0 10px", fontSize: 12, background: "transparent", color: "var(--muted-foreground)", border: "1px solid var(--border)", display: "inline-flex", alignItems: "center" }}
           >
-            ⚙
+            <Settings size={15} strokeWidth={1.75} aria-hidden />
           </button>
         </div>
       ) : null}
@@ -224,8 +279,9 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
           {pendingGroups.map((group) => (
             <div key={group.key}>
               <div className="mb-2 flex items-center gap-2">
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
-                  {group.icon} {group.label}
+                <span className="inline-flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                  <CategoryIcon icon={group.icon} size={15} className="text-muted-foreground" />
+                  {group.label}
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                   {group.items.length} iten{group.items.length !== 1 ? "s" : ""}
@@ -255,36 +311,32 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists }: P
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                style={{ fontSize: 18, color: "var(--muted-foreground)", background: "none", border: "none", cursor: "pointer" }}
+                className="-mr-2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
                 aria-label="Fechar formulário"
               >
-                ×
+                <X size={18} strokeWidth={1.75} aria-hidden />
               </button>
             </div>
             <AddItemForm
               categories={categories}
               rooms={rooms}
               personalSuggestions={personalSuggestions}
-              onSuccess={() => setShowAddForm(false)}
+              pendingItems={pending}
             />
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            style={{
-              width: "100%", height: 48, borderRadius: 14,
-              border: "1.5px dashed var(--border)",
-              background: "transparent", color: "var(--muted-foreground)",
-              fontSize: 14, fontWeight: 500, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-add text-[15px] font-semibold text-add-foreground transition-colors hover:bg-add-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
+            <Plus size={18} strokeWidth={1.75} aria-hidden />
             Adicionar produto
           </button>
         )}
       </div>
+
+      <HistoryRecover products={history} pendingNames={pending.map((i) => i.name)} />
 
       {/* Purchased items */}
       {filteredPurchased.length > 0 ? (

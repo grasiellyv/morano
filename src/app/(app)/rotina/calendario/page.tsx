@@ -11,7 +11,7 @@ import {
 } from "@/features/tasks/queries";
 import { getEventsForRange } from "@/features/events/queries";
 import { CalendarView } from "@/features/tasks/components/calendar-view";
-import Link from "next/link";
+import { RotinaHeader, RotinaTabs, IconButton, PlusIcon } from "@/features/tasks/components/rotina-chrome";
 
 export const metadata: Metadata = { title: "Calendário" };
 
@@ -57,68 +57,18 @@ export default async function Page({
 
   return (
     <>
-      {/* Page header */}
-      <header className="flex items-center justify-between pb-3">
-        <h1
-          style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.4px", color: "var(--foreground)", lineHeight: 1.2 }}
-        >
-          Rotina
-        </h1>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/rotina/calendario"
-            className="flex items-center justify-center rounded-full border border-border"
-            style={{ width: 40, height: 40, background: "var(--card)", color: "var(--muted-foreground)" }}
-            title="Filtrar"
-            aria-label="Filtrar"
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 8h9M17 8h3M4 16h3M11 16h9" />
-              <circle cx="15" cy="8" r="2" />
-              <circle cx="9" cy="16" r="2" />
-            </svg>
-          </Link>
-          <Link
-            href="/rotina/calendario"
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 40, height: 40, background: "var(--nav-active)", color: "var(--nav-active-ink)" }}
-            title="Adicionar"
-            aria-label="Marcar compromisso"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </Link>
-        </div>
-      </header>
+      <RotinaHeader
+        actions={
+          <IconButton label="Novo compromisso" href="/rotina?novo=evento" add>
+            <PlusIcon />
+          </IconButton>
+        }
+      />
 
-      {/* Segmented control — Tarefas / Calendário */}
-      <div
-        className="flex gap-0.5 mb-3"
-        style={{ padding: 3, borderRadius: 12, background: "var(--secondary)", height: 42, boxSizing: "border-box" }}
-      >
-        <Link
-          href="/rotina"
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-[9px]"
-          style={{ fontSize: 13, fontWeight: 500, color: "var(--muted-foreground)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
-          </svg>
-          Tarefas
-        </Link>
-        <div
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-[9px]"
-          style={{ background: "var(--card)", boxShadow: "var(--shadow)", fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}
-          aria-current="page"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="5" width="16" height="15" rx="3" />
-            <path d="M4 10h16M9 3v4M15 3v4" />
-          </svg>
-          Calendário
-        </div>
-      </div>
+      <RotinaTabs
+        active="calendario"
+        hrefs={{ dia: "/rotina", semana: "/rotina?view=semana", calendario: "/rotina/calendario" }}
+      />
 
       <CalendarView
         year={year}

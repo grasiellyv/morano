@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -36,9 +37,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <header className="flex items-center gap-3">
         <Link
           href="/rotina"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
-          ← Rotina
+          <ArrowLeft size={16} aria-hidden />
+          Rotina
         </Link>
         <h1 className="text-xl font-semibold tracking-tight">{task.title}</h1>
       </header>

@@ -9,6 +9,8 @@ import { togglePurchased, finalizarCompra } from "@/features/shopping/actions";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ArrowLeft } from "lucide-react";
+import { CategoryIcon } from "@/features/shopping/category-icon";
 
 type Unit = ShoppingItem["unit"];
 const UNIT_LABELS: Record<Unit, string> = {
@@ -36,7 +38,7 @@ export function ShoppingMode({ pending, purchased, categories }: Props) {
       if (!groups.has(key)) {
         groups.set(key, {
           label: item.category?.name ?? "Sem categoria",
-          icon: item.category?.icon ?? "📦",
+          icon: item.category?.icon ?? "package",
           items: [],
         });
       }
@@ -119,8 +121,9 @@ export function ShoppingMode({ pending, purchased, categories }: Props) {
           <div className="space-y-6">
             {groups.map((group) => (
               <div key={group.key}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {group.icon} {group.label}
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+                  <CategoryIcon icon={group.icon} size={15} />
+                  {group.label}
                 </p>
                 <div className="space-y-2">
                   {group.items.map((item) => (
@@ -148,7 +151,7 @@ export function ShoppingMode({ pending, purchased, categories }: Props) {
                         }}
                       >
                         {item.is_purchased ? (
-                          <svg viewBox="0 0 12 12" width={12} height={12} fill="none" stroke="white" strokeWidth={2.2} aria-hidden>
+                          <svg viewBox="0 0 12 12" width={12} height={12} fill="none" stroke="white" strokeWidth={1.75} aria-hidden>
                             <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         ) : null}
@@ -202,7 +205,8 @@ export function ShoppingMode({ pending, purchased, categories }: Props) {
           />
         ) : (
           <Button variant="outline" className="w-full" style={{ height: 50, fontSize: 15 }} onClick={() => router.push("/compras")}>
-            ← Voltar para lista
+            <ArrowLeft size={18} strokeWidth={1.75} aria-hidden />
+            Voltar para lista
           </Button>
         )}
       </div>

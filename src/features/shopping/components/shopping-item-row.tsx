@@ -114,7 +114,7 @@ export function ShoppingItemRow({ item, categories }: Props) {
           <div className="flex flex-wrap gap-2">
             <select name="category_id" value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} disabled={editPending} className={selectClass}>
               <option value="">Sem categoria</option>
-              {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}
+              {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
             </select>
             <Input name="quantity" type="number" min="0.01" step="any" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} className="w-20" disabled={editPending} />
             <select name="unit" value={editUnit} onChange={(e) => setEditUnit(e.target.value as Unit)} disabled={editPending} className={selectClass}>
@@ -176,7 +176,7 @@ export function ShoppingItemRow({ item, categories }: Props) {
           }}
         >
           {item.is_purchased ? (
-            <svg viewBox="0 0 12 12" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden>
+            <svg viewBox="0 0 12 12" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden>
               <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : null}

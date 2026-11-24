@@ -1,5 +1,6 @@
 "use server";
 
+import { addShoppingItem, conflictMessage } from "@/features/shopping/add-item";
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -300,22 +301,24 @@ export async function applyList(_: FormState, fd: FormData): Promise<FormState> 
 
   if (!items?.length) return { status: "error", message: "Lista vazia." };
 
-  // Batch insert into shopping_items
-  const { error: insertError } = await supabase
-    .from("shopping_items")
-    .insert(
-      items.map((i) => ({
-        home_id: homeId,
-        name: i.name,
-        category_id: i.category_id ?? null,
-        quantity: i.quantity,
-        unit: i.unit,
-        notes: i.notes ?? null,
-        is_purchased: false,
-      }))
-    );
-
-  if (insertError) return { status: "error", message: "Erro ao aplicar lista. Tente novamente." };
+  // Um a um pela função atômica: o que já está pendente é somado, nunca duplicado.
+  let inserted = 0;
+  let merged = 0;
+  let skipped = 0;
+  for (const i of items) {
+    const r = await addShoppingItem(supabase, {
+      homeId,
+      name: i.name,
+      categoryId: i.category_id,
+      quantity: i.quantity,
+      unit: i.unit,
+      notes: i.notes,
+    });
+    if (r.result === "error") return { status: "error", message: "Erro ao aplicar lista. Tente novamente." };
+    if (r.result === "inserted") inserted++;
+    else if (r.result === "merged") merged++;
+    else skipped++;
+  }
 
   // Update last_added_at on all items in the list
   await supabase
@@ -325,7 +328,10 @@ export async function applyList(_: FormState, fd: FormData): Promise<FormState> 
 
   revalidatePath("/compras");
   revalidatePath("/inicio");
-  return { status: "success", message: `${items.length} itens adicionados à lista de compras.` };
+  const parts = [`${inserted} ${inserted === 1 ? "item adicionado" : "itens adicionados"}`];
+  if (merged > 0) parts.push(`${merged} já ${merged === 1 ? "estava" : "estavam"} na lista (quantidade somada)`);
+  if (skipped > 0) parts.push(`${skipped} com unidade diferente ${skipped === 1 ? "foi ignorado" : "foram ignorados"}`);
+  return { status: "success", message: `${parts.join("; ")}.` };
 }
 
 export async function reorderItem(_: FormState, fd: FormData): Promise<FormState> {
@@ -353,17 +359,16 @@ export async function reorderItem(_: FormState, fd: FormData): Promise<FormState
     return { status: "error", message: "Item não encontrado." };
   }
 
-  const { error: insertError } = await supabase.from("shopping_items").insert({
-    home_id: homeId,
+  const added = await addShoppingItem(supabase, {
+    homeId,
     name: listItem.name,
-    category_id: listItem.category_id ?? null,
+    categoryId: listItem.category_id,
     quantity: listItem.quantity,
     unit: listItem.unit,
-    notes: listItem.notes ?? null,
-    is_purchased: false,
+    notes: listItem.notes,
   });
-
-  if (insertError) return { status: "error", message: "Erro ao adicionar. Tente novamente." };
+  if (added.result === "error") return { status: "error", message: "Erro ao adicionar. Tente novamente." };
+  if (added.result === "conflict") return { status: "error", message: conflictMessage(added) };
 
   await supabase
     .from("shopping_list_items")

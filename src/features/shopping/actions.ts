@@ -16,6 +16,7 @@ import {
 } from "@/features/shopping/schemas";
 import { getMemberPermissions } from "@/features/members/permissions";
 import { trackEvent } from "@/lib/telemetry";
+import { addShoppingItem, conflictMessage, mergedMessage } from "@/features/shopping/add-item";
 
 export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -48,21 +49,35 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { error } = await supabase.from("shopping_items").insert({
-    home_id: homeId,
+  // Função atômica no banco: soma se já existe (mesma unidade), avisa se a unidade
+  // difere, senão insere. Sem corrida entre membros.
+  const added = await addShoppingItem(supabase, {
+    homeId,
     name: parsed.data.name,
-    category_id: parsed.data.category_id ?? null,
+    categoryId: parsed.data.category_id,
     quantity: parsed.data.quantity,
     unit: parsed.data.unit,
-    notes: parsed.data.notes ?? null,
-    room_id: parsed.data.room_id ?? null,
-    is_purchased: false,
-    mission: parsed.data.mission ?? null,
+    notes: parsed.data.notes,
+    roomId: parsed.data.room_id,
+    mission: parsed.data.mission,
     priority: parsed.data.priority,
   });
 
-  if (error) {
-    return { status: "error", message: "Erro ao adicionar item. Tente novamente." };
+  if (added.result === "error") {
+    return {
+      status: "error",
+      message: added.forbidden
+        ? "Sem permissão para gerenciar compras."
+        : "Erro ao adicionar item. Tente novamente.",
+    };
+  }
+  if (added.result === "conflict") {
+    return { status: "error", message: conflictMessage(added) };
+  }
+  if (added.result === "merged") {
+    revalidatePath("/compras");
+    revalidatePath("/inicio");
+    return { status: "success", message: mergedMessage(added) };
   }
 
   revalidatePath("/compras");

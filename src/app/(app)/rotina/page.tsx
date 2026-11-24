@@ -13,13 +13,11 @@ import {
 } from "@/features/tasks/actions";
 import {
   markMissedOccurrences,
-  getTodayOccurrences,
   getOverdueOccurrences,
-  getUpcomingOccurrences,
+  getOccurrencesForWeek,
 } from "@/features/tasks/queries";
-import { TaskList } from "@/features/tasks/components/task-list";
-import { WeekNav } from "@/features/tasks/components/week-nav";
-import { getEventsForRange, getNextUpcomingEvent } from "@/features/events/queries";
+import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-list";
+import { getEventsForRange } from "@/features/events/queries";
 import {
   createEvent,
   updateEvent,
@@ -41,6 +39,10 @@ import {
 
 export const metadata: Metadata = { title: "Rotina" };
 
+function str(v: string | string[] | undefined): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
 export default async function Page({
   searchParams,
 }: {
@@ -57,8 +59,8 @@ export default async function Page({
   const currentDate = getLocalDateString(home.timezone);
 
   const params = await searchParams;
-  const filterEssencial = params["filter"] === "essenciais";
-  const dateRaw = typeof params["date"] === "string" ? params["date"] : null;
+  const view = params["view"] === "semana" ? "semana" : "dia";
+  const dateRaw = str(params["date"]);
   let selectedDate = currentDate;
   if (dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
     const parsed = parseISO(dateRaw);
@@ -67,18 +69,39 @@ export default async function Page({
     }
   }
 
-  extendWindowForHome(home.id, home.timezone).catch(() => {});
-  await markMissedOccurrences(supabase, home.id, currentDate).catch(() => {});
+  // Filtros vivem na URL para sobreviver à troca de visão (Hoje ↔ Semana) e ao recarregar.
+  const filters: RotinaFilters = {
+    member: str(params["quem"]),
+    room: str(params["cat"]),
+    // `filter=essenciais` é o formato antigo do link — continua funcionando.
+    essential: params["essenciais"] === "1" || params["filter"] === "essenciais",
+  };
+  const novo = params["novo"] === "evento" ? "evento" : params["novo"] === "tarefa" ? "tarefa" : null;
 
-  const absentIds = await getAbsentMemberIds(supabase, home.id, currentDate);
+  extendWindowForHome(home.id, home.timezone).catch(() => {});
+
+  // markMissed e getAbsentMemberIds são independentes — rodam em paralelo para
+  // cortar round-trips sequenciais ao Supabase remoto. advanceRotations depende
+  // de absentIds, então vem depois.
+  const [, absentIds] = await Promise.all([
+    markMissedOccurrences(supabase, home.id, currentDate).catch(() => {}),
+    getAbsentMemberIds(supabase, home.id, currentDate),
+  ]);
   await advanceRotationsIfDue(supabase, home.id, currentDate, absentIds);
 
-  const [todayOcc, overdueOcc, upcomingOcc, events, nextEvent, absence, rotations, homeMembers] = await Promise.all([
-    getTodayOccurrences(supabase, home.id, selectedDate),
-    selectedDate === currentDate ? getOverdueOccurrences(supabase, home.id, currentDate) : Promise.resolve([]),
-    selectedDate === currentDate ? getUpcomingOccurrences(supabase, home.id, currentDate) : Promise.resolve([]),
-    getEventsForRange(supabase, home.id, selectedDate, selectedDate),
-    getNextUpcomingEvent(supabase, home.id, currentDate),
+  // Semana ISO (Seg–Dom) do dia aberto. A visão diária é derivada da semana:
+  // uma única consulta alimenta a lista do dia e o resumo "Visão da semana".
+  const weekStartDate = startOfISOWeek(parseISO(selectedDate));
+  const weekDates = Array.from({ length: 7 }, (_, i) => format(addDays(weekStartDate, i), "yyyy-MM-dd"));
+  const weekStart = weekDates[0]!;
+  const weekEnd = weekDates[6]!;
+
+  const [weekOcc, overdueOcc, weekEvents, absence, rotations, homeMembers] = await Promise.all([
+    getOccurrencesForWeek(supabase, home.id, weekStart),
+    view === "dia" && selectedDate === currentDate
+      ? getOverdueOccurrences(supabase, home.id, currentDate)
+      : Promise.resolve([]),
+    getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []),
     getMyAbsence(supabase, userId),
     getRotations(supabase, home.id),
     getHomeMembers(supabase),
@@ -87,16 +110,17 @@ export default async function Page({
   const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
   const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
 
-  const activeAbsenceRange: AbsenceRange =
-    absence !== null &&
-    absence.absence_start <= selectedDate &&
-    absence.absence_end >= selectedDate
-      ? { start: absence.absence_start, end: absence.absence_end }
-      : null;
+  const absenceRange: AbsenceRange =
+    absence !== null ? { start: absence.absence_start, end: absence.absence_end } : null;
 
-  const filteredOccurrences = filterAbsenceOccurrences(todayOcc, activeAbsenceRange);
-  const filteredOverdue = filterAbsenceOccurrences(overdueOcc, activeAbsenceRange);
-  const filteredUpcoming = filterAbsenceOccurrences(upcomingOcc, activeAbsenceRange);
+  const activeWeek = filterAbsenceOccurrences(
+    weekOcc.filter((o) => o.task.status === "active" || o.task.status === "paused"),
+    absenceRange,
+  );
+  const dayOcc = activeWeek.filter(
+    (o) => o.scheduled_for === selectedDate && (o.status === "pending" || o.status === "completed"),
+  );
+  const overdue = filterAbsenceOccurrences(overdueOcc, absenceRange);
 
   const isAbsent =
     absence !== null &&
@@ -107,39 +131,29 @@ export default async function Page({
     <AbsenceBanner absenceEnd={absence.absence_end} clearAbsenceAction={clearAbsence} />
   ) : undefined;
 
-  // Build the set of dates in the current ISO week that have active task occurrences
-  const weekStart = startOfISOWeek(parseISO(selectedDate));
-  const weekDates = new Set(Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), "yyyy-MM-dd")));
-  const taskDates = new Set<string>();
-  for (const occ of [...todayOcc, ...overdueOcc, ...upcomingOcc]) {
-    if (occ.task.status === "active" && weekDates.has(occ.scheduled_for)) {
-      taskDates.add(occ.scheduled_for);
-    }
-  }
-
   return (
     <TaskList
-      today={filteredOccurrences}
-      overdue={filteredOverdue}
-      upcoming={filteredUpcoming}
+      view={view}
+      today={dayOcc}
+      overdue={overdue}
+      week={activeWeek}
+      weekDates={weekDates}
       currentDate={currentDate}
       selectedDate={selectedDate}
       createTaskAction={createTask}
       rooms={home.rooms}
-      weekNav={<WeekNav selectedDate={selectedDate} today={currentDate} taskDates={taskDates} />}
       absenceBanner={absenceBanner}
-      events={events}
-      nextEvent={nextEvent}
+      events={weekEvents}
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}
-      filterEssencial={filterEssencial}
+      initialFilters={filters}
+      initialCreate={novo}
       userId={userId}
       rotationInfoMap={rotationInfoMap}
       rotations={rotations}
-      homeMembers={homeMembers.map(m => ({ id: m.user_id, name: m.full_name }))}
+      homeMembers={homeMembers.map((m) => ({ id: m.user_id, name: m.full_name }))}
       updateTaskAction={updateTask}
     />
   );
 }
-

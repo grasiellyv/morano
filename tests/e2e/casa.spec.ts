@@ -37,7 +37,7 @@ async function completeOnboarding(page: Page, homeName = "Casa Teste E2E") {
 
   await expect(page).toHaveURL(/\/onboarding\/rotina$/);
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByRole("button", { name: "Ver sugestões →" }).click();
+  await page.getByRole("button", { name: "Ver sugestões" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
   await page.getByRole("button", { name: "Aprovar rotina" }).click();
@@ -60,9 +60,44 @@ test("1. /casa exibe dados da residência", async ({ page }) => {
   await expect(page.getByRole("heading", { name: homeName })).toBeVisible({ timeout: 10_000 });
 
   // Dados de tipo e cômodos devem estar visíveis
-  await expect(page.getByText("Apartamento")).toBeVisible();
-  await expect(page.getByText("Cômodos")).toBeVisible();
-  await expect(page.getByText("Tarefas da rotina")).toBeVisible();
+  await expect(page.getByText("Apartamento", { exact: true })).toBeVisible();
+  await expect(page.getByText("Cômodos", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tarefas da rotina", { exact: true })).toBeVisible();
+
+  // Organização da casa: atalhos para as telas de Animais, Produtos e Histórico
+  await expect(page.getByRole("heading", { name: "Quem faz parte" })).toBeVisible();
+  for (const name of ["Moradores", "Animais", "Produtos", "Histórico"]) {
+    await expect(page.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 1b. Animais: adicionar e remover; Produtos e Histórico abrem
+// ---------------------------------------------------------------------------
+test("1b. animais: adiciona, lista e remove; produtos e histórico abrem", async ({ page }) => {
+  const email = uniqueEmail("casa-1b-pets");
+  await ensureConfirmedUser(email, PASSWORD);
+  await signIn(page, email, PASSWORD);
+  await completeOnboarding(page, `Pets ${Date.now()}`);
+
+  await page.goto("/casa");
+  await page.getByRole("link", { name: /^Animais/ }).click();
+  await expect(page).toHaveURL(/\/casa\/animais$/);
+  await expect(page.getByText("Nenhum animal ainda")).toBeVisible();
+
+  await page.getByLabel("Nome").fill("Thor");
+  await page.getByRole("radio", { name: "Gato" }).click();
+  await page.getByRole("button", { name: "Adicionar animal" }).click();
+  await expect(page.getByText("Thor", { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole("button", { name: "Remover Thor" }).click();
+  await page.getByRole("button", { name: "Remover", exact: true }).last().click();
+  await expect(page.getByText("Nenhum animal ainda")).toBeVisible({ timeout: 10_000 });
+
+  await page.goto("/casa/produtos");
+  await expect(page.getByRole("heading", { level: 1, name: "Produtos" })).toBeVisible();
+  await page.goto("/casa/historico");
+  await expect(page.getByRole("heading", { level: 1, name: "Histórico" })).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
