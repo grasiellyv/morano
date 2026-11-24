@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import { AccountButton } from "@/components/layout/account-button";
+import { ExpandableList } from "@/components/ui/expandable-list";
 import { NotificationBell } from "@/features/notifications/notification-bell";
 import { getHomeWithRooms } from "@/features/homes/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -380,30 +381,20 @@ export default async function Page() {
             className="mt-1.5 overflow-hidden rounded-[16px] border border-border"
             style={{ background: "var(--card)", boxShadow: "var(--shadow)" }}
           >
-            {attentionVisible.map((item, i) => (
-              <AttentionRow
-                key={item.key}
-                item={item}
-                last={i === attentionVisible.length - 1 && attentionMore.length === 0}
-              />
-            ))}
-            {attentionMore.length > 0 ? (
-              <details className="group">
-                <summary
-                  className="flex cursor-pointer list-none items-center gap-2 px-3.5 text-[12.5px] font-medium [&::-webkit-details-marker]:hidden"
-                  style={{ height: 40, background: "var(--secondary)", color: "var(--muted-foreground)" }}
-                >
-                  <span className="flex-1">
-                    <span className="group-open:hidden">Ver tudo ({attentionMore.length} a mais)</span>
-                    <span className="hidden group-open:inline">Mostrar menos</span>
-                  </span>
-                  <ChevronRight aria-hidden size={15} className="rotate-90 transition-transform group-open:-rotate-90" />
-                </summary>
-                {attentionMore.map((item, i) => (
-                  <AttentionRow key={item.key} item={item} last={i === attentionMore.length - 1} />
-                ))}
-              </details>
-            ) : null}
+            <ExpandableList
+              moreCount={attentionMore.length}
+              more={attentionMore.map((item, i) => (
+                <AttentionRow key={item.key} item={item} last={i === attentionMore.length - 1} />
+              ))}
+            >
+              {attentionVisible.map((item, i) => (
+                <AttentionRow
+                  key={item.key}
+                  item={item}
+                  last={i === attentionVisible.length - 1 && attentionMore.length === 0}
+                />
+              ))}
+            </ExpandableList>
           </div>
         </section>
       ) : null}
