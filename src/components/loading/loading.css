@@ -9,25 +9,25 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  min-height: min(52dvh, 420px);
+  gap: 22px;
+  min-height: calc(100dvh - 170px);
   padding: 32px 20px 12px;
   text-align: center;
 }
 
 .ld-icon {
   display: block;
-  width: 136px;
-  height: 136px;
+  width: clamp(260px, 78vw, 380px);
+  height: clamp(260px, 78vw, 380px);
   overflow: visible;
 }
 
 .ld-caption {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.4;
   color: var(--muted-foreground);
-  max-width: 230px;
+  max-width: 260px;
 }
 
 .ld-bar-track {
@@ -54,58 +54,58 @@
   }
 }
 
-/* Flutuação comum a todos os ícones: dá vida sem roubar a cena. */
+/* Flutuação comum a todos os ícones: bem mais visível que um leve tremor. */
 .ld-float {
-  animation: ld-float 3.6s ease-in-out infinite;
+  animation: ld-float 3s ease-in-out infinite;
 }
 @keyframes ld-float {
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-14px);
   }
 }
 
-/* Início: selo "m." respira e os raios piscam em sequência. */
+/* Início: selo "m." respira fundo e os raios disparam em sequência. */
 .ld-breathe {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation: ld-breathe 2.6s ease-in-out infinite;
+  animation: ld-breathe 2.2s ease-in-out infinite;
 }
 @keyframes ld-breathe {
   50% {
-    transform: scale(1.035);
+    transform: scale(1.12);
   }
 }
 .ld-ray {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation: ld-ray 2.6s ease-in-out infinite;
+  animation: ld-ray 2.2s ease-in-out infinite;
 }
 @keyframes ld-ray {
   0%,
   100% {
-    opacity: 0.55;
-    transform: scale(0.88);
+    opacity: 0.3;
+    transform: scale(0.6);
   }
   50% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1.3);
   }
 }
 
-/* Rotina: regador pousa, enche o vaso, folhas balançam. */
+/* Rotina: regador derrama bem inclinado, folhas balançam de verdade. */
 .ld-can {
   transform-box: fill-box;
   transform-origin: 88% 78%;
-  animation: ld-pour 3.2s ease-in-out infinite;
+  animation: ld-pour 2.6s ease-in-out infinite;
 }
 @keyframes ld-pour {
   0%,
-  18% {
+  14% {
     transform: rotate(0deg);
   }
   40%,
-  70% {
-    transform: rotate(-16deg);
+  68% {
+    transform: rotate(-34deg);
   }
   100% {
     transform: rotate(0deg);
@@ -113,24 +113,24 @@
 }
 .ld-drop {
   opacity: 0;
-  animation: ld-drop 3.2s ease-in infinite;
+  animation: ld-drop 2.6s ease-in infinite;
 }
 @keyframes ld-drop {
   0%,
-  38% {
+  34% {
     opacity: 0;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
-  48% {
+  44% {
     opacity: 0.95;
   }
-  66% {
-    opacity: 0.7;
-    transform: translateY(16px);
+  64% {
+    opacity: 0.75;
+    transform: translateY(28px) scale(1.15);
   }
   72% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(34px) scale(1.15);
   }
   100% {
     opacity: 0;
@@ -139,11 +139,11 @@
 .ld-leaf {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: ld-sway 4.2s ease-in-out infinite;
+  animation: ld-sway 3.4s ease-in-out infinite;
 }
 @keyframes ld-sway {
   50% {
-    transform: rotate(5deg);
+    transform: rotate(13deg);
   }
 }
 
@@ -151,77 +151,77 @@
 .ld-bag {
   transform-box: fill-box;
   transform-origin: 50% 0%;
-  animation: ld-bag 2.8s ease-in-out infinite;
+  animation: ld-bag 2.2s ease-in-out infinite;
 }
 @keyframes ld-bag {
   0%,
   100% {
-    transform: rotate(-2.5deg);
+    transform: rotate(-9deg);
   }
   50% {
-    transform: rotate(2.5deg);
+    transform: rotate(9deg);
   }
 }
 .ld-pop {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: ld-pop 2.8s ease-in-out infinite;
+  animation: ld-pop 2.2s ease-in-out infinite;
 }
 @keyframes ld-pop {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-3px);
+    transform: translateY(-9px) scale(1.06);
   }
 }
 
-/* Manutenção: a chave aperta um parafuso imaginário. */
+/* Manutenção: a chave aperta um parafuso imaginário, com força. */
 .ld-wrench {
   transform-box: fill-box;
   transform-origin: 32% 72%;
-  animation: ld-wrench 2.6s ease-in-out infinite;
+  animation: ld-wrench 2s ease-in-out infinite;
 }
 @keyframes ld-wrench {
   0%,
   100% {
-    transform: rotate(-16deg);
+    transform: rotate(-38deg);
   }
   50% {
-    transform: rotate(14deg);
+    transform: rotate(32deg);
   }
 }
 .ld-spark {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation: ld-spark 2.6s ease-in-out infinite;
+  animation: ld-spark 2s ease-in-out infinite;
 }
 @keyframes ld-spark {
   0%,
   40%,
   100% {
     opacity: 0;
-    transform: scale(0.6);
+    transform: scale(0.4);
   }
   55% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1.4);
   }
   70% {
     opacity: 0;
-    transform: scale(0.8);
+    transform: scale(1);
   }
 }
 
 /* Casa: a janela acende como se alguém tivesse acabado de chegar. */
 .ld-glow {
-  animation: ld-glow 3s ease-in-out infinite;
+  animation: ld-glow 2.4s ease-in-out infinite;
 }
 @keyframes ld-glow {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.25;
   }
   50% {
     opacity: 1;
@@ -230,17 +230,17 @@
 .ld-bush {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: ld-sway 5s ease-in-out infinite;
+  animation: ld-sway 4s ease-in-out infinite;
 }
 .ld-twinkle {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  animation: ld-twinkle 2.4s ease-in-out infinite;
+  animation: ld-twinkle 2s ease-in-out infinite;
 }
 @keyframes ld-twinkle {
   50% {
-    transform: scale(0.55);
-    opacity: 0.5;
+    transform: scale(0.3);
+    opacity: 0.35;
   }
 }
 
