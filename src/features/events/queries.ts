@@ -61,7 +61,8 @@ export async function getNextUpcomingEvent(
 
 /**
  * Itens de compras vinculados a cada evento (para a edição e o aviso de exclusão).
- * A RLS de compras só devolve linhas a quem gerencia Compras; para os demais vem vazio.
+ * A RLS de shopping_items é por membro da casa (is_home_member), não por permissão de Compras:
+ * quem só gerencia eventos também enxerga esses itens.
  */
 export async function getEventShoppingItems(
   supabase: SupabaseClient<Database>,

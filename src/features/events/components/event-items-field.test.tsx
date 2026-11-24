@@ -142,4 +142,38 @@ describe("EventItemsField", () => {
       expect(screen.getByText(/Vinho · 2 un/)).toBeInTheDocument();
     });
   });
+
+  it("texto digitado e não adicionado também vai no campo items", async () => {
+    const user = userEvent.setup();
+    render(<EventItemsField sources={sources} />);
+    await user.type(screen.getByLabelText("Produto do evento"), "Leite");
+    expect(hiddenItems()).toEqual([{ name: "Leite", quantity: 1, unit: "un", category_id: null }]);
+  });
+
+  it("rascunho + itens já adicionados: sem duplicar depois de clicar Adicionar", async () => {
+    const user = userEvent.setup();
+    render(<EventItemsField sources={sources} />);
+    await user.type(screen.getByLabelText("Produto do evento"), "Leite");
+    await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+    expect(hiddenItems()).toEqual([{ name: "Leite", quantity: 1, unit: "un", category_id: null }]);
+    await user.type(screen.getByLabelText("Produto do evento"), "Café");
+    expect(hiddenItems()).toHaveLength(2);
+  });
+
+  it("quantidade acima de 9999 não entra e avisa", async () => {
+    const user = userEvent.setup();
+    render(<EventItemsField sources={sources} />);
+    await user.type(screen.getByLabelText("Produto do evento"), "Arroz");
+    await user.clear(screen.getByLabelText("Quantidade do item"));
+    await user.type(screen.getByLabelText("Quantidade do item"), "10000");
+    await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Quantidade máxima: 9999.");
+    expect(screen.queryByText(/Arroz · /)).toBeNull();
+    expect(hiddenItems()).toEqual([]);
+  });
+
+  it("mostra o erro de items devolvido pela action", () => {
+    render(<EventItemsField sources={sources} error="Itens inválidos. Confira nome, quantidade e unidade." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Itens inválidos. Confira nome, quantidade e unidade.");
+  });
 });

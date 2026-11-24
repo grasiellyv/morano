@@ -16,9 +16,9 @@ describe("addShoppingItem", () => {
     expect(rpc).toHaveBeenCalledWith("add_shopping_item", expect.objectContaining({ p_event_id: "e1" }));
   });
 
-  it("sem evento manda p_event_id nulo (PostgREST precisa de todos os argumentos)", async () => {
+  it("sem evento omite p_event_id (a função usa o default; funciona antes e depois da migration)", async () => {
     const { client, rpc } = fakeSupabase();
     await addShoppingItem(client as never, base);
-    expect(rpc).toHaveBeenCalledWith("add_shopping_item", expect.objectContaining({ p_event_id: null }));
+    expect(rpc.mock.calls[0]![1]).not.toHaveProperty("p_event_id");
   });
 });

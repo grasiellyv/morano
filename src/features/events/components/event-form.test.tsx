@@ -56,4 +56,16 @@ describe("EventForm — itens de compras", () => {
     await user.click(screen.getByRole("button", { name: "Excluir" }));
     expect(await screen.findByText('Excluir o evento "Visita Teste"?')).toBeInTheDocument();
   });
+
+  it("erro de itens devolvido ao salvar aparece na seção (não falha em silêncio)", async () => {
+    const user = userEvent.setup();
+    const failing = async () => ({
+      status: "error" as const,
+      fieldErrors: { items: "Itens inválidos. Confira nome, quantidade e unidade." },
+    });
+    render(<EventForm mode="create" createAction={failing} productSources={sources} initialValues={{ start_date: "2026-12-01" }} />);
+    await user.type(screen.getByLabelText("Nome"), "Festa");
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+    expect(await screen.findByText("Itens inválidos. Confira nome, quantidade e unidade.")).toBeInTheDocument();
+  });
 });

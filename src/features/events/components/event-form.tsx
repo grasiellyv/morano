@@ -327,6 +327,7 @@ export function EventForm({
         {productSources ? <EventItemsField
             sources={productSources}
             linked={linkedItems}
+            error={state.fieldErrors?.items}
             removeAction={removeItemAction}
             canRemove={canRemoveItems}
           /> : null}

@@ -16,10 +16,25 @@ const UNITS: ShoppingUnit[] = ["un", "kg", "g", "l", "ml", "pacote", "caixa"];
 const selectClass =
   "h-9 rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
+const MAX_QUANTITY = 9999;
+
+/** Soma ao item de mesmo nome (sem acento/caixa) e unidade, ou acrescenta um novo. */
+function mergeItem(prev: EventItemInput[], draft: EventItemInput): EventItemInput[] {
+  const key = normalizeName(draft.name);
+  const idx = prev.findIndex((i) => normalizeName(i.name) === key && i.unit === draft.unit);
+  if (idx < 0) return [...prev, draft];
+  const next = [...prev];
+  const cur = next[idx]!;
+  next[idx] = { ...cur, quantity: Math.min(Math.round((cur.quantity + draft.quantity) * 100) / 100, MAX_QUANTITY) };
+  return next;
+}
+
 type Props = {
   sources: SuggestionSources;
   /** Itens que o evento já pôs na lista de compras (edição). */
   linked?: LinkedEventItem[];
+  /** Erro de validação de `items` devolvido pela action ao salvar. */
+  error?: string;
   /** Tira um item pendente vinculado do evento E da lista de compras (campo `id`). */
   removeAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   /** false = sem permissão de Compras: o botão de remover fica desabilitado. */
@@ -27,13 +42,14 @@ type Props = {
 };
 
 /** "Itens / Compras necessárias": o que entra na lista de compras quando o evento for salvo. */
-export function EventItemsField({ sources, linked = [], removeAction, canRemove = true }: Props) {
+export function EventItemsField({ sources, linked = [], error, removeAction, canRemove = true }: Props) {
   const [items, setItems] = useState<EventItemInput[]>([]);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState<ShoppingUnit>("un");
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
+  const [quantityError, setQuantityError] = useState<string | null>(null);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -51,21 +67,21 @@ export function EventItemsField({ sources, linked = [], removeAction, canRemove 
     else setRemovedIds((prev) => [...prev, id]);
   }
 
+  const draftQty = Number(quantity);
+  const draftValid = name.trim().length > 0 && Number.isFinite(draftQty) && draftQty > 0 && draftQty <= MAX_QUANTITY;
+  const draft: EventItemInput = { name: name.trim(), quantity: draftQty, unit, category_id: categoryId };
+  // O que o formulário envia: os itens adicionados + o que está digitado e ainda não foi "adicionado".
+  const effective = draftValid && !full ? mergeItem(items, draft) : items;
+
   function addDraft() {
-    const trimmed = name.trim();
-    const qty = Number(quantity);
-    if (!trimmed || !Number.isFinite(qty) || qty <= 0 || full) return;
-    setItems((prev) => {
-      const key = normalizeName(trimmed);
-      const idx = prev.findIndex((i) => normalizeName(i.name) === key && i.unit === unit);
-      if (idx >= 0) {
-        const next = [...prev];
-        const cur = next[idx]!;
-        next[idx] = { ...cur, quantity: Math.min(Math.round((cur.quantity + qty) * 100) / 100, 9999) };
-        return next;
-      }
-      return [...prev, { name: trimmed, quantity: qty, unit, category_id: categoryId }];
-    });
+    if (!name.trim() || full) return;
+    if (!Number.isFinite(draftQty) || draftQty <= 0) return;
+    if (draftQty > MAX_QUANTITY) {
+      setQuantityError(`Quantidade máxima: ${MAX_QUANTITY}.`);
+      return;
+    }
+    setQuantityError(null);
+    setItems((prev) => mergeItem(prev, draft));
     setName("");
     setQuantity("1");
     setUnit("un");
@@ -83,7 +99,7 @@ export function EventItemsField({ sources, linked = [], removeAction, canRemove 
       <h3 id="event-items-title" className="text-sm font-semibold">Itens / Compras necessárias</h3>
       <p className="mb-3 text-xs text-muted-foreground">Entram na lista de compras quando você salvar o evento.</p>
 
-      <input type="hidden" name="items" value={JSON.stringify(items)} />
+      <input type="hidden" name="items" value={JSON.stringify(effective)} />
 
       {visibleLinked.length > 0 ? (
         <div className="mb-3">
@@ -152,6 +168,9 @@ export function EventItemsField({ sources, linked = [], removeAction, canRemove 
       ) : null}
 
       {full ? <p className="mb-2 text-xs text-muted-foreground">No máximo {MAX_EVENT_ITEMS} itens por evento.</p> : null}
+      {quantityError || error ? (
+        <p role="alert" className="mb-2 text-xs text-destructive">{quantityError ?? error}</p>
+      ) : null}
 
       {/* Enter adiciona o item (em vez de enviar o formulário do evento). */}
       <div
@@ -186,9 +205,13 @@ export function EventItemsField({ sources, linked = [], removeAction, canRemove 
         <Input
           type="number"
           min="0.01"
+          max={MAX_QUANTITY}
           step="any"
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+          onChange={(e) => {
+            setQuantity(e.target.value);
+            setQuantityError(null);
+          }}
           disabled={full}
           aria-label="Quantidade do item"
           className="w-20"

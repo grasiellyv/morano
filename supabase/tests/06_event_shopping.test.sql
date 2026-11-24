@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(13);
+select plan(17);
 
 do $$
 begin
@@ -94,6 +94,27 @@ select is(
   'chamada antiga insere sem vínculo'
 );
 
+-- Soma em item JÁ vinculado desvincula: a quantidade deixa de ser só do evento
+select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Ovos A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid);
+select is(
+  (select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Ovos A6', null, 1, 'un', null, null, null, 'normal', null)->>'result'),
+  'merged',
+  'soma manual em item de evento é somada'
+);
+select is(
+  (select event_id from public.shopping_items where home_id = current_setting('t.home_a')::uuid and name = 'Ovos A6'),
+  null::uuid,
+  'soma de outra origem desvincula o item do evento'
+);
+-- O mesmo evento pedindo de novo mantém o vínculo
+select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Sal A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid);
+select public.add_shopping_item(current_setting('t.home_a')::uuid, 'Sal A6', null, 1, 'un', null, null, 'ocasioes', 'normal', current_setting('t.ev1')::uuid);
+select is(
+  (select event_id from public.shopping_items where home_id = current_setting('t.home_a')::uuid and name = 'Sal A6'),
+  current_setting('t.ev1')::uuid,
+  'o mesmo evento pedindo de novo mantém o vínculo'
+);
+
 -- Exclusão do evento por quem NÃO gerencia Compras -------------------------------
 select tests.clear_authentication();
 reset role;
@@ -104,7 +125,7 @@ insert into public.shopping_items (home_id, name, is_purchased, event_id) values
 select tests.authenticate_as(current_setting('t.m')::uuid);
 select lives_ok(
   format('delete from public.events where id = %L', current_setting('t.ev2')),
-  'membro sem permissão de Compras consegue excluir o evento'
+  'membro sem permissão de Compras consegue excluir o evento (a RLS é is_home_member; o gatilho definer garante a limpeza independentemente dela)'
 );
 select tests.clear_authentication();
 reset role;
@@ -123,6 +144,18 @@ select is(
   (select event_id from public.shopping_items where name = 'Vinho comprado A6'),
   null::uuid,
   'item comprado perde o vínculo'
+);
+
+-- O gatilho só apaga itens da casa do evento (item de outra casa com event_id forjado fica)
+select tests.clear_authentication();
+reset role;
+insert into public.shopping_items (home_id, name, is_purchased, event_id)
+values (current_setting('t.home_b')::uuid, 'Forjado B6', false, current_setting('t.ev1')::uuid);
+delete from public.events where id = current_setting('t.ev1')::uuid;
+select is(
+  (select count(*)::int from public.shopping_items where name = 'Forjado B6'),
+  1,
+  'gatilho não apaga item de outra casa com event_id forjado'
 );
 
 select * from finish();

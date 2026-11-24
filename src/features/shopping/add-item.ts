@@ -45,9 +45,13 @@ export async function addShoppingItem(
     p_room_id: input.roomId ?? null,
     p_mission: input.mission ?? null,
     p_priority: input.priority ?? "normal",
-    p_event_id: input.eventId ?? null,
   } as unknown as Database["public"]["Functions"]["add_shopping_item"]["Args"];
-  const { data, error } = await supabase.rpc("add_shopping_item", args);
+  // p_event_id só vai quando há evento: a função tem default null, então a chamada comum
+  // funciona antes e depois da migration do vínculo.
+  const { data, error } = await supabase.rpc(
+    "add_shopping_item",
+    input.eventId ? ({ ...args, p_event_id: input.eventId } as typeof args) : args,
+  );
   if (error || !data) return { result: "error", forbidden: error?.code === "42501" };
   return data as unknown as AddItemResult;
 }
