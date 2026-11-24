@@ -225,10 +225,10 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           <Input
             type="search"
             className="pl-9"
-            placeholder="Buscar produto…"
+            placeholder="Buscar na lista…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Buscar produto"
+            aria-label="Buscar na lista"
           />
           {searchQuery ? (
             <button
@@ -242,6 +242,45 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           ) : null}
         </div>
       ) : null}
+
+      {/* Add item - inline form toggle */}
+      <div>
+        {showAddForm ? (
+          <div
+            style={{
+              borderRadius: 16, border: "1px solid var(--border)",
+              background: "var(--card)", padding: "16px",
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Novo produto</span>
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="-mr-2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar formulário"
+              >
+                <X size={18} strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+            <AddItemForm
+              categories={categories}
+              rooms={rooms}
+              personalSuggestions={personalSuggestions}
+              pendingItems={pending}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-add text-[15px] font-semibold text-add-foreground transition-colors hover:bg-add-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <Plus size={18} strokeWidth={1.75} aria-hidden />
+            Adicionar produto
+          </button>
+        )}
+      </div>
 
       {/* Category filter chips */}
       {activeCategories.length > 1 ? (
@@ -296,45 +335,6 @@ export function ShoppingList({ pending, purchased, categories, rooms, lists, mem
           ))}
         </section>
       ) : null}
-
-      {/* Add item - inline form toggle */}
-      <div>
-        {showAddForm ? (
-          <div
-            style={{
-              borderRadius: 16, border: "1px solid var(--border)",
-              background: "var(--card)", padding: "16px",
-            }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Novo produto</span>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="-mr-2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                aria-label="Fechar formulário"
-              >
-                <X size={18} strokeWidth={1.75} aria-hidden />
-              </button>
-            </div>
-            <AddItemForm
-              categories={categories}
-              rooms={rooms}
-              personalSuggestions={personalSuggestions}
-              pendingItems={pending}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-add text-[15px] font-semibold text-add-foreground transition-colors hover:bg-add-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Plus size={18} strokeWidth={1.75} aria-hidden />
-            Adicionar produto
-          </button>
-        )}
-      </div>
 
       <HistoryRecover products={history} pendingNames={pending.map((i) => i.name)} />
 
