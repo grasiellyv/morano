@@ -15,7 +15,12 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     // Os links dos e-mails de teste precisam apontar para este servidor.
-    env: { NEXT_PUBLIC_SITE_URL: "http://localhost:3100", NEXT_DIST_DIR: ".next-e2e" },
+    env: {
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3100",
+      NEXT_DIST_DIR: ".next-e2e",
+      // Cron de manutenção (tests/e2e/cron-manutencao.spec.ts).
+      CRON_SECRET: "e2e-cron-secret",
+    },
   },
   projects: [
     {
