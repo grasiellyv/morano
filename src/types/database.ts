@@ -783,6 +783,129 @@ export type Database = {
           },
         ];
       };
+      notification_preferences: {
+        Row: {
+          enabled: boolean;
+          type: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          enabled?: boolean;
+          type: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
+        Update: {
+          enabled?: boolean;
+          type?: Database["public"]["Enums"]["notification_type"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_reads: {
+        Row: {
+          home_id: string;
+          last_read_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          home_id: string;
+          last_read_at?: string;
+          user_id: string;
+        };
+        Update: {
+          home_id?: string;
+          last_read_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_reads_home_id_fkey";
+            columns: ["home_id"];
+            isOneToOne: false;
+            referencedRelation: "homes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_reads_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notifications: {
+        Row: {
+          actor_id: string | null;
+          created_at: string;
+          entity_id: string;
+          home_id: string;
+          id: string;
+          meta: string | null;
+          occurs_on: string | null;
+          target_user_id: string | null;
+          title: string;
+          type: Database["public"]["Enums"]["notification_type"];
+        };
+        ComputedFields: never;
+        Insert: {
+          actor_id?: string | null;
+          created_at?: string;
+          entity_id: string;
+          home_id: string;
+          id?: string;
+          meta?: string | null;
+          occurs_on?: string | null;
+          target_user_id?: string | null;
+          title: string;
+          type: Database["public"]["Enums"]["notification_type"];
+        };
+        Update: {
+          actor_id?: string | null;
+          created_at?: string;
+          entity_id?: string;
+          home_id?: string;
+          id?: string;
+          meta?: string | null;
+          occurs_on?: string | null;
+          target_user_id?: string | null;
+          title?: string;
+          type?: Database["public"]["Enums"]["notification_type"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_home_id_fkey";
+            columns: ["home_id"];
+            isOneToOne: false;
+            referencedRelation: "homes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_target_user_id_fkey";
+            columns: ["target_user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       occurrence_checklist_states: {
         Row: {
           home_id: string;
@@ -2028,6 +2151,11 @@ export type Database = {
       issue_status: "open" | "in_progress" | "resolved";
       maintenance_item_status: "pendente" | "em_andamento" | "concluido" | "cancelado";
       maintenance_status: "scheduled" | "completed" | "cancelled";
+      notification_type:
+        | "shopping_item_added"
+        | "shopping_item_purchased"
+        | "maintenance_registered"
+        | "task_due_today";
       occurrence_status: "pending" | "completed" | "skipped" | "missed";
       ownership_type: "proprio" | "alugado" | "outro";
       property_type: "apartamento" | "casa" | "sobrado" | "studio_kitnet" | "outro";
@@ -2195,6 +2323,12 @@ export const Constants = {
       issue_status: ["open", "in_progress", "resolved"],
       maintenance_item_status: ["pendente", "em_andamento", "concluido", "cancelado"],
       maintenance_status: ["scheduled", "completed", "cancelled"],
+      notification_type: [
+        "shopping_item_added",
+        "shopping_item_purchased",
+        "maintenance_registered",
+        "task_due_today",
+      ],
       occurrence_status: ["pending", "completed", "skipped", "missed"],
       ownership_type: ["proprio", "alugado", "outro"],
       property_type: ["apartamento", "casa", "sobrado", "studio_kitnet", "outro"],
