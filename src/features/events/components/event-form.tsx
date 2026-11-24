@@ -9,6 +9,10 @@ import {
 } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { toast } from "sonner";
+import { EventItemsField } from "@/features/events/components/event-items-field";
+import { pendingCountText, type LinkedEventItem } from "@/features/events/event-items";
+import type { SuggestionSources } from "@/features/shopping/suggest";
 
 // 4 visual tiles mapping to DB event_type values
 const EVENT_TILES: Array<{
@@ -94,6 +98,10 @@ type Props = {
   updateAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   onSuccess?: () => void;
+  /** Fontes do autocomplete dos itens de compras; sem elas a seção não aparece. */
+  productSources?: SuggestionSources;
+  /** Itens que o evento já pôs na lista de compras (edição). */
+  linkedItems?: LinkedEventItem[];
 };
 
 const noopAction = async (
@@ -108,13 +116,23 @@ export function EventForm({
   updateAction,
   deleteAction,
   onSuccess,
+  productSources,
+  linkedItems = [],
 }: Props) {
   const mainAction =
     mode === "create"
       ? (createAction ?? noopAction)
       : (updateAction ?? noopAction);
 
-  const [state, dispatch, pending] = useActionState(mainAction, initialFormState);
+  // O formulário fecha no sucesso: avisos de itens que não entraram na lista vão por toast.
+  const actionWithNotice = async (prev: FormState, fd: FormData): Promise<FormState> => {
+    const result = await mainAction(prev, fd);
+    if (result.status === "success" && result.message && !/^Evento (criado|atualizado)\.$/.test(result.message)) {
+      toast(result.message, { duration: 8000 });
+    }
+    return result;
+  };
+  const [state, dispatch, pending] = useActionState(actionWithNotice, initialFormState);
   const [deleteState, deleteDispatch, deletePending] = useActionState(
     deleteAction ?? noopAction,
     initialFormState,
@@ -300,6 +318,8 @@ export function EventForm({
           ) : null}
         </div>
 
+        {productSources ? <EventItemsField sources={productSources} linked={linkedItems} /> : null}
+
         <div>
           <label
             htmlFor="event-description"
@@ -348,7 +368,10 @@ export function EventForm({
               </Button>
             }
             title="Excluir evento"
-            description={`Excluir o evento "${initialValues.title ?? "este evento"}"?`}
+            description={[
+              `Excluir o evento "${initialValues.title ?? "este evento"}"?`,
+              pendingCountText(linkedItems.filter((i) => !i.is_purchased).length),
+            ].filter(Boolean).join(" ")}
             confirmLabel="Excluir"
             destructive
             onConfirm={() => {

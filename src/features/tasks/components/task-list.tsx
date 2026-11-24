@@ -18,6 +18,8 @@ import { EventChip } from "@/features/events/components/event-chip";
 import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
 import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotations-dialog";
 import { EventForm } from "@/features/events/components/event-form";
+import type { LinkedEventItem } from "@/features/events/event-items";
+import type { SuggestionSources } from "@/features/shopping/suggest";
 import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
 import {
   RotinaHeader,
@@ -78,6 +80,10 @@ type Props = {
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
+  /** Fontes do autocomplete dos itens de compras do evento. */
+  productSources?: SuggestionSources;
+  /** Itens de compras já vinculados, por id de evento. */
+  eventItems?: Record<string, LinkedEventItem[]>;
   initialFilters?: RotinaFilters;
   initialCreate?: "tarefa" | "evento" | null;
   userId?: string;
@@ -106,6 +112,8 @@ export function TaskList({
   createEventAction,
   updateEventAction,
   deleteEventAction,
+  productSources,
+  eventItems = {},
   initialFilters = NO_FILTERS,
   initialCreate = null,
   userId,
@@ -257,6 +265,8 @@ export function TaskList({
               initialValues={e}
               updateAction={updateEventAction}
               deleteAction={deleteEventAction}
+              productSources={productSources}
+              linkedItems={eventItems[e.id] ?? []}
               onSuccess={() => setEditingEventId(null)}
             />
           </div>
@@ -328,6 +338,7 @@ export function TaskList({
           <EventForm
             mode="create"
             createAction={createEventAction}
+            productSources={productSources}
             initialValues={{ start_date: selectedDate }}
             onSuccess={() => setCreating(null)}
           />

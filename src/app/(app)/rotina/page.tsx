@@ -17,7 +17,10 @@ import {
   getOccurrencesForWeek,
 } from "@/features/tasks/queries";
 import { TaskList, type RotinaFilters } from "@/features/tasks/components/task-list";
-import { getEventsForRange } from "@/features/events/queries";
+import { getEventsForRange, getEventShoppingItems } from "@/features/events/queries";
+import { getShoppingItems, getShoppingHistorySessions } from "@/features/shopping/queries";
+import { getCategories } from "@/features/shopping/queries-categories";
+import { historyProducts } from "@/features/shopping/dedupe";
 import {
   createEvent,
   updateEvent,
@@ -96,16 +99,33 @@ export default async function Page({
   const weekStart = weekDates[0]!;
   const weekEnd = weekDates[6]!;
 
-  const [weekOcc, overdueOcc, weekEvents, absence, rotations, homeMembers] = await Promise.all([
-    getOccurrencesForWeek(supabase, home.id, weekStart),
-    view === "dia" && selectedDate === currentDate
-      ? getOverdueOccurrences(supabase, home.id, currentDate)
-      : Promise.resolve([]),
-    getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []),
-    getMyAbsence(supabase, userId),
-    getRotations(supabase, home.id),
-    getHomeMembers(supabase),
-  ]);
+  // Os itens de compras dos eventos dependem dos ids dos eventos: encadeados num só ramo,
+  // em paralelo com as demais leituras.
+  const weekEventsPromise = getEventsForRange(supabase, home.id, weekStart, weekEnd).catch(() => []);
+  const [weekOcc, overdueOcc, weekEvents, eventItems, categories, shopping, historySessions, absence, rotations, homeMembers] =
+    await Promise.all([
+      getOccurrencesForWeek(supabase, home.id, weekStart),
+      view === "dia" && selectedDate === currentDate
+        ? getOverdueOccurrences(supabase, home.id, currentDate)
+        : Promise.resolve([]),
+      weekEventsPromise,
+      weekEventsPromise.then((events) => getEventShoppingItems(supabase, events.map((e) => e.id))),
+      getCategories(supabase, home.id),
+      getShoppingItems(supabase, home.id),
+      getShoppingHistorySessions(supabase, home.id),
+      getMyAbsence(supabase, userId),
+      getRotations(supabase, home.id),
+      getHomeMembers(supabase),
+    ]);
+
+  const productSources = {
+    categories,
+    home: [...shopping.pending, ...shopping.purchased, ...historyProducts(historySessions)].map((i) => ({
+      name: i.name,
+      category_id: i.category_id,
+      unit: i.unit,
+    })),
+  };
 
   const memberNamesMap = new Map(homeMembers.map((m) => [m.user_id, m.full_name]));
   const rotationInfoMap = buildRotationInfoMap(rotations, absentIds, memberNamesMap);
@@ -144,6 +164,8 @@ export default async function Page({
       rooms={home.rooms}
       absenceBanner={absenceBanner}
       events={weekEvents}
+      productSources={productSources}
+      eventItems={eventItems}
       createEventAction={createEvent}
       updateEventAction={updateEvent}
       deleteEventAction={deleteEvent}

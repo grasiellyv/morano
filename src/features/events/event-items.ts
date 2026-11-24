@@ -74,3 +74,20 @@ export function summarizeEventItemResults(
   if (summed.length > 0) parts.push(`${summed.join(", ")} já estava na lista: quantidade somada.`);
   return parts.join(" ");
 }
+
+/** Item de compras já vinculado a um evento (para listar na edição). */
+export type LinkedEventItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  is_purchased: boolean;
+};
+
+/** Aviso do diálogo de exclusão do evento; null quando não há itens pendentes. */
+export function pendingCountText(n: number): string | null {
+  if (n <= 0) return null;
+  return n === 1
+    ? "O 1 item pendente deste evento sai da lista de compras."
+    : `Os ${n} itens pendentes deste evento saem da lista de compras.`;
+}

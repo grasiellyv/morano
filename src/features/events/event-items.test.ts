@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_EVENT_ITEMS, parseEventItems, summarizeEventItemResults } from "./event-items";
+import { MAX_EVENT_ITEMS, parseEventItems, pendingCountText, summarizeEventItemResults } from "./event-items";
 
 const item = (name: string, quantity = 1, unit = "un") => ({ name, quantity, unit, category_id: null });
 
@@ -80,4 +80,10 @@ describe("summarizeEventItemResults", () => {
     expect(msg).toContain("Leite");
     expect(msg).toContain("já estava na lista");
   });
+});
+
+describe("pendingCountText", () => {
+  it("sem pendentes não avisa", () => expect(pendingCountText(0)).toBeNull());
+  it("singular", () => expect(pendingCountText(1)).toBe("O 1 item pendente deste evento sai da lista de compras."));
+  it("plural", () => expect(pendingCountText(3)).toBe("Os 3 itens pendentes deste evento saem da lista de compras."));
 });
