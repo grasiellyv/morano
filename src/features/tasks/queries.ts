@@ -21,8 +21,25 @@ export type OccurrenceWithTask = {
     room_id: string | null;
     rotation_id: string | null;
     status: "active" | "paused" | "archived";
+    description?: string | null;
+    /** "HH:mm:ss" ou null (a qualquer hora). Opcional para compatibilidade com fixtures. */
+    due_time?: string | null;
+    /** Regra de recorrência (1:1 com a tarefa). */
+    routine?: { frequency_type: FrequencyType } | null;
+    /** Subtarefas da tarefa (valem para todas as ocorrências). */
+    checklist?: ChecklistItem[];
   };
+  /** O que foi feito/pulado nesta ocorrência. Sem linha = em aberto. */
+  checklist_states?: ChecklistState[];
 };
+
+export type ChecklistItem = { id: string; title: string; position: number };
+export type ChecklistState = { item_id: string; status: "done" | "skipped" };
+
+export type FrequencyType = "once" | "daily" | "weekly" | "biweekly" | "monthly" | "custom";
+
+const OCC_SELECT =
+  "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, description, priority, is_essential, instructions, room_id, rotation_id, status, due_time, routine:routines(frequency_type), checklist:task_checklist_items(id, title, position)), checklist_states:occurrence_checklist_states(item_id, status)";
 
 
 /**
@@ -77,7 +94,7 @@ export async function getTodayOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
+      OCC_SELECT,
     )
     .eq("home_id", homeId)
     .in("status", ["pending", "completed"])
@@ -111,7 +128,7 @@ export async function getOverdueOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
+      OCC_SELECT,
     )
     .eq("home_id", homeId)
     .eq("status", "pending")
@@ -149,7 +166,7 @@ export async function getUpcomingOccurrences(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
+      OCC_SELECT,
     )
     .eq("home_id", homeId)
     .eq("status", "pending")
@@ -229,7 +246,7 @@ export async function getOccurrencesForWeek(
   const { data, error } = await supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status)",
+      OCC_SELECT,
     )
     .eq("home_id", homeId)
     .gte("scheduled_for", weekStart)
@@ -258,7 +275,7 @@ export async function getHistory(
   let query = supabase
     .from("task_occurrences")
     .select(
-      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status, room:rooms(name))",
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, priority, is_essential, instructions, room_id, rotation_id, status, due_time, routine:routines(frequency_type), room:rooms(name))",
     )
     .eq("home_id", homeId)
     .order("scheduled_for", { ascending: false })
@@ -280,6 +297,8 @@ export async function getHistory(
 export type TaskWithRoutine = {
   id: string;
   title: string;
+  description: string | null;
+  due_time: string | null;
   priority: "baixa" | "media" | "alta";
   is_essential: boolean;
   instructions: string | null;
@@ -342,7 +361,7 @@ export async function getTaskWithRoutine(
   const { data, error } = await supabase
     .from("tasks")
     .select(
-      "id, title, priority, is_essential, instructions, room_id, rotation_id, status, routine:routines(frequency_type, interval_value, interval_unit, weekdays, month_day, start_date, end_date)",
+      "id, title, description, priority, is_essential, instructions, room_id, rotation_id, status, due_time, routine:routines(frequency_type, interval_value, interval_unit, weekdays, month_day, start_date, end_date)",
     )
     .eq("id", taskId)
     .maybeSingle();
@@ -351,3 +370,42 @@ export async function getTaskWithRoutine(
   return data as unknown as TaskWithRoutine;
 }
 
+
+// ── Detalhe de uma ocorrência (tela da tarefa) ────────────────────────────────
+
+export type OccurrenceDetail = OccurrenceWithTask & {
+  task: OccurrenceWithTask["task"] & {
+    description: string | null;
+    room: { name: string } | null;
+    routine: {
+      frequency_type: FrequencyType;
+      interval_value: number | null;
+      interval_unit: "day" | "week" | "month" | null;
+      weekdays: number[] | null;
+      month_day: number | null;
+      start_date: string;
+      end_date: string | null;
+    } | null;
+    checklist: ChecklistItem[];
+  };
+  checklist_states: ChecklistState[];
+};
+
+export async function getOccurrenceDetail(
+  supabase: SupabaseClient,
+  occurrenceId: string,
+): Promise<OccurrenceDetail | null> {
+  const { data, error } = await supabase
+    .from("task_occurrences")
+    .select(
+      "id, task_id, original_date, scheduled_for, status, completed_at, assigned_to, notes, task:tasks(id, title, description, priority, is_essential, instructions, room_id, rotation_id, status, due_time, room:rooms(name), routine:routines(frequency_type, interval_value, interval_unit, weekdays, month_day, start_date, end_date), checklist:task_checklist_items(id, title, position)), checklist_states:occurrence_checklist_states(item_id, status)",
+    )
+    .eq("id", occurrenceId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const detail = data as unknown as OccurrenceDetail;
+  detail.task.checklist = [...(detail.task.checklist ?? [])].sort((a, b) => a.position - b.position);
+  detail.checklist_states = detail.checklist_states ?? [];
+  return detail;
+}

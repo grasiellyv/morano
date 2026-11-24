@@ -3,7 +3,8 @@
 Referência visual: pasta `reference/*.dc.html` (marcação e estilos exatos de cada tela). Este arquivo é a fonte de verdade para tokens, componentes e comportamento. Implemente na stack atual do projeto, sem trocar de framework. **Não remover nenhuma funcionalidade existente**: rotina, compras, manutenção, casa/moradores, ajustes, notificações.
 
 ## Princípios (o app existe para aliviar carga mental)
-- Sensação: calma, quente, leve. Uma família de cor (marrons/âmbar). Nada saturado, sem verde, sem vermelho puro.
+- Sensação: calma, quente, leve. Uma família de cor (marrons/âmbar). Nada saturado, sem vermelho puro. Verde só em dois papéis: "concluído" (`--done-*`) e ações de adicionar/criar (`--add`).
+- Ícones: só lucide-react (ou SVG próprio no mesmo grid 24px, cantos/terminais redondos). Traço único `--icon-stroke: 1.75`, aplicado via CSS a todo `svg.lucide`. Sem emoji na interface — categorias de compras guardam a chave do ícone (ver `src/features/shopping/category-icon.tsx`).
 - Hierarquia por escala e peso: no máximo um texto grande e fino por tela; o resto pequeno e quieto.
 - Estado ativo por luminosidade (escuro sobre claro / claro sobre escuro), não por cor saturada.
 - Linguagem de cuidado: "Faltam 4 coisas leves para hoje", nunca "4 pendentes".
@@ -92,3 +93,23 @@ Tela cheia, sem nav, botão fechar. Campos: Tipo (4 tiles: Aniversário, Festa, 
 
 ## Prompt sugerido para o Claude Code
 "Leia DESIGN.md e abra os arquivos em reference/ (são HTML estáticos; use-os como referência de marcação e estilo, não os copie cegamente). Implemente o novo design da tela Início primeiro, usando tokens de tema (claro/escuro) e a fonte DM Sans. Mantenha toda a lógica e funcionalidades existentes. Depois crie a tela Rotina com as visões Tarefas e Calendário e o formulário Novo compromisso. Mostre o que mudou a cada etapa."
+
+## Ações de adicionar/criar
+Todo botão que acrescenta algo (Adicionar, Criar, Nova lista, FAB "+") usa o token `--add` (#3B6B2A) com texto `--add-foreground` (#FFF) — contraste 6.3:1 (AA). Hover `--add-hover` (#305A22). Para link de texto verde, `--add-ink` (#2F5A21, 7.6:1 sobre card). No código: `<Button variant="add">`, `IconButton add`, ou classes `bg-add text-add-foreground hover:bg-add-hover`. Botões de "Salvar" em edição continuam escuros.
+
+## Seção de detalhes expansível (formulários)
+Campos opcionais ficam numa seção própria (card `bg-secondary/50`, borda): cabeçalho com ícone, título 14/600, resumo 12 mute do que já foi escolhido, e ação "Expandir/Minimizar" com chevron. Abre sozinha quando a pessoa começa a digitar o campo principal; se ela minimizar, não reabre até o próximo item. Escolhas únicas viram chips (`role="radio"`), selecionado = escuro sobre claro.
+
+## Card "Olá" do Início (tom por período do dia)
+O card escuro do topo muda de gradiente conforme a hora no fuso da casa (`getHeroPeriod` em `src/lib/day-period`): manhã 5h–12h `--hero-morning-*` (#6E4529→#4E321F, mais claro), tarde 12h–18h `--hero-afternoon-*` (#4B3527→#2B1E16, base), noite 18h–5h `--hero-night-*` (#2C2120→#140E0C, mais profundo). Texto creme #FBEFE3 ≥ 7.3:1 e creme 85% ≥ 5.8:1 em todos os tons. O ícone do chip "Olá" acompanha: sol / sol médio / lua. Conteúdo: "Olá, nome" + status da casa (Organizada / Pede atenção), "Resumo da casa" com 3 números (Tarefas, Compras, Cuidados — cada um é link) e barra de progresso do dia. A tira semanal e a frase "Faltam N coisas leves" saíram.
+
+## Tela Casa (hub da residência)
+Estrutura: título "Casa" + engrenagem (configurações) · nome da casa e "N moradores · tipo" (sem foto) · **Quem faz parte** (avatar com inicial, nome, papel, selo Ativo/Ausente; "+ Convidar morador" em verde só para proprietário/admin) · **Organização da casa**, grade 2×2 de atalhos: Moradores (contas e permissões), Animais (cuidados e necessidades), Produtos (itens recorrentes), Histórico (atividades da casa) · **Sobre a casa**: tipo/posse/composição, Editar dados, Cômodos e Tarefas da rotina. Subtelas (`/casa/animais`, `/casa/produtos`, `/casa/historico`) usam PageHeader com "Voltar", cartões `--card` com sombra, estados vazios com ícone e frase de cuidado.
+
+## Conta × Casa (um lugar para cada coisa)
+- **Minha conta** (`/perfil`) = tudo que é da PESSOA: nome, e-mail, modo ausência, senha, sair. Único ponto de entrada: o botão de avatar (inicial) no cabeçalho do Início e da Casa (`AccountButton`), e "Minha conta" no menu lateral do desktop. Não existe engrenagem; `/configuracoes` só redireciona para `/perfil`.
+- **Casa** (aba) = tudo que é da CASA: dados da residência, moradores e permissões, cômodos, animais, produtos, histórico. Nada pessoal mora lá e nada da casa mora em "Minha conta" (sem links cruzados duplicados).
+- Regra para novas telas: se vale só para mim → Minha conta; se vale para todos os moradores → Casa.
+
+## Compras: lista compartilhada
+Cabeçalho: eyebrow "COMPRAS · missão" + "Lista da casa" + compartilhar; "Atualizada há N min" + iniciais dos moradores. Link público `/lista/<token>`: só visualização, sem login, atualiza a cada 20 s, pode ser desativado (apaga o token). Itens nunca duplicam: adicionar um produto já pendente soma a quantidade (mesma unidade) ou avisa (unidade diferente), via função atômica `add_shopping_item`. "Recuperar do histórico" reaproveita itens de compras finalizadas.

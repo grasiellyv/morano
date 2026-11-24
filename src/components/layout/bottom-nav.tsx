@@ -44,7 +44,7 @@ export function BottomNav() {
                 fontWeight: 500,
               }}
             >
-              <Icon aria-hidden size={19} strokeWidth={1.7} />
+              <Icon aria-hidden size={19} strokeWidth={1.75} />
               <span>{label}</span>
             </Link>
           );
@@ -63,7 +63,7 @@ export function BottomNav() {
               color: "var(--foreground)",
             }}
           >
-            <Icon aria-hidden size={19} strokeWidth={1.7} />
+            <Icon aria-hidden size={19} strokeWidth={1.75} />
           </Link>
         );
       })}

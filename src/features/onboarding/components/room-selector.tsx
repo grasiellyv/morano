@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { cn } from "@/lib/utils";
+import { Plus, X } from "lucide-react";
 import { ROOM_TYPES } from "@/features/onboarding/catalog";
 import type { RoomType } from "@/features/onboarding/catalog";
 import type { Room } from "@/features/onboarding/room-defaults";
@@ -123,8 +124,9 @@ export function RoomSelector({ defaultRooms, onRoomsChange }: RoomSelectorProps)
           <button
             type="button"
             onClick={addCustomRoom}
-            className="border-border bg-background text-foreground hover:bg-muted rounded-md border px-3 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-1.5 rounded-md bg-add px-3 py-2 text-sm font-semibold text-add-foreground hover:bg-add-hover"
           >
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
             Adicionar
           </button>
         </div>
@@ -154,9 +156,9 @@ export function RoomSelector({ defaultRooms, onRoomsChange }: RoomSelectorProps)
                   type="button"
                   onClick={() => applyRooms(rooms.filter((_, idx) => idx !== i))}
                   aria-label={`Remover ${room.name}`}
-                  className="text-muted-foreground hover:text-destructive ml-2 text-base leading-none"
+                  className="text-muted-foreground hover:text-destructive ml-2 inline-flex"
                 >
-                  ×
+                  <X size={16} aria-hidden />
                 </button>
               </li>
             ))}

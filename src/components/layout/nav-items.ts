@@ -1,7 +1,7 @@
 import {
   CalendarCheck,
   House,
-  Settings,
+  UserRound,
   ShoppingBasket,
   Sofa,
   Wrench,
@@ -22,12 +22,13 @@ export const PRIMARY_NAV: readonly NavItem[] = [
   { href: "/casa", label: "Casa", icon: Sofa },
 ];
 
-export const SETTINGS_NAV: {
-  href: "/configuracoes";
-  label: "Configurações";
+/** Conta da pessoa (antes: Configurações + Perfil, páginas separadas). */
+export const ACCOUNT_NAV: {
+  href: "/perfil";
+  label: "Minha conta";
   icon: LucideIcon;
 } = {
-  href: "/configuracoes",
-  label: "Configurações",
-  icon: Settings,
+  href: "/perfil",
+  label: "Minha conta",
+  icon: UserRound,
 };

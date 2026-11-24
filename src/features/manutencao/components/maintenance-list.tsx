@@ -39,7 +39,7 @@ export function MaintenanceList({ items, rooms }: Props) {
       <CelebrationOverlay
         show={celebrationItemId !== null}
         onDismiss={() => setCelebrationItemId(null)}
-        title="Item concluído! 🎉"
+        title="Item concluído!"
         message="Registrado no histórico."
       />
 

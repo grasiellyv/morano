@@ -1,145 +1,158 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Plus } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { parseISO } from "date-fns";
+import { addDaysStr } from "@/lib/dates";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
-import type { FormState } from "@/features/auth/form-state";
+import { initialFormState, type FormState } from "@/features/auth/form-state";
+import { undoComplete } from "@/features/tasks/actions";
 import type { Event } from "@/features/events/queries";
 import { TaskOccurrenceRow } from "@/features/tasks/components/task-occurrence-row";
 import { TaskForm } from "@/features/tasks/components/task-form";
-import { Button } from "@/components/ui/button";
-import { DailyProgressBar, calcProgress } from "@/features/tasks/components/daily-progress-bar";
+import { calcProgress } from "@/features/tasks/components/daily-progress-bar";
 import { CelebrationOverlay } from "@/features/tasks/components/celebration-overlay";
+import { CompleteCircleButton } from "@/features/tasks/components/complete-circle-button";
 import { EventChip } from "@/features/events/components/event-chip";
 import type { RotationInfo, TaskRotation } from "@/features/tasks/queries-rotations";
 import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotations-dialog";
 import { EventForm } from "@/features/events/components/event-form";
 import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
+import {
+  RotinaHeader,
+  RotinaTabs,
+  IconButton,
+  PlusIcon,
+  FilterIcon,
+} from "@/features/tasks/components/rotina-chrome";
+import {
+  PERIOD_LABEL,
+  PERIOD_ORDER,
+  WEEKDAY_INITIAL,
+  WEEKDAY_SHORT,
+  firstName,
+  formatDayHeading,
+  formatTime,
+  formatWeekRange,
+  periodOf,
+  summarizeWeek,
+  groupWeekByCategory,
+  type WeekTaskRow,
+  timeSortKey,
+  type DayPeriod,
+  type WeekSummary,
+} from "@/features/tasks/rotina-format";
 
-const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
-const MONTH_ABBR = [
-  "jan", "fev", "mar", "abr", "mai", "jun",
-  "jul", "ago", "set", "out", "nov", "dez",
-] as const;
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
-function formatSelectedDate(dateStr: string): string {
-  const d = parseISO(dateStr);
-  return `${DAY_ABBR[d.getDay()]}, ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
-}
+export type RotinaFilters = {
+  /** null = todos · "mine" · "shared" (sem responsável) · id do morador */
+  member: string | null;
+  /** id do cômodo/categoria */
+  room: string | null;
+  essential: boolean;
+};
 
-function formatUpcomingDate(dateStr: string, currentDate: string): string {
-  const d = new Date(currentDate + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + 1);
-  const tomorrow = d.toISOString().slice(0, 10);
-  if (dateStr === tomorrow) return "Amanhã";
-  const parsed = parseISO(dateStr);
-  return `${DAY_ABBR[parsed.getDay()]}, ${parsed.getDate()} ${MONTH_ABBR[parsed.getMonth()]}`;
-}
-
-function formatNextEventDate(event: Event, currentDate: string): string {
-  const a = new Date(currentDate + "T00:00:00Z").getTime();
-  const b = new Date(event.start_date + "T00:00:00Z").getTime();
-  const diff = Math.round((b - a) / 86_400_000);
-  const d = parseISO(event.start_date);
-  const dateStr = `${DAY_ABBR[d.getDay()]}, ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
-  const timeStr = event.start_time ? ` · ${event.start_time.slice(0, 5).replace(":", "h").replace(/h00$/, "h")}` : "";
-  const daysStr = diff === 1 ? " · amanhã" : diff > 1 ? ` · em ${diff} dias` : "";
-  return `${dateStr}${timeStr}${daysStr}`;
-}
-
-// ── Shared avatar helpers ─────────────────────────────────────────────────────
-
-const AVATAR_PALETTES = [
-  { bg: "#EBD5BE", text: "#6B3A17" },
-  { bg: "#F3CFCF", text: "#8A2F3A" },
-  { bg: "#D5DEEA", text: "#2C4A6E" },
-  { bg: "#F5E4D2", text: "#7A5030" },
-  { bg: "#E0EADB", text: "#2C5633" },
-];
-
-function memberColor(id: string) {
-  let h = 5381;
-  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) & 0xffff;
-  return AVATAR_PALETTES[Math.abs(h) % AVATAR_PALETTES.length] ?? AVATAR_PALETTES[0]!;
-}
-
-function MiniAvatar({ id, name, size }: { id: string; name: string | null; size: number }) {
-  const palette = memberColor(id);
-  const initials = name
-    ? (() => { const p = name.trim().split(/\s+/); return p.length >= 2 ? ((p[0]?.[0] ?? "") + (p[p.length - 1]?.[0] ?? "")).toUpperCase() : p[0]?.slice(0, 2).toUpperCase() ?? "?"; })()
-    : "?";
-  return (
-    <div
-      style={{
-        width: size, height: size, borderRadius: size / 2,
-        background: palette.bg, color: palette.text,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 600, fontSize: Math.round(size * 0.44), flexShrink: 0,
-      }}
-    >
-      {initials}
-    </div>
-  );
-}
+type Member = { id: string; name: string | null };
 
 type Props = {
+  view: "dia" | "semana";
+  /** Ocorrências (pendentes e concluídas) do dia aberto. */
   today: OccurrenceWithTask[];
+  /** Pendências de dias anteriores (só quando o dia aberto é hoje). */
   overdue?: OccurrenceWithTask[];
-  upcoming?: OccurrenceWithTask[];
+  /** Todas as ocorrências da semana Seg–Dom do dia aberto. */
+  week: OccurrenceWithTask[];
+  weekDates: string[];
   currentDate: string;
   selectedDate: string;
   createTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
   rooms: Array<{ id: string; name: string }>;
-  weekNav: React.ReactNode;
   absenceBanner?: React.ReactNode;
+  /** Eventos da semana. */
   events?: Event[];
-  nextEvent?: Event | null;
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
-  filterEssencial?: boolean;
+  initialFilters?: RotinaFilters;
+  initialCreate?: "tarefa" | "evento" | null;
   userId?: string;
   rotationInfoMap?: Record<string, RotationInfo>;
   rotations?: TaskRotation[];
-  homeMembers?: { id: string; name: string | null }[];
+  homeMembers?: Member[];
   updateTaskAction?: (_: FormState, fd: FormData) => Promise<FormState>;
 };
 
+const NO_FILTERS: RotinaFilters = { member: null, room: null, essential: false };
+
+function eventCovers(e: Event, date: string) {
+  return e.start_date <= date && (e.end_date ?? e.start_date) >= date;
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
+
 export function TaskList({
+  view,
   today,
   overdue = [],
-  upcoming = [],
+  week,
+  weekDates,
   currentDate,
   selectedDate,
   createTaskAction,
   rooms,
-  weekNav,
   absenceBanner,
   events = [],
-  nextEvent,
   createEventAction,
   updateEventAction,
   deleteEventAction,
-  filterEssencial = false,
+  initialFilters = NO_FILTERS,
+  initialCreate = null,
   userId,
   rotationInfoMap,
   rotations,
-  homeMembers,
+  homeMembers = [],
   updateTaskAction,
 }: Props) {
-  const [showCreate, setShowCreate] = useState(false);
-  const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
-  const [filterMemberId, setFilterMemberId] = useState<string | "mine" | null>(null);
+  const [creating, setCreating] = useState<"tarefa" | "evento" | null>(initialCreate);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<RotinaFilters>(initialFilters);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [showManageRotations, setShowManageRotations] = useState(false);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [showManageRotations, setShowManageRotations] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [justDone, setJustDone] = useState<{ id: string; title: string } | null>(null);
+  const clearJustDone = useCallback(() => setJustDone(null), []);
+
+  // ── URL ────────────────────────────────────────────────────────────────────
+  const buildHref = useCallback(
+    (next: { view: "dia" | "semana"; date: string }) => {
+      const sp = new URLSearchParams();
+      if (next.view === "semana") sp.set("view", "semana");
+      if (next.date !== currentDate) sp.set("date", next.date);
+      if (filters.member) sp.set("quem", filters.member);
+      if (filters.room) sp.set("cat", filters.room);
+      if (filters.essential) sp.set("essenciais", "1");
+      const qs = sp.toString();
+      return qs ? `/rotina?${qs}` : "/rotina";
+    },
+    [currentDate, filters],
+  );
+
+  // Filtros refletidos na URL sem nova ida ao servidor (Next sincroniza replaceState).
+  useEffect(() => {
+    const href = buildHref({ view, date: selectedDate });
+    if (window.location.pathname + window.location.search !== href) {
+      window.history.replaceState(null, "", href);
+    }
+  }, [buildHref, view, selectedDate]);
+
+  // ── Celebração quando o dia fecha ─────────────────────────────────────────
   const prevDone = useRef<number | null>(null);
   const prevTotal = useRef<number>(0);
   const hasMounted = useRef(false);
-
   const progress = calcProgress(today);
 
   useEffect(() => {
@@ -159,55 +172,59 @@ export function TaskList({
 
   const handleCelebrateDismiss = useCallback(() => setCelebrate(false), []);
 
-  const byEssential = (occs: OccurrenceWithTask[]) =>
-    filterEssencial ? occs.filter((o) => o.task.is_essential) : occs;
-  const byRoom = (occs: OccurrenceWithTask[]) =>
-    filterRoomId ? occs.filter((o) => o.task.room_id === filterRoomId) : occs;
-  const byMember = (occs: OccurrenceWithTask[]) => {
-    if (!filterMemberId) return occs;
-    if (filterMemberId === "mine") return occs.filter((o) => o.assigned_to === userId);
-    return occs.filter((o) => o.assigned_to === filterMemberId);
+  // ── Filtros ───────────────────────────────────────────────────────────────
+  const applyFilters = useCallback(
+    (occs: OccurrenceWithTask[]) =>
+      occs.filter((o) => {
+        if (filters.essential && !o.task.is_essential) return false;
+        if (filters.room && o.task.room_id !== filters.room) return false;
+        if (filters.member === "mine") return o.assigned_to === userId;
+        if (filters.member === "shared") return o.assigned_to === null;
+        if (filters.member) return o.assigned_to === filters.member;
+        return true;
+      }),
+    [filters, userId],
+  );
+
+  const activeFilterCount =
+    (filters.member ? 1 : 0) + (filters.room ? 1 : 0) + (filters.essential ? 1 : 0);
+
+  const displayToday = applyFilters(today);
+  const displayOverdue = applyFilters(overdue);
+  const displayWeek = applyFilters(week);
+  const summary = useMemo(
+    () => summarizeWeek(displayWeek, weekDates, currentDate),
+    [displayWeek, weekDates, currentDate],
+  );
+
+  const dayEvents = events.filter((e) => eventCovers(e, selectedDate));
+
+  // ── Navegação ─────────────────────────────────────────────────────────────
+  const isToday = selectedDate === currentDate;
+  const sel = parseISO(selectedDate);
+  const tabHrefs = {
+    dia: buildHref({ view: "dia", date: view === "dia" ? currentDate : selectedDate }),
+    semana: buildHref({ view: "semana", date: selectedDate }),
+    calendario: "/rotina/calendario",
   };
+  const dayLabel = view === "dia" && !isToday ? `${WEEKDAY_SHORT[sel.getDay()]}, ${sel.getDate()}` : "Hoje";
 
-  const displayToday = byMember(byRoom(byEssential(today)));
-  const displayOverdue = byMember(byRoom(byEssential(overdue)));
-  const displayUpcoming = byMember(byRoom(byEssential(upcoming)));
-
-  // Member filter progress counts (from today only, pre-room-filter)
-  const memberScopedToday = byMember(byEssential(today));
-  const memberTotal = memberScopedToday.length;
-  const memberDone = memberScopedToday.filter((o) => o.status !== "pending").length;
-  const memberPct = memberTotal > 0 ? Math.round((memberDone / memberTotal) * 100) : 0;
-
-  const todayPending = displayToday.filter((o) => o.status === "pending");
-  const todayDone = displayToday.filter((o) => o.status !== "pending");
-
-  const upcomingByDate = displayUpcoming.reduce<Map<string, typeof displayUpcoming>>((acc, o) => {
-    const existing = acc.get(o.scheduled_for) ?? [];
-    existing.push(o);
-    acc.set(o.scheduled_for, existing);
-    return acc;
-  }, new Map());
-
-  const dateParam = selectedDate !== currentDate ? `date=${selectedDate}&` : "";
-  const filterToggleHref = filterEssencial
-    ? selectedDate !== currentDate ? `?date=${selectedDate}` : "/rotina"
-    : `?${dateParam}filter=essenciais`;
-
+  // ── Helpers de render ─────────────────────────────────────────────────────
   function renderOccurrence(o: OccurrenceWithTask) {
     return (
-      <div key={o.id}>
+      <li key={o.id}>
         <TaskOccurrenceRow
           occurrence={o}
           today={currentDate}
           userId={userId}
           rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
           onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
+          onCompleted={(done) => setJustDone({ id: done.id, title: done.task.title })}
           rooms={rooms}
           homeMembers={homeMembers}
         />
         {editingTaskId === o.task.id && updateTaskAction ? (
-          <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="mt-2 rounded-2xl border border-border bg-card p-5">
             <h3 className="mb-4 text-sm font-semibold">Editar tarefa</h3>
             <TaskEditPanel
               task={o.task}
@@ -218,435 +235,153 @@ export function TaskList({
             />
           </div>
         ) : null}
-      </div>
+      </li>
     );
   }
 
-  return (
+  function renderEvent(e: Event) {
+    return (
+      <li key={`ev-${e.id}`}>
+        <button
+          type="button"
+          className="w-full text-left"
+          aria-expanded={editingEventId === e.id}
+          onClick={() => setEditingEventId((prev) => (prev === e.id ? null : e.id))}
+        >
+          <EventChip event={e} />
+        </button>
+        {editingEventId === e.id ? (
+          <div className="mt-2 rounded-2xl border border-border bg-card p-5">
+            <h3 className="mb-4 text-sm font-semibold">Editar compromisso</h3>
+            <EventForm
+              mode="edit"
+              initialValues={e}
+              updateAction={updateEventAction}
+              deleteAction={deleteEventAction}
+              onSuccess={() => setEditingEventId(null)}
+            />
+          </div>
+        ) : null}
+      </li>
+    );
+  }
+
+  // ── Cabeçalho, alternador, criação e filtros (comuns às duas visões) ─────
+  const chrome = (
     <>
-      {/* Page header */}
-      <header className="flex items-center justify-between pb-5">
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 400,
-            letterSpacing: "-0.4px",
-            color: "var(--foreground)",
-            lineHeight: 1.2,
-          }}
-        >
-          Rotina
-        </h1>
-        <div className="flex items-center gap-2">
-          {rotations != null ? (
-            <button
-              type="button"
-              onClick={() => setShowManageRotations(true)}
-              className="flex items-center justify-center rounded-full border border-border"
-              style={{
-                width: 40,
-                height: 40,
-                background: "var(--card)",
-                color: "var(--muted-foreground)",
-                fontSize: 13,
-              }}
-              title="Rodízios"
+      <RotinaHeader
+        actions={
+          <>
+            <IconButton
+              label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} ativos)` : "Filtrar"}
+              onClick={() => setFiltersOpen((v) => !v)}
+              pressed={filtersOpen}
+              badge={filtersOpen ? 0 : activeFilterCount}
             >
-              ↺
-            </button>
-          ) : null}
-          <Link
-            href={filterToggleHref}
-            className="flex items-center justify-center rounded-full border border-border"
-            style={{
-              width: 40,
-              height: 40,
-              background: filterEssencial ? "var(--nav-active)" : "var(--card)",
-              color: filterEssencial ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-            }}
-            title={filterEssencial ? "Ver todas" : "Essenciais"}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setShowCreate((v) => !v)}
-            className="flex items-center justify-center rounded-full"
-            style={{
-              width: 40,
-              height: 40,
-              background: showCreate ? "var(--muted)" : "var(--nav-active)",
-              color: showCreate ? "var(--muted-foreground)" : "var(--nav-active-ink)",
-              fontSize: 22,
-              fontWeight: 300,
-              lineHeight: 1,
-            }}
-            title={showCreate ? "Cancelar" : "Nova tarefa"}
-          >
-            {showCreate ? "×" : "+"}
-          </button>
-        </div>
-      </header>
+              <FilterIcon />
+            </IconButton>
+            <div style={{ position: "relative" }}>
+              <IconButton
+                label={creating ? "Fechar criação" : "Criar tarefa ou compromisso"}
+                dark={creating !== null}
+                add={creating === null}
+                onClick={() => {
+                  if (creating) { setCreating(null); return; }
+                  setCreateMenuOpen((v) => !v);
+                }}
+              >
+                <span style={{ display: "flex", transform: creating ? "rotate(45deg)" : "none", transition: "transform 160ms ease" }}>
+                  <PlusIcon />
+                </span>
+              </IconButton>
+              {createMenuOpen ? (
+                <CreateMenu
+                  onClose={() => setCreateMenuOpen(false)}
+                  onPick={(k) => { setCreating(k); setCreateMenuOpen(false); setFiltersOpen(false); }}
+                  canCreateEvent={!!createEventAction}
+                />
+              ) : null}
+            </div>
+          </>
+        }
+      />
 
-      {/* Segmented control */}
-      <div
-        style={{
-          height: 42,
-          borderRadius: 12,
-          background: "var(--secondary)",
-          display: "flex",
-          padding: 3,
-          gap: 3,
-          marginBottom: 20,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            borderRadius: 9,
-            background: "var(--card)",
-            boxShadow: "var(--shadow)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 13.5,
-            fontWeight: 500,
-            color: "var(--foreground)",
-          }}
-        >
-          Tarefas
-        </div>
-        <Link
-          href="/rotina/calendario"
-          style={{
-            flex: 1,
-            borderRadius: 9,
-            background: "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 5,
-            fontSize: 13.5,
-            fontWeight: 500,
-            color: "var(--foreground)",
-            opacity: 0.5,
-            textDecoration: "none",
-          }}
-        >
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="4" y="5" width="16" height="15" rx="3"/>
-            <path d="M4 10h16M9 3v4M15 3v4"/>
-          </svg>
-          Calendário
-        </Link>
-      </div>
+      <RotinaTabs active={view} hrefs={tabHrefs} dayLabel={dayLabel} />
 
-      {/* Create task form */}
-      {showCreate ? (
-        <div className="mb-8 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold">Nova tarefa</h2>
+      {creating === "tarefa" ? (
+        <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label="Nova tarefa">
+          <h2 className="mb-4" style={{ fontSize: 15, fontWeight: 600 }}>Nova tarefa</h2>
           <TaskForm
             mode="create"
             rooms={rooms}
             formAction={createTaskAction}
             initialValues={{ start_date: selectedDate }}
-            onSuccess={() => setShowCreate(false)}
+            onSuccess={() => setCreating(null)}
             rotations={rotations}
             homeMembers={homeMembers}
           />
-        </div>
+        </section>
       ) : null}
 
-      <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
+      {creating === "evento" && createEventAction ? (
+        <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label="Novo compromisso">
+          <h2 className="mb-4" style={{ fontSize: 15, fontWeight: 600 }}>Novo compromisso</h2>
+          <EventForm
+            mode="create"
+            createAction={createEventAction}
+            initialValues={{ start_date: selectedDate }}
+            onSuccess={() => setCreating(null)}
+          />
+        </section>
+      ) : null}
+
+      {filtersOpen ? (
+        <FilterPanel
+          filters={filters}
+          onChange={setFilters}
+          members={homeMembers}
+          userId={userId}
+          rooms={rooms}
+        />
+      ) : activeFilterCount > 0 ? (
+        <ActiveFilters
+          filters={filters}
+          members={homeMembers}
+          rooms={rooms}
+          onClear={() => setFilters(NO_FILTERS)}
+          onOpen={() => setFiltersOpen(true)}
+        />
+      ) : null}
 
       {absenceBanner}
+    </>
+  );
 
-      {weekNav}
-
-      {/* Next event banner */}
-      {nextEvent ? (
-        <Link
-          href="/rotina/calendario"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            height: 56,
-            borderRadius: 14,
-            background: "var(--warn-bg)",
-            color: "var(--warn-ink)",
-            padding: "0 14px",
-            marginTop: 12,
-            marginBottom: 4,
-            textDecoration: "none",
-          }}
+  const footer = (
+    <nav aria-label="Mais da rotina" className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2" style={{ fontSize: 13 }}>
+      <Link href="/rotina/historico" className="text-muted-foreground underline-offset-4 hover:underline">
+        Histórico de execução
+      </Link>
+      <Link href="/rotina/tarefas" className="text-muted-foreground underline-offset-4 hover:underline">
+        Todas as tarefas
+      </Link>
+      {rotations != null ? (
+        <button
+          type="button"
+          onClick={() => setShowManageRotations(true)}
+          className="text-muted-foreground underline-offset-4 hover:underline"
         >
-          <div
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "var(--warn-icon)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="3"/>
-              <path d="M16 2v4M8 2v4M3 10h18"/>
-            </svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {nextEvent.title}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              {formatNextEventDate(nextEvent, currentDate)}
-            </div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.6 }}>
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
-        </Link>
+          Rodízios
+        </button>
       ) : null}
+    </nav>
+  );
 
-      {/* Member filter chips */}
-      {homeMembers && homeMembers.length >= 2 ? (
-        <div style={{ marginTop: 16, marginBottom: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => setFilterMemberId(null)}
-              style={{
-                height: 32, borderRadius: 10, padding: "0 12px",
-                fontSize: 13, fontWeight: filterMemberId === null ? 500 : 400,
-                border: `1px solid ${filterMemberId === null ? "transparent" : "var(--border)"}`,
-                background: filterMemberId === null ? "var(--nav-active)" : "var(--card)",
-                color: filterMemberId === null ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-                cursor: "pointer",
-              }}
-            >
-              Todas
-            </button>
-            {userId ? (
-              <button
-                type="button"
-                onClick={() => setFilterMemberId(filterMemberId === "mine" ? null : "mine")}
-                style={{
-                  height: 32, borderRadius: 10, padding: "0 12px",
-                  fontSize: 13, fontWeight: filterMemberId === "mine" ? 500 : 400,
-                  border: `1px solid ${filterMemberId === "mine" ? "transparent" : "var(--border)"}`,
-                  background: filterMemberId === "mine" ? "var(--nav-active)" : "var(--card)",
-                  color: filterMemberId === "mine" ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-                  cursor: "pointer",
-                }}
-              >
-                Minhas
-              </button>
-            ) : null}
-            {homeMembers.filter((m) => m.id !== userId).map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setFilterMemberId(filterMemberId === m.id ? null : m.id)}
-                style={{
-                  height: 32, borderRadius: 10, padding: "0 10px 0 6px",
-                  display: "flex", alignItems: "center", gap: 5,
-                  fontSize: 13, fontWeight: filterMemberId === m.id ? 500 : 400,
-                  border: `1px solid ${filterMemberId === m.id ? "transparent" : "var(--border)"}`,
-                  background: filterMemberId === m.id ? "var(--nav-active)" : "var(--card)",
-                  color: filterMemberId === m.id ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-                  cursor: "pointer",
-                }}
-              >
-                <MiniAvatar id={m.id} name={m.name} size={22} />
-                <span>{m.name ? m.name.trim().split(/\s+/)[0] : "?"}</span>
-              </button>
-            ))}
-            {memberTotal > 0 ? (
-              <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
-                {memberDone} de {memberTotal}
-              </span>
-            ) : null}
-          </div>
-          {memberTotal > 0 ? (
-            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 2, background: "#D97706", width: `${memberPct}%`, transition: "width 0.3s" }} />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* Room filter chips — only when there are 2+ rooms with tasks */}
-      {rooms.length > 1 ? (() => {
-        const allOccs = [...today, ...overdue, ...upcoming];
-        const roomsWithTasks = rooms.filter((r) => allOccs.some((o) => o.task.room_id === r.id));
-        if (roomsWithTasks.length < 2) return null;
-        return (
-          <div style={{ marginTop: 12, marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 6 }}>
-            <button
-              type="button"
-              onClick={() => setFilterRoomId(null)}
-              style={{
-                height: 32, borderRadius: 10, padding: "0 12px",
-                fontSize: 12, fontWeight: filterRoomId === null ? 500 : 400,
-                border: `1px solid ${filterRoomId === null ? "transparent" : "var(--border)"}`,
-                background: filterRoomId === null ? "var(--nav-active)" : "var(--card)",
-                color: filterRoomId === null ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-                cursor: "pointer",
-              }}
-            >
-              Todos
-            </button>
-            {roomsWithTasks.map((room) => (
-              <button
-                key={room.id}
-                type="button"
-                onClick={() => setFilterRoomId(filterRoomId === room.id ? null : room.id)}
-                style={{
-                  height: 32, borderRadius: 10, padding: "0 12px",
-                  fontSize: 12, fontWeight: filterRoomId === room.id ? 500 : 400,
-                  border: `1px solid ${filterRoomId === room.id ? "transparent" : "var(--border)"}`,
-                  background: filterRoomId === room.id ? "var(--nav-active)" : "var(--card)",
-                  color: filterRoomId === room.id ? "var(--nav-active-ink)" : "var(--muted-foreground)",
-                  cursor: "pointer",
-                }}
-              >
-                {room.name}
-              </button>
-            ))}
-          </div>
-        );
-      })() : null}
-
-      {(events.length > 0 || showCreateEvent || createEventAction) ? (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold">Eventos</h2>
-            {createEventAction ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => { setShowCreateEvent((v) => !v); setEditingEventId(null); }}
-              >
-                {showCreateEvent ? "Cancelar" : "Novo evento"}
-              </Button>
-            ) : null}
-          </div>
-
-          {showCreateEvent && createEventAction ? (
-            <div className="mb-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold">Novo evento</h3>
-              <EventForm
-                mode="create"
-                createAction={createEventAction}
-                initialValues={{ start_date: selectedDate }}
-                onSuccess={() => setShowCreateEvent(false)}
-              />
-            </div>
-          ) : null}
-
-          {events.length > 0 ? (
-            <div className="space-y-2">
-              {events.map((event) => (
-                <div key={event.id}>
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => {
-                      setShowCreateEvent(false);
-                      setEditingEventId((prev) =>
-                        prev === event.id ? null : event.id,
-                      );
-                    }}
-                  >
-                    <EventChip event={event} />
-                  </button>
-                  {editingEventId === event.id ? (
-                    <div className="mt-2 rounded-xl border border-border bg-card p-5 shadow-sm">
-                      <h3 className="mb-4 text-sm font-semibold">Editar evento</h3>
-                      <EventForm
-                        mode="edit"
-                        initialValues={event}
-                        updateAction={updateEventAction}
-                        deleteAction={deleteEventAction}
-                        onSuccess={() => setEditingEventId(null)}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="space-y-8">
-        {/* Atrasadas */}
-        {displayOverdue.length > 0 ? (
-          <section>
-            <h2 className="mb-3 text-base font-semibold text-destructive">
-              Atrasadas ({displayOverdue.length})
-            </h2>
-            <div className="space-y-2">
-              {displayOverdue.map(renderOccurrence)}
-            </div>
-          </section>
-        ) : null}
-
-        {/* Dia selecionado */}
-        <section>
-          <DailyProgressBar occurrences={displayToday} />
-          <h2 className="mb-3 text-base font-semibold">
-            {selectedDate === currentDate ? "Hoje" : formatSelectedDate(selectedDate)} —{" "}
-            {todayPending.length} {todayPending.length === 1 ? "pendente" : "pendentes"}
-            {todayDone.length > 0 ? `, ${todayDone.length} ${todayDone.length === 1 ? "concluída" : "concluídas"}` : ""}
-          </h2>
-          {todayPending.length > 0 ? (
-            <div className="space-y-2">
-              {todayPending.map(renderOccurrence)}
-            </div>
-          ) : displayToday.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {filterEssencial ? "Nenhuma tarefa essencial para este dia." : "Nenhuma tarefa para este dia."}
-            </p>
-          ) : null}
-          {todayDone.length > 0 ? (
-            <details className="mt-4" open={todayPending.length === 0}>
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 select-none">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-xs font-semibold">
-                  {todayDone.length}
-                </span>
-                Concluídas
-                <svg className="ml-auto h-4 w-4 transition-transform [[open]_&]:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </summary>
-              <div className="mt-2 space-y-2 opacity-60">
-                {todayDone.map(renderOccurrence)}
-              </div>
-            </details>
-          ) : null}
-        </section>
-
-        {/* Próximas 7 dias */}
-        {displayUpcoming.length > 0 ? (
-          <section>
-            <h2 className="mb-3 text-base font-semibold">Próximas 7 dias</h2>
-            <div className="space-y-6">
-              {Array.from(upcomingByDate.entries()).map(([date, occs]) => (
-                <div key={date}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {formatUpcomingDate(date, currentDate)}
-                  </p>
-                  <div className="space-y-2">
-                    {occs.map(renderOccurrence)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </div>
-    {rotations != null && homeMembers != null ? (
+  const dialogs = (
+    <>
+      <CelebrationOverlay show={celebrate} onDismiss={handleCelebrateDismiss} />
+      <UndoToast item={justDone} onDone={clearJustDone} />
+      {rotations != null ? (
         <ManageRotationsDialog
           rotations={rotations}
           homeMembers={homeMembers}
@@ -656,6 +391,912 @@ export function TaskList({
       ) : null}
     </>
   );
+
+  // ══ Visão SEMANA ══════════════════════════════════════════════════════════
+  // Uma linha por tarefa, agrupada por categoria (cômodo). Dias viram pontinhos.
+  if (view === "semana") {
+    const weekStart = weekDates[0]!;
+    const weekEnd = weekDates[6]!;
+    const thisWeek = weekDates.includes(currentDate);
+    const categories = groupWeekByCategory(displayWeek, rooms);
+    const firstOpen = categories.find((c) => c.done < c.total)?.key ?? null;
+
+    return (
+      <>
+        {chrome}
+
+        <div className="mb-4 flex items-center gap-2">
+          <h2 style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>{formatWeekRange(weekStart, weekEnd)}</h2>
+          {!thisWeek ? (
+            <Link href={buildHref({ view: "semana", date: currentDate })} style={{ fontSize: 12.5 }} className="text-muted-foreground underline-offset-4 hover:underline">
+              Esta semana
+            </Link>
+          ) : null}
+          <StepLink href={buildHref({ view: "semana", date: addDaysStr(selectedDate, -7) })} label="Semana anterior" dir="prev" />
+          <StepLink href={buildHref({ view: "semana", date: addDaysStr(selectedDate, 7) })} label="Próxima semana" dir="next" />
+        </div>
+
+        <WeekOverview
+          summary={summary}
+          currentDate={currentDate}
+          selectedDate={null}
+          hrefForDay={(d) => buildHref({ view: "dia", date: d })}
+        />
+
+        {categories.length === 0 ? (
+          <div className="mt-4">
+            <EmptyCard>
+              {activeFilterCount > 0 ? "Nenhuma tarefa com esses filtros nesta semana." : "Nada planejado para esta semana."}
+            </EmptyCard>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {categories.map((c) => (
+              <Collapsible
+                key={c.key}
+                storageKey={`rotina:semana:${c.key}`}
+                defaultOpen={c.key === firstOpen}
+                card
+                muted={c.done === c.total}
+                title={c.name}
+                meta={`${c.tasks.length} ${c.tasks.length === 1 ? "tarefa" : "tarefas"} · ${c.done} de ${c.total} feitas`}
+              >
+                <ul className="px-2 pb-2">
+                  {c.tasks.map((t) => (
+                    <WeekTaskRowItem
+                      key={t.taskId}
+                      row={t}
+                      weekDates={weekDates}
+                      currentDate={currentDate}
+                      dayHref={(d) => buildHref({ view: "dia", date: d })}
+                    />
+                  ))}
+                </ul>
+              </Collapsible>
+            ))}
+          </div>
+        )}
+
+        {footer}
+        {dialogs}
+      </>
+    );
+  }
+
+  // ══ Visão DIA ═════════════════════════════════════════════════════════════
+  // Só pendentes ficam nos períodos; concluídas descem para "Concluídas", recolhida.
+  type Item =
+    | { kind: "task"; key: string; o: OccurrenceWithTask }
+    | { kind: "event"; key: string; e: Event };
+
+  const pendingToday = displayToday.filter((o) => o.status === "pending");
+  const doneToday = displayToday.filter((o) => o.status === "completed");
+
+  const groups = new Map<DayPeriod, Item[]>();
+  for (const o of pendingToday) {
+    const p = periodOf(o.task.due_time);
+    const list = groups.get(p) ?? [];
+    list.push({ kind: "task", key: timeSortKey(o.task.due_time) + o.task.title, o });
+    groups.set(p, list);
+  }
+  for (const e of dayEvents) {
+    const p = periodOf(e.start_time);
+    const list = groups.get(p) ?? [];
+    list.push({ kind: "event", key: timeSortKey(e.start_time) + e.title, e });
+    groups.set(p, list);
+  }
+  for (const list of groups.values()) list.sort((a, b) => a.key.localeCompare(b.key));
+
+  const taskCount = displayToday.length;
+  const doneCount = doneToday.length;
+  const pct = taskCount > 0 ? Math.round((doneCount / taskCount) * 100) : 0;
+
+  return (
+    <>
+      {chrome}
+
+      {/* Dia aberto */}
+      <div className="flex items-center gap-1">
+        <h2 style={{ fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}>
+          {formatDayHeading(selectedDate)}
+        </h2>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginRight: 6 }}>
+          {taskCount === 0 ? "Nada planejado" : `${doneCount} de ${taskCount} feitas`}
+        </span>
+        <StepLink href={buildHref({ view: "dia", date: addDaysStr(selectedDate, -1) })} label="Dia anterior" dir="prev" />
+        <StepLink href={buildHref({ view: "dia", date: addDaysStr(selectedDate, 1) })} label="Próximo dia" dir="next" />
+      </div>
+      {taskCount > 0 ? (
+        <div
+          role="progressbar"
+          aria-label="Tarefas do dia feitas"
+          aria-valuenow={doneCount}
+          aria-valuemin={0}
+          aria-valuemax={taskCount}
+          style={{ marginTop: 10, height: 4, borderRadius: 2, background: "var(--secondary)", overflow: "hidden" }}
+        >
+          <div style={{ height: "100%", width: `${pct}%`, background: "#D98A2B", borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.2,1)" }} />
+        </div>
+      ) : null}
+
+      <div className="mt-5 space-y-5">
+        {/* Pendências de dias anteriores: recolhidas, visíveis pela contagem, sem pressão */}
+        {displayOverdue.length > 0 ? (
+          <Collapsible
+            storageKey="rotina:dia:atras"
+            defaultOpen={false}
+            icon={<PeriodIcon kind="atras" />}
+            title="Ficaram para trás"
+            meta={String(displayOverdue.length)}
+            tone="warn"
+          >
+            <ul className="space-y-2 pt-1">{displayOverdue.map(renderOccurrence)}</ul>
+          </Collapsible>
+        ) : null}
+
+        {taskCount === 0 && dayEvents.length === 0 ? (
+          <EmptyCard>
+            {activeFilterCount > 0 ? (
+              <>
+                <p>Nenhuma tarefa com esses filtros neste dia.</p>
+                <button type="button" onClick={() => setFilters(NO_FILTERS)} className="mt-3 font-medium text-foreground underline underline-offset-4">
+                  Limpar filtros
+                </button>
+              </>
+            ) : (
+              <>
+                <p>Nada planejado para este dia.</p>
+                <button type="button" onClick={() => setCreating("tarefa")} className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-lg bg-add px-4 font-semibold text-add-foreground hover:bg-add-hover">
+                  <Plus size={16} aria-hidden />
+                  Criar uma tarefa
+                </button>
+              </>
+            )}
+          </EmptyCard>
+        ) : pendingToday.length === 0 && dayEvents.length === 0 ? (
+          <EmptyCard>
+            <p style={{ color: "var(--foreground)", fontWeight: 500 }}>Tudo feito por hoje.</p>
+            <p className="mt-1">O que foi concluído está logo abaixo.</p>
+          </EmptyCard>
+        ) : (
+          PERIOD_ORDER.filter((p) => groups.has(p)).map((p) => (
+            <section key={p} aria-labelledby={`sec-${p}`}>
+              <PeriodHeading id={`sec-${p}`} icon={p} label={PERIOD_LABEL[p]} />
+              <ul className="space-y-2">
+                {groups.get(p)!.map((it) => (it.kind === "task" ? renderOccurrence(it.o) : renderEvent(it.e)))}
+              </ul>
+            </section>
+          ))
+        )}
+
+        {doneToday.length > 0 ? (
+          <Collapsible
+            storageKey="rotina:dia:concluidas"
+            defaultOpen={false}
+            icon={<CheckDot />}
+            title="Concluídas"
+            meta={String(doneToday.length)}
+          >
+            <ul className="space-y-2 pt-1">{doneToday.map(renderOccurrence)}</ul>
+          </Collapsible>
+        ) : null}
+
+        <Collapsible
+          storageKey="rotina:dia:semana"
+          defaultOpen={false}
+          icon={<WeekIcon />}
+          title="Visão da semana"
+          meta={`${summary.done} de ${summary.planned} feitas`}
+        >
+          <div className="pt-1">
+            <WeekOverview
+              summary={summary}
+              currentDate={currentDate}
+              selectedDate={selectedDate}
+              hrefForDay={(d) => buildHref({ view: "dia", date: d })}
+              weekHref={buildHref({ view: "semana", date: selectedDate })}
+              bare
+            />
+          </div>
+        </Collapsible>
+      </div>
+
+      {footer}
+      {dialogs}
+    </>
+  );
 }
 
+// ── Subcomponentes ────────────────────────────────────────────────────────────
 
+const baseIconProps = {
+  width: 17,
+  height: 17,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.75,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function PeriodIcon({ kind, small = false }: { kind: DayPeriod | "atras"; small?: boolean }) {
+  const iconProps = small ? { ...baseIconProps, width: 12, height: 12 } : baseIconProps;
+  switch (kind) {
+    case "manha":
+      return (
+        <svg {...iconProps}>
+          <path d="M12 2v6M8 5l4-3 4 3M4.9 10.9l1.4 1.4M2 18h2M20 18h2M19.1 10.9l-1.4 1.4M22 22H2M16 18a4 4 0 0 0-8 0" />
+        </svg>
+      );
+    case "tarde":
+      return (
+        <svg {...iconProps}>
+          <path d="M12 8V2M8 5l4 3 4-3M4.9 10.9l1.4 1.4M2 18h2M20 18h2M19.1 10.9l-1.4 1.4M22 22H2M16 18a4 4 0 0 0-8 0" />
+        </svg>
+      );
+    case "noite":
+      return (
+        <svg {...iconProps}>
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+        </svg>
+      );
+    case "atras":
+      return (
+        <svg {...iconProps}>
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+          <path d="M3 3v5h5M12 7v5l3 2" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+  }
+}
+
+function PeriodHeading({ id, icon, label, count }: { id: string; icon: DayPeriod | "atras"; label: string; count?: number }) {
+  return (
+    <h3
+      id={id}
+      className="mb-2 flex items-center gap-2"
+      style={{ fontSize: 14, fontWeight: 600, color: icon === "atras" ? "var(--warn-ink)" : "var(--foreground)" }}
+    >
+      <span style={{ color: icon === "atras" ? "var(--warn-ink)" : "var(--muted-foreground)", display: "flex" }}>
+        <PeriodIcon kind={icon} />
+      </span>
+      {label}
+      {count != null ? (
+        <span style={{ fontWeight: 500, color: "var(--muted-foreground)", fontSize: 12.5 }}>{count}</span>
+      ) : null}
+    </h3>
+  );
+}
+
+function StepLink({ href, label, dir }: { href: string; label: string; dir: "prev" | "next" }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      title={label}
+      className="flex shrink-0 items-center justify-center rounded-full border border-border focus-visible:outline-2 focus-visible:outline-offset-2"
+      style={{ width: 32, height: 32, background: "var(--card)", color: "var(--muted-foreground)" }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d={dir === "prev" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+      </svg>
+    </Link>
+  );
+}
+
+/**
+ * "Visão da semana": sete colunas que enchem de âmbar conforme as tarefas do dia
+ * são concluídas, mais a contagem planejadas / concluídas / pendentes / futuras.
+ */
+function WeekOverview({
+  summary,
+  currentDate,
+  selectedDate,
+  hrefForDay,
+  weekHref,
+  bare = false,
+}: {
+  summary: WeekSummary;
+  currentDate: string;
+  selectedDate: string | null;
+  hrefForDay: (date: string) => string;
+  weekHref?: string;
+  /** Dentro de uma seção recolhível: sem cartão nem título próprios. */
+  bare?: boolean;
+}) {
+  const parts = [
+    `${summary.planned} ${summary.planned === 1 ? "tarefa planejada" : "tarefas planejadas"}`,
+    `${summary.done} ${summary.done === 1 ? "concluída" : "concluídas"}`,
+    `${summary.pending} ${summary.pending === 1 ? "pendente" : "pendentes"}`,
+    `${summary.future} ${summary.future === 1 ? "futura" : "futuras"}`,
+  ];
+
+  return (
+    <section
+      aria-label={bare ? "Progresso da semana" : undefined}
+      aria-labelledby={bare ? undefined : "visao-semana"}
+      className="rounded-2xl border border-border"
+      style={{ background: "var(--card)", padding: bare ? "4px 16px 14px" : "16px 16px 14px" }}
+    >
+      {bare ? null : (
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="visao-semana" style={{ fontSize: 15, fontWeight: 600 }}>Visão da semana</h2>
+        </div>
+      )}
+
+      <ol className="mt-3 grid grid-cols-7 gap-1.5" aria-label="Progresso por dia">
+        {summary.days.map((day) => {
+          const d = parseISO(day.date);
+          const ratio = day.total > 0 ? day.done / day.total : 0;
+          const isTodayCol = day.date === currentDate;
+          const isSel = day.date === selectedDate;
+          const label = `${WEEKDAY_SHORT[d.getDay()]} ${d.getDate()}: ${
+            day.total === 0 ? "nada planejado" : `${day.done} de ${day.total} concluídas`
+          }`;
+          return (
+            <li key={day.date}>
+              <Link
+                href={hrefForDay(day.date)}
+                aria-label={label}
+                aria-current={isSel ? "date" : undefined}
+                title={label}
+                className="flex flex-col items-center gap-1.5 rounded-lg py-1 focus-visible:outline-2 focus-visible:outline-offset-1"
+              >
+                <span
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    maxWidth: 26,
+                    height: 40,
+                    borderRadius: 8,
+                    background: "var(--secondary)",
+                    overflow: "hidden",
+                    opacity: day.total === 0 ? 0.55 : 1,
+                    outline: isSel ? "1.5px solid var(--foreground)" : "none",
+                    outlineOffset: 2,
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: `${Math.round(ratio * 100)}%`,
+                      background: "#D98A2B",
+                      transition: "height 400ms cubic-bezier(.2,.7,.2,1)",
+                    }}
+                  />
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1,
+                    fontWeight: isTodayCol ? 700 : 500,
+                    color: isTodayCol ? "var(--foreground)" : "var(--muted-foreground)",
+                  }}
+                >
+                  {WEEKDAY_INITIAL[d.getDay()]}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 10, lineHeight: 1.5 }}>
+        {parts.join(" · ")}
+      </p>
+      {weekHref ? (
+        <Link href={weekHref} className="mt-2 inline-block font-medium underline underline-offset-4" style={{ fontSize: 12.5 }}>
+          Ver semana por categoria
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Seção recolhível com <details> nativo (teclado e leitor de tela de graça).
+ * Lembra aberto/fechado por `storageKey` no localStorage. A preferência é
+ * aplicada direto no DOM depois da montagem, sem setState (evita hydration mismatch).
+ */
+function Collapsible({
+  storageKey,
+  defaultOpen,
+  title,
+  meta,
+  icon,
+  tone,
+  card = false,
+  muted = false,
+  children,
+}: {
+  storageKey: string;
+  defaultOpen: boolean;
+  title: string;
+  meta?: string;
+  icon?: React.ReactNode;
+  tone?: "warn";
+  card?: boolean;
+  muted?: boolean;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(storageKey);
+      if (v !== null && ref.current) ref.current.open = v === "1";
+    } catch {
+      // localStorage indisponível (modo privado): fica o padrão
+    }
+  }, [storageKey]);
+
+  const color = tone === "warn" ? "var(--warn-ink)" : "var(--foreground)";
+
+  return (
+    <details
+      ref={ref}
+      open={defaultOpen}
+      onToggle={(e) => {
+        try {
+          window.localStorage.setItem(storageKey, (e.currentTarget as HTMLDetailsElement).open ? "1" : "0");
+        } catch {
+          // ignora
+        }
+      }}
+      className={`group ${card ? "rounded-2xl border border-border" : ""}`}
+      style={{ background: card ? "var(--card)" : undefined, opacity: muted ? 0.7 : 1 }}
+    >
+      <summary
+        className="flex cursor-pointer list-none items-center gap-2 rounded-2xl select-none focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+        style={{ minHeight: 44, padding: card ? "0 16px" : "0 2px", color }}
+      >
+        {icon ? (
+          <span style={{ display: "flex", color: tone === "warn" ? "var(--warn-ink)" : "var(--muted-foreground)" }}>{icon}</span>
+        ) : null}
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>
+        {meta ? (
+          <span style={{ fontSize: 12.5, fontWeight: 500, color: "var(--muted-foreground)" }}>{meta}</span>
+        ) : null}
+        <svg
+          width={16}
+          height={16}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+          className="ml-auto transition-transform duration-200 group-open:rotate-180"
+          style={{ color: "var(--muted-foreground)", flexShrink: 0 }}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+function EmptyCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-2xl border border-dashed border-border px-5 py-6 text-center"
+      style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CheckDot() {
+  return (
+    <span
+      style={{
+        width: 17, height: 17, borderRadius: 9, background: "var(--done-bg)", color: "var(--done-ink)", boxShadow: "inset 0 0 0 1.5px var(--done-ring)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    </span>
+  );
+}
+
+function WeekIcon() {
+  return (
+    <svg {...baseIconProps}>
+      <rect x="4" y="5" width="16" height="15" rx="3" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </svg>
+  );
+}
+
+const PERIOD_SHORT: Record<DayPeriod, string> = {
+  manha: "Manhã",
+  tarde: "Tarde",
+  noite: "Noite",
+  livre: "Livre",
+};
+
+/**
+ * Linha da semana: título, período ao lado e 7 pontinhos (Seg–Dom).
+ * Cheio = feito · vazio = planejado · tracinho = não acontece nesse dia · anel = hoje.
+ * Tocar abre os dias da tarefa para concluir ali mesmo.
+ */
+function WeekTaskRowItem({
+  row,
+  weekDates,
+  currentDate,
+  dayHref,
+}: {
+  row: WeekTaskRow;
+  weekDates: string[];
+  currentDate: string;
+  dayHref: (date: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const time = formatTime(row.dueTime);
+  const allDone = row.done === row.total;
+
+  return (
+    <li style={{ borderTop: "1px solid var(--border)" }} className="first:border-t-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 rounded-lg px-2 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+        style={{ minHeight: 48 }}
+      >
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate"
+            style={{
+              fontSize: 13.5,
+              fontWeight: 500,
+              color: allDone ? "var(--muted-foreground)" : "var(--foreground)",
+            }}
+          >
+            {row.title}
+          </span>
+          <span className="flex items-center gap-1" style={{ fontSize: 11.5, color: "var(--muted-foreground)", marginTop: 1 }}>
+            <PeriodIcon kind={row.period} small />
+            {PERIOD_SHORT[row.period]}
+            {time ? ` · ${time}` : ""}
+          </span>
+        </span>
+        <span
+          className="flex shrink-0 items-center gap-[5px]"
+          aria-label={`${row.done} de ${row.total} feitas nesta semana`}
+          role="img"
+        >
+          {weekDates.map((d) => {
+            const o = row.byDate[d];
+            const isTodayDot = d === currentDate;
+            const base: React.CSSProperties = { width: 8, height: 8, borderRadius: 4, flexShrink: 0 };
+            if (!o) {
+              return <span key={d} style={{ ...base, height: 2, borderRadius: 1, background: "var(--border)" }} />;
+            }
+            const done = o.status === "completed";
+            return (
+              <span
+                key={d}
+                style={{
+                  ...base,
+                  background: done ? "var(--done-bg)" : "transparent",
+                  border: done ? "1.5px solid var(--done-ring)" : "1.5px solid var(--muted-foreground)",
+                  boxShadow: isTodayDot ? "0 0 0 2px var(--card), 0 0 0 3.5px var(--foreground)" : "none",
+                  opacity: o.status === "missed" ? 0.45 : 1,
+                }}
+              />
+            );
+          })}
+        </span>
+      </button>
+
+      {open ? (
+        <ul className="flex flex-wrap gap-1.5 px-2 pb-3">
+          {weekDates.map((d) => {
+            const o = row.byDate[d];
+            if (!o) return null;
+            const dd = parseISO(d);
+            const label = `${WEEKDAY_SHORT[dd.getDay()]} ${dd.getDate()}`;
+            return (
+              <li
+                key={d}
+                className="flex items-center gap-1.5 rounded-xl border border-border"
+                style={{ padding: "3px 10px 3px 4px", background: "var(--background)" }}
+              >
+                {o.status === "pending" ? (
+                  <CompleteCircleButton occurrenceId={o.id} title={`${row.title} (${label})`} />
+                ) : o.status === "completed" ? (
+                  <span role="img" aria-label="Feita" style={{ display: "flex", width: 26, justifyContent: "center" }}>
+                    <CheckDot />
+                  </span>
+                ) : (
+                  <span role="img" aria-label="Não feita" style={{ width: 26, display: "flex", justifyContent: "center" }}>
+                    <span style={{ width: 17, height: 17, borderRadius: 9, border: "1.5px dashed var(--muted-foreground)", opacity: 0.6 }} />
+                  </span>
+                )}
+                <Link
+                  href={dayHref(d)}
+                  className="underline-offset-4 hover:underline"
+                  style={{ fontSize: 12.5, fontWeight: d === currentDate ? 600 : 500 }}
+                >
+                  {d === currentDate ? "Hoje" : label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
+/** Aviso flutuante depois de concluir: a tarefa saiu da lista, mas dá para voltar atrás. */
+function UndoToast({ item, onDone }: { item: { id: string; title: string } | null; onDone: () => void }) {
+  const [pending, startTransition] = useTransition();
+  useEffect(() => {
+    if (!item) return;
+    const t = setTimeout(onDone, 5000);
+    return () => clearTimeout(t);
+  }, [item, onDone]);
+
+  if (!item) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl"
+      style={{
+        bottom: 96,
+        width: "min(360px, calc(100vw - 40px))",
+        padding: "10px 10px 10px 16px",
+        background: "var(--nav-active)",
+        color: "var(--nav-active-ink)",
+        boxShadow: "0 10px 30px rgba(40,20,10,0.25)",
+        fontSize: 13.5,
+      }}
+    >
+      <span className="min-w-0 flex-1 truncate">Concluída: {item.title}</span>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const fd = new FormData();
+            fd.set("occurrence_id", item.id);
+            await undoComplete(initialFormState, fd);
+            onDone();
+          })
+        }
+        className="shrink-0 rounded-lg px-3 focus-visible:outline-2"
+        style={{ height: 32, fontWeight: 600, color: "#F2C48D" }}
+      >
+        {pending ? "Desfazendo…" : "Desfazer"}
+      </button>
+    </div>
+  );
+}
+
+function CreateMenu({
+  onClose,
+  onPick,
+  canCreateEvent,
+}: {
+  onClose: () => void;
+  onPick: (k: "tarefa" | "evento") => void;
+  canCreateEvent: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onPointer(e: PointerEvent) {
+      const t = e.target as Node;
+      if (ref.current && !ref.current.contains(t) && !ref.current.parentElement?.contains(t)) onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [onClose]);
+
+  const item = "flex w-full flex-col items-start px-4 py-2.5 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none";
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      className="absolute right-0 top-full z-30 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-card py-1"
+      style={{ boxShadow: "0 10px 30px rgba(60,35,15,0.16)" }}
+    >
+      <button role="menuitem" type="button" className={item} onClick={() => onPick("tarefa")}>
+        <span style={{ fontSize: 14, fontWeight: 500 }}>Nova tarefa</span>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Uma vez ou recorrente</span>
+      </button>
+      {canCreateEvent ? (
+        <button role="menuitem" type="button" className={item} onClick={() => onPick("evento")}>
+          <span style={{ fontSize: 14, fontWeight: 500 }}>Novo compromisso</span>
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Consulta, visita, aniversário…</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="focus-visible:outline-2 focus-visible:outline-offset-2"
+      style={{
+        height: 32,
+        borderRadius: 10,
+        padding: "0 12px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 13,
+        fontWeight: active ? 500 : 400,
+        border: `1px solid ${active ? "transparent" : "var(--border)"}`,
+        background: active ? "var(--nav-active)" : "var(--card)",
+        color: active ? "var(--nav-active-ink)" : "var(--foreground)",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FilterPanel({
+  filters,
+  onChange,
+  members,
+  userId,
+  rooms,
+}: {
+  filters: RotinaFilters;
+  onChange: (f: RotinaFilters) => void;
+  members: Member[];
+  userId?: string;
+  rooms: Array<{ id: string; name: string }>;
+}) {
+  const setMember = (m: string | null) => onChange({ ...filters, member: filters.member === m ? null : m });
+  const setRoom = (r: string | null) => onChange({ ...filters, room: filters.room === r ? null : r });
+  const labelStyle: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 8 };
+
+  return (
+    <section
+      aria-label="Filtros"
+      className="mb-5 rounded-2xl border border-border"
+      style={{ background: "var(--card)", padding: 16 }}
+    >
+      <fieldset>
+        <legend style={labelStyle}>Quem faz</legend>
+        <div className="flex flex-wrap gap-1.5">
+          <Chip active={filters.member === null} onClick={() => setMember(null)}>Todos</Chip>
+          {userId ? <Chip active={filters.member === "mine"} onClick={() => setMember("mine")}>Minhas</Chip> : null}
+          <Chip active={filters.member === "shared"} onClick={() => setMember("shared")}>Compartilhadas</Chip>
+          {members.filter((m) => m.id !== userId).map((m) => (
+            <Chip key={m.id} active={filters.member === m.id} onClick={() => setMember(m.id)}>
+              {firstName(m.name)}
+            </Chip>
+          ))}
+        </div>
+      </fieldset>
+
+      {rooms.length > 0 ? (
+        <fieldset className="mt-4">
+          <legend style={labelStyle}>Categoria</legend>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={filters.room === null} onClick={() => setRoom(null)}>Todas</Chip>
+            {rooms.map((r) => (
+              <Chip key={r.id} active={filters.room === r.id} onClick={() => setRoom(r.id)}>
+                {r.name}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
+      <label className="mt-4 flex cursor-pointer items-center justify-between gap-3" style={{ fontSize: 13.5 }}>
+        <span>
+          Só essenciais
+          <span className="block" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            O mínimo para a casa funcionar em dias corridos
+          </span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={filters.essential}
+          onClick={() => onChange({ ...filters, essential: !filters.essential })}
+          className="focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{
+            width: 44, height: 26, borderRadius: 13, flexShrink: 0, position: "relative",
+            background: filters.essential ? "var(--nav-active)" : "var(--secondary)",
+            border: filters.essential ? "none" : "1px solid var(--border)",
+            transition: "background 140ms ease",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute", top: 3, left: filters.essential ? 21 : 3,
+              width: 20, height: 20, borderRadius: 10,
+              background: filters.essential ? "var(--nav-active-ink)" : "var(--card)",
+              boxShadow: "0 1px 2px rgba(0,0,0,.15)",
+              transition: "left 140ms ease",
+            }}
+          />
+        </button>
+      </label>
+    </section>
+  );
+}
+
+function ActiveFilters({
+  filters,
+  members,
+  rooms,
+  onClear,
+  onOpen,
+}: {
+  filters: RotinaFilters;
+  members: Member[];
+  rooms: Array<{ id: string; name: string }>;
+  onClear: () => void;
+  onOpen: () => void;
+}) {
+  const labels: string[] = [];
+  if (filters.member === "mine") labels.push("Minhas");
+  else if (filters.member === "shared") labels.push("Compartilhadas");
+  else if (filters.member) labels.push(firstName(members.find((m) => m.id === filters.member)?.name));
+  if (filters.room) labels.push(rooms.find((r) => r.id === filters.room)?.name ?? "Categoria");
+  if (filters.essential) labels.push("Só essenciais");
+
+  return (
+    <div className="mb-4 flex items-center gap-2" style={{ fontSize: 12.5 }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 truncate text-left"
+        style={{
+          height: 30, borderRadius: 10, padding: "0 10px",
+          background: "var(--secondary)", color: "var(--foreground)", fontWeight: 500,
+        }}
+      >
+        Filtrando: {labels.join(", ")}
+      </button>
+      <button type="button" onClick={onClear} className="shrink-0 text-muted-foreground underline underline-offset-4">
+        Limpar
+      </button>
+    </div>
+  );
+}

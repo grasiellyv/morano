@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import type { FormState } from "@/features/auth/form-state";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PRIORITY_OPTIONS } from "@/features/tasks/labels";
 
 type Props = {
-  task: { id: string; title: string; priority: "baixa" | "media" | "alta"; is_essential: boolean; instructions: string | null; room_id: string | null };
+  task: { id: string; title: string; priority: "baixa" | "media" | "alta"; is_essential: boolean; instructions: string | null; room_id: string | null; due_time?: string | null; description?: string | null };
   rooms: Array<{ id: string; name: string }>;
   updateTaskAction: (_: FormState, fd: FormData) => Promise<FormState>;
   onSuccess?: () => void;
@@ -52,6 +53,16 @@ export function TaskEditPanel({
       </div>
 
       <div className="space-y-1.5">
+        <Label htmlFor="edit-task-description">Descrição (opcional)</Label>
+        <Input
+          id="edit-task-description"
+          name="description"
+          maxLength={500}
+          defaultValue={task.description ?? ""}
+        />
+      </div>
+
+      <div className="space-y-1.5">
         <Label htmlFor="edit-task-priority">Prioridade</Label>
         <select
           id="edit-task-priority"
@@ -63,6 +74,19 @@ export function TaskEditPanel({
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="edit-task-due-time">Horário (opcional)</Label>
+        <Input
+          id="edit-task-due-time"
+          name="due_time"
+          type="time"
+          defaultValue={task.due_time?.slice(0, 5) ?? ""}
+        />
+        {state.fieldErrors?.due_time ? (
+          <p className="text-xs text-destructive">{state.fieldErrors.due_time}</p>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2">
@@ -128,9 +152,10 @@ export function TaskEditPanel({
         <div className="mt-3 border-t border-border pt-3">
           <Link
             href={`/rotina/tarefas/${task.id}/editar`}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
-            Editar agendamento →
+            Editar agendamento
+            <ArrowRight size={15} aria-hidden />
           </Link>
         </div>
       ) : null}

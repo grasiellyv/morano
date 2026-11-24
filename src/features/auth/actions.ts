@@ -166,7 +166,7 @@ export async function updateDisplayName(_prev: FormState, formData: FormData): P
   }
 
   const { revalidatePath } = await import("next/cache");
-  revalidatePath("/configuracoes");
+  revalidatePath("/perfil");
   return { status: "success", message: "Nome atualizado." };
 }
 

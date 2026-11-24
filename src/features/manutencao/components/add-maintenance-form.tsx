@@ -6,6 +6,7 @@ import { createMaintenanceItem } from "@/features/manutencao/actions";
 import { initialFormState, type FormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Plus } from "lucide-react";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -58,7 +59,8 @@ export function AddMaintenanceForm({ rooms }: Props) {
           aria-invalid={!!state.fieldErrors?.title}
           className="flex-1"
         />
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" variant="add" disabled={pending}>
+          <Plus aria-hidden strokeWidth={1.75} />
           {pending ? "Adicionando…" : "Adicionar"}
         </Button>
       </div>

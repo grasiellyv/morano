@@ -11,6 +11,7 @@ import {
 } from "@/features/tasks/actions-rotations";
 import { initialFormState } from "@/features/auth/form-state";
 import { Button } from "@/components/ui/button";
+import { Plus, X, ArrowUp, ArrowDown } from "lucide-react";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 const DAY_LABELS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
@@ -119,7 +120,8 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold">Gerenciar rodízios</h2>
           <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Fechar">
-            ✕ Fechar
+            <X aria-hidden strokeWidth={1.75} />
+            Fechar
           </Button>
         </div>
 
@@ -198,7 +200,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                               aria-label="Mover para cima"
                               onClick={() => handleMove(rot.id, idx, "up")}
                             >
-                              ↑
+                              <ArrowUp aria-hidden strokeWidth={1.75} />
                             </Button>
                             <Button
                               type="button"
@@ -208,7 +210,7 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                               aria-label="Mover para baixo"
                               onClick={() => handleMove(rot.id, idx, "down")}
                             >
-                              ↓
+                              <ArrowDown aria-hidden strokeWidth={1.75} />
                             </Button>
                             <Button
                               type="button"
@@ -242,9 +244,11 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
                       <Button
                         type="button"
                         size="sm"
+                        variant="add"
                         disabled={!addMemberMap[rot.id] || isPending}
                         onClick={() => handleAddMember(rot.id)}
                       >
+                        <Plus aria-hidden strokeWidth={1.75} />
                         Adicionar
                       </Button>
                     </div>
@@ -266,7 +270,8 @@ export function ManageRotationsDialog({ rotations, homeMembers, open, onClose }:
               {createState.status === "error" && createState.message ? (
                 <p className="text-xs text-destructive">{createState.message}</p>
               ) : null}
-              <Button type="submit" size="sm" disabled={createPending}>
+              <Button type="submit" size="sm" variant="add" disabled={createPending}>
+                <Plus aria-hidden strokeWidth={1.75} />
                 {createPending ? "Criando…" : "Criar"}
               </Button>
             </form>

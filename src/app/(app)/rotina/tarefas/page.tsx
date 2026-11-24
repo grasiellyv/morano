@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -120,7 +121,7 @@ function TaskCard({
           <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>
         ) : null}
       </div>
-      <span className="shrink-0 text-xs text-muted-foreground">Editar →</span>
+      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">Editar<ChevronRight size={14} aria-hidden /></span>
     </Link>
   );
 }

@@ -27,7 +27,7 @@ const EVENT_TILES: Array<{
     activeBg: "#F3D2D8",
     activeBorder: "#C25B6E",
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 20v-7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v7M3 20h18M5 16c2 1.5 3.5 1.5 5 0s3.5-1.5 5 0 3 1 4 0M12 12V9M12 7c-.8 0-1.2-.8-1.2-1.5S12 3.5 12 3.5s1.2 1.3 1.2 2S12.8 7 12 7z"/>
       </svg>
     ),
@@ -40,7 +40,7 @@ const EVENT_TILES: Array<{
     activeBg: "#FDF3E0",
     activeBorder: "#D98A2B",
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 3c-3 0-5 2.5-5 5.5S9 14 12 14s5-2.5 5-5.5S15 3 12 3zM12 14v2.5M10.5 17.5h3M12 17.5V21"/>
       </svg>
     ),
@@ -53,7 +53,7 @@ const EVENT_TILES: Array<{
     activeBg: "#E8EFF6",
     activeBorder: "#4F6D93",
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4M9.5 15l2 2 3.5-3.5"/>
       </svg>
     ),
@@ -66,7 +66,7 @@ const EVENT_TILES: Array<{
     activeBg: "#F5E4D2",
     activeBorder: "#725E4F",
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>
       </svg>
     ),
@@ -361,6 +361,7 @@ export function EventForm({
           type="submit"
           form="event-main-form"
           size="sm"
+          variant={mode === "create" ? "add" : "default"}
           className="ml-auto"
           disabled={pending || deletePending}
         >

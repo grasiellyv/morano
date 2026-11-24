@@ -37,7 +37,7 @@ async function completeOnboarding(page: Page) {
 
   await expect(page).toHaveURL(/\/onboarding\/rotina$/);
   await page.getByRole("button", { name: "Equilibrada" }).click();
-  await page.getByRole("button", { name: "Ver sugestões →" }).click();
+  await page.getByRole("button", { name: "Ver sugestões" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\/revisao$/);
   await page.getByRole("button", { name: "Aprovar rotina" }).click();

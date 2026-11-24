@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -42,7 +43,7 @@ export default async function Page() {
         <div className="text-center py-12 text-muted-foreground">
           <p>Nenhum convite pendente.</p>
           <Button asChild variant="link" className="mt-2">
-            <Link href="/casa/membros/convidar">Convidar membro →</Link>
+            <Link href="/casa/membros/convidar" className="inline-flex items-center gap-1">Convidar membro<ArrowRight size={16} aria-hidden /></Link>
           </Button>
         </div>
       ) : (

@@ -81,7 +81,7 @@ export function InviteForm({ inviteMemberAction }: Props) {
           type="submit"
           disabled={pending}
           className={cn(
-            "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50",
+            "rounded-md bg-add px-4 py-2 text-sm font-semibold text-add-foreground hover:bg-add-hover disabled:opacity-50",
           )}
         >
           {pending ? "Enviando..." : "Criar convite"}
