@@ -59,4 +59,14 @@ describe("ProductAutocomplete", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("option")).toBeNull();
   });
+
+  it("a lista fica acima de barras fixas (z-50) e rola se for longa", async () => {
+    const user = userEvent.setup();
+    render(<Harness onSelect={vi.fn()} />);
+    await user.type(screen.getByRole("combobox"), "lei");
+    const list = await screen.findByRole("listbox");
+    expect(list.className).toMatch(/\bz-50\b/);
+    expect(list.className).toMatch(/overflow-y-auto/);
+    expect(list.className).toMatch(/max-h-/);
+  });
 });

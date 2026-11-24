@@ -80,7 +80,7 @@ export function ProductAutocomplete({ name, value, onValueChange, onSelect, sour
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-card shadow-sm"
         >
           {suggestions.map((s, i) => (
             <li
