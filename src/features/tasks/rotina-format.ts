@@ -85,6 +85,27 @@ export function timeSortKey(time: string | null | undefined): string {
   return h < 5 ? `${String(h + 24).padStart(2, "0")}${time.slice(2, 5)}` : time.slice(0, 5);
 }
 
+// ── Status otimista ───────────────────────────────────────────────────────────
+
+export type StatusOverrides = Record<string, "completed" | "pending">;
+
+/**
+ * Aplica à lista o que a pessoa acabou de fazer (concluir/desfazer) sem esperar o servidor.
+ * Sem overrides devolve a MESMA lista; ocorrências não tocadas mantêm a identidade (memo/React).
+ */
+export function applyStatusOverrides(list: OccurrenceWithTask[], overrides: StatusOverrides): OccurrenceWithTask[] {
+  if (Object.keys(overrides).length === 0) return list;
+  return list.map((o) => {
+    const status = overrides[o.id];
+    if (!status || o.status === status) return o;
+    return {
+      ...o,
+      status,
+      completed_at: status === "completed" ? (o.completed_at ?? new Date().toISOString()) : null,
+    };
+  });
+}
+
 // ── Eventos na semana ─────────────────────────────────────────────────────────
 
 type EventSpan = Pick<Event, "start_date" | "end_date">;

@@ -20,7 +20,6 @@ import { ManageRotationsDialog } from "@/features/tasks/components/manage-rotati
 import { EventForm } from "@/features/events/components/event-form";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import type { LinkedEventItem } from "@/features/events/event-items";
-import type { SuggestionSources } from "@/features/shopping/suggest";
 import { TaskEditPanel } from "@/features/tasks/components/task-edit-panel";
 import {
   RotinaHeader,
@@ -44,6 +43,8 @@ import {
   groupWeekByCategory,
   groupEventsByDay,
   eventCovers,
+  applyStatusOverrides,
+  type StatusOverrides,
   type WeekTaskRow,
   timeSortKey,
   type DayPeriod,
@@ -81,8 +82,8 @@ type Props = {
   createEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   updateEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
   deleteEventAction?: (_: FormState, fd: FormData) => Promise<FormState>;
-  /** Fontes do autocomplete dos itens de compras do evento. */
-  productSources?: SuggestionSources;
+  /** Pode pedir itens de compras no evento (permissão de Compras). */
+  canAddEventItems?: boolean;
   /** Itens de compras já vinculados, por id de evento. */
   eventItems?: Record<string, LinkedEventItem[]>;
   removeEventItemAction?: (_: FormState, fd: FormData) => Promise<FormState>;
@@ -103,9 +104,9 @@ const NO_FILTERS: RotinaFilters = { member: null, room: null, essential: false }
 
 export function TaskList({
   view,
-  today,
-  overdue = [],
-  week,
+  today: todayProp,
+  overdue: overdueProp = [],
+  week: weekProp,
   weekDates,
   currentDate,
   selectedDate,
@@ -116,7 +117,7 @@ export function TaskList({
   createEventAction,
   updateEventAction,
   deleteEventAction,
-  productSources,
+  canAddEventItems = false,
   eventItems = {},
   removeEventItemAction,
   canRemoveEventItems = true,
@@ -128,6 +129,36 @@ export function TaskList({
   homeMembers = [],
   updateTaskAction,
 }: Props) {
+  // Concluir/desfazer é otimista: o que a pessoa fez aparece na hora, sem esperar o servidor nem
+  // reler a página. Os overrides valem até chegarem dados novos do servidor (outra ação que
+  // atualiza a página): aí as props mudam e o estado é zerado (padrão "ajustar estado na renderização").
+  const [optimistic, setOptimistic] = useState<{
+    today: OccurrenceWithTask[];
+    overdue: OccurrenceWithTask[];
+    week: OccurrenceWithTask[];
+    map: StatusOverrides;
+  }>({ today: todayProp, overdue: overdueProp, week: weekProp, map: {} });
+  let overrides = optimistic.map;
+  if (optimistic.today !== todayProp || optimistic.overdue !== overdueProp || optimistic.week !== weekProp) {
+    overrides = {};
+    setOptimistic({ today: todayProp, overdue: overdueProp, week: weekProp, map: overrides });
+  }
+  const today = useMemo(() => applyStatusOverrides(todayProp, overrides), [todayProp, overrides]);
+  const week = useMemo(() => applyStatusOverrides(weekProp, overrides), [weekProp, overrides]);
+  // Atrasada que foi concluída sai da seção de atrasadas.
+  const overdue = useMemo(
+    () => overdueProp.filter((o) => overrides[o.id] !== "completed"),
+    [overdueProp, overrides],
+  );
+  const setStatusOverride = useCallback((id: string, status: "completed" | "pending" | null) => {
+    setOptimistic((prev) => {
+      const map = { ...prev.map };
+      if (status) map[id] = status;
+      else delete map[id];
+      return { ...prev, map };
+    });
+  }, []);
+
   const [creating, setCreating] = useState<"tarefa" | "evento" | null>(initialCreate);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -233,6 +264,7 @@ export function TaskList({
           rotationInfo={rotationInfoMap?.[o.task.rotation_id ?? ""]}
           onEdit={updateTaskAction ? () => setEditingTaskId(o.task.id) : undefined}
           onCompleted={(done) => setJustDone({ id: done.id, title: done.task.title })}
+          onStatusChange={setStatusOverride}
           rooms={rooms}
           homeMembers={homeMembers}
         />
@@ -271,7 +303,7 @@ export function TaskList({
               initialValues={e}
               updateAction={updateEventAction}
               deleteAction={deleteEventAction}
-              productSources={productSources}
+              canAddItems={canAddEventItems}
               linkedItems={eventItems[e.id] ?? []}
               removeItemAction={removeEventItemAction}
               canRemoveItems={canRemoveEventItems}
@@ -346,7 +378,7 @@ export function TaskList({
           <EventForm
             mode="create"
             createAction={createEventAction}
-            productSources={productSources}
+            canAddItems={canAddEventItems}
             initialValues={{ start_date: selectedDate }}
             onSuccess={() => setCreating(null)}
           />

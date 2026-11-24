@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OccurrenceWithTask } from "@/features/tasks/queries";
-import { describeRecurrence, eventCovers, groupEventsByDay, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
+import { applyStatusOverrides, describeRecurrence, eventCovers, groupEventsByDay, groupWeekByCategory, periodOf, summarizeWeek } from "./rotina-format";
 
 function occ(id: string, taskId: string, date: string, status: OccurrenceWithTask["status"], room: string | null, time: string | null = null): OccurrenceWithTask {
   return {
@@ -104,5 +104,33 @@ describe("groupEventsByDay", () => {
   });
   it("sem eventos devolve lista vazia", () => {
     expect(groupEventsByDay([], WEEK)).toEqual([]);
+  });
+});
+
+describe("applyStatusOverrides", () => {
+  const a = occ("o1", "t1", "2026-11-23", "pending", null);
+  const b = occ("o2", "t2", "2026-11-23", "pending", null);
+
+  it("sem overrides devolve a própria lista (sem recriar nada)", () => {
+    const list = [a, b];
+    expect(applyStatusOverrides(list, {})).toBe(list);
+  });
+
+  it("marca só as ocorrências sobrescritas e preserva a identidade das demais", () => {
+    const r = applyStatusOverrides([a, b], { o1: "completed" });
+    expect(r[0]!.status).toBe("completed");
+    expect(r[0]!.completed_at).not.toBeNull();
+    expect(r[1]).toBe(b);
+  });
+
+  it("desfazer: concluída volta a pendente e perde completed_at", () => {
+    const done = { ...a, status: "completed" as const, completed_at: "2026-11-23T10:00:00Z" };
+    const r = applyStatusOverrides([done], { o1: "pending" });
+    expect(r[0]!.status).toBe("pending");
+    expect(r[0]!.completed_at).toBeNull();
+  });
+
+  it("override de id que não está na lista é ignorado", () => {
+    expect(applyStatusOverrides([a], { zzz: "completed" })).toEqual([a]);
   });
 });
