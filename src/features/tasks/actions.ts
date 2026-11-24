@@ -231,47 +231,33 @@ export async function completeOccurrence(
   const occurrenceId = textField(fd, "occurrence_id");
   if (!occurrenceId) return { status: "error", message: "ID inválido." };
 
-  // Fetch occurrence — RLS validates membership implicitly
-  const { data: occurrence, error: fetchError } = await supabase
-    .from("task_occurrences")
-    .select("id, home_id, status, task_id")
-    .eq("id", occurrenceId)
-    .maybeSingle();
+  // Uma ida só ao banco: a função confere membro, permissão de concluir e escopo de cômodos
+  // (as mesmas regras de antes) e atualiza. Antes eram ~5 idas sequenciais ao Supabase remoto.
+  const { data, error } = await supabase.rpc("complete_task_occurrence", {
+    p_occurrence_id: occurrenceId,
+  });
 
-  if (fetchError || !occurrence) {
-    return { status: "error", message: "Ocorrência não encontrada." };
-  }
-
-  const perms = await getMemberPermissions(supabase, userId, occurrence.home_id);
-  if (!perms.bypass && !perms.can_complete_tasks) {
-    return { status: "error", message: "Sem permissão para concluir tarefas." };
-  }
-  if (!perms.bypass && perms.task_room_ids.length > 0) {
-    const { data: task } = await supabase
-      .from("tasks")
-      .select("room_id")
-      .eq("id", occurrence.task_id)
-      .maybeSingle();
-    if (task?.room_id && !perms.task_room_ids.includes(task.room_id)) {
-      return { status: "error", message: "Sem acesso a este cômodo." };
-    }
-  }
-
-  const { error } = await supabase
-    .from("task_occurrences")
-    .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      completed_by: userId,
-    })
-    .eq("id", occurrenceId);
-
-  if (error) {
+  if (error || !data) {
     return { status: "error", message: "Erro ao concluir. Tente novamente." };
   }
 
+  const outcome = data as { result?: string; home_id?: string };
+  switch (outcome.result) {
+    case "completed":
+      break;
+    case "forbidden":
+      return { status: "error", message: "Sem permissão para concluir tarefas." };
+    case "forbidden_room":
+      return { status: "error", message: "Sem acesso a este cômodo." };
+    case "not_found":
+      return { status: "error", message: "Ocorrência não encontrada." };
+    default:
+      return { status: "error", message: "Erro ao concluir. Tente novamente." };
+  }
+
   // Telemetria depois da resposta: não segura a bolinha por mais dois round-trips.
-  after(() => trackEvent(userId, occurrence.home_id, "occurrence_completed"));
+  const homeId = outcome.home_id ?? null;
+  after(() => trackEvent(userId, homeId, "occurrence_completed"));
   // A tela de Rotina já atualiza sozinha (UI otimista): `no_refresh` evita reler a página inteira.
   if (textField(fd, "no_refresh") !== "1") revalidateOccurrencePaths();
 

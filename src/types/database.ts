@@ -1848,6 +1848,7 @@ export type Database = {
         Returns: Json;
       };
       clear_my_absence: { Args: Record<PropertyKey, never>; Returns: undefined };
+      complete_task_occurrence: { Args: { p_occurrence_id: string }; Returns: Json };
       current_plan: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["subscription_plan"];
