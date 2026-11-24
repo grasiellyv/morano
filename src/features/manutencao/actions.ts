@@ -15,6 +15,7 @@ import {
   deleteMaintenanceSchema,
 } from "@/features/manutencao/schemas";
 import { trackEvent } from "@/lib/telemetry";
+import { createNotification } from "@/features/notifications/emit";
 
 async function getHomeId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
   const { data: profile } = await supabase
@@ -45,20 +46,35 @@ export async function createMaintenanceItem(
     return { status: "error", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { error } = await supabase.from("maintenance_items").insert({
-    home_id: homeId,
-    created_by: userId,
-    title: parsed.data.title,
-    description: parsed.data.description ?? null,
-    room_id: parsed.data.room_id ?? null,
-    notes: parsed.data.notes ?? null,
-  });
+  const { data: inserted, error } = await supabase
+    .from("maintenance_items")
+    .insert({
+      home_id: homeId,
+      created_by: userId,
+      title: parsed.data.title,
+      description: parsed.data.description ?? null,
+      room_id: parsed.data.room_id ?? null,
+      notes: parsed.data.notes ?? null,
+    })
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { status: "error", message: "Erro ao criar item. Tente novamente." };
   }
 
   await trackEvent(userId, homeId, "maintenance_created");
+  if (inserted) {
+    await createNotification({
+      supabase,
+      homeId,
+      actorId: userId,
+      type: "maintenance_registered",
+      entityId: inserted.id,
+      title: "Manutenção registrada",
+      meta: parsed.data.title,
+    });
+  }
   revalidatePath("/manutencao");
   revalidatePath("/inicio");
   return { status: "success", message: "Item criado." };

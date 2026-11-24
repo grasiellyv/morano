@@ -17,6 +17,8 @@ import {
 import { getMemberPermissions } from "@/features/members/permissions";
 import { trackEvent } from "@/lib/telemetry";
 import { addShoppingItem, conflictMessage, mergedMessage } from "@/features/shopping/add-item";
+import { createNotification } from "@/features/notifications/emit";
+import { firstName } from "@/features/notifications/display";
 
 export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   const { id: userId } = await requireUser();
@@ -83,6 +85,23 @@ export async function addItem(_: FormState, fd: FormData): Promise<FormState> {
   revalidatePath("/compras");
   revalidatePath("/inicio");
   await trackEvent(userId, homeId, "shopping_item_added");
+  if (added.result === "inserted") {
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const actorName = firstName(actorProfile?.full_name ?? null);
+    await createNotification({
+      supabase,
+      homeId,
+      actorId: userId,
+      type: "shopping_item_added",
+      entityId: added.id,
+      title: `${actorName} adicionou um item à lista`,
+      meta: parsed.data.name,
+    });
+  }
   return { status: "success", message: "Item adicionado." };
 }
 
@@ -116,7 +135,7 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
     .update({ is_purchased: parsed.data.is_purchased })
     .eq("id", parsed.data.id)
     .eq("home_id", homeId)
-    .select("id");
+    .select("id, name");
 
   if (error || !updated?.length) {
     return { status: "error", message: "Item não encontrado." };
@@ -126,6 +145,21 @@ export async function togglePurchased(_: FormState, fd: FormData): Promise<FormS
   revalidatePath("/inicio");
   if (parsed.data.is_purchased) {
     await trackEvent(userId, homeId, "shopping_item_purchased");
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const actorName = firstName(actorProfile?.full_name ?? null);
+    await createNotification({
+      supabase,
+      homeId,
+      actorId: userId,
+      type: "shopping_item_purchased",
+      entityId: parsed.data.id,
+      title: `${actorName} concluiu uma compra`,
+      meta: updated[0]?.name,
+    });
   }
   return { status: "success" };
 }
