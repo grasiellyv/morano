@@ -18,6 +18,38 @@ const READ_WINDOW_DAYS = 30;
 const NOTIFICATIONS_LIMIT = 100;
 
 /**
+ * Decide quais ocorrências ainda precisam de um INSERT de notificação
+ * `task_due_today`, dado o que já existe em `notifications`.
+ *
+ * A chave de deduplicação precisa ser a MESMA da constraint
+ * `notifications_due_today_once`: `(home_id, entity_id, occurs_on)` —
+ * composta, não só `entity_id`. Isso importa porque `postpone_task_occurrence`
+ * atualiza `scheduled_for` NA MESMA linha de `task_occurrences` (mesmo `id`/
+ * `entity_id`), em vez de criar uma ocorrência nova. Exemplo: a ocorrência X
+ * vence atrasada no dia 1 e gera notificação `(X, occurs_on=dia1)`; o
+ * residente posterga X para o dia 5 (mesmo `id` X, `scheduled_for` agora
+ * dia5); no dia 5 a notificação `(X, occurs_on=dia5)` é uma chave diferente
+ * e PRECISA ser inserida. Filtrar só por `entity_id` (ignorando `occurs_on`)
+ * faria X nunca mais notificar depois da primeira postergação — por isso a
+ * chave usada aqui é sempre `entity_id:occurs_on`, não `entity_id` isolado.
+ *
+ * Função pura (sem Supabase) para poder testar a lógica de deduplicação
+ * isoladamente.
+ */
+export function selectOccurrencesNeedingNotification<
+  T extends { id: string; scheduled_for: string },
+>(
+  occurrences: T[],
+  existingNotifications: { entity_id: string; occurs_on: string | null }[],
+): T[] {
+  const existingKeys = new Set(
+    existingNotifications.map((row) => `${row.entity_id}:${row.occurs_on}`),
+  );
+
+  return occurrences.filter((occ) => !existingKeys.has(`${occ.id}:${occ.scheduled_for}`));
+}
+
+/**
  * Gera (de forma idempotente) uma notificação `task_due_today` para cada
  * ocorrência pendente com `scheduled_for <= today` (hoje ou atrasada).
  *
@@ -71,9 +103,13 @@ export async function backfillDueTodayNotifications(
   // ocorrências genuinamente novas. O catch de 23505 abaixo continua como
   // rede de segurança para a corrida entre dois usuários carregando a página
   // no mesmo instante, mas deixa de ser o caminho normal.
+  //
+  // Seleciona `occurs_on` junto com `entity_id`: a deduplicação usa a chave
+  // composta (entity_id, occurs_on) para bater com a constraint
+  // `notifications_due_today_once` — ver `selectOccurrencesNeedingNotification`.
   const { data: existing, error: existingError } = await supabase
     .from("notifications")
-    .select("entity_id")
+    .select("entity_id, occurs_on")
     .eq("home_id", homeId)
     .eq("type", "task_due_today");
 
@@ -81,8 +117,7 @@ export async function backfillDueTodayNotifications(
     console.error("[notifications:backfill]", existingError);
   }
 
-  const existingEntityIds = new Set((existing ?? []).map((row) => row.entity_id));
-  const pendingOccurrences = occurrences.filter((occ) => !existingEntityIds.has(occ.id));
+  const pendingOccurrences = selectOccurrencesNeedingNotification(occurrences, existing ?? []);
 
   for (const occ of pendingOccurrences) {
     const taskTitle = occ.task?.title ?? "Tarefa";
