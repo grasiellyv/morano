@@ -100,6 +100,10 @@ git commit -m "feat(notificacoes): schema notifications/notification_reads/notif
 **Interfaces:**
 - Consumes: nenhuma dependência de outras tasks (funções puras, sem Supabase).
 - Produces:
+  - Em `display.ts`: `export type NotificationType = Database["public"]["Enums"]["notification_type"];`
+    — **definição única** do alias; toda outra task que precisar do tipo
+    (Task 3, Task 6, Task 7) importa `NotificationType` deste arquivo, nunca
+    redeclara.
   - `groupByDay(rows: { id: string; created_at: string }[], timezone: string, today: string): { label: string; items: typeof rows }[]`
     — `label` é `"HOJE"`, `"ONTEM"` ou a data formatada (`"DD de mês"`); ordem decrescente.
   - `hrefForType(type: NotificationType): string` — switch fixo:
@@ -107,7 +111,9 @@ git commit -m "feat(notificacoes): schema notifications/notification_reads/notif
     `maintenance_registered` → `/manutencao`; `task_due_today` → `/rotina`.
   - `firstName(fullName: string | null): string` — `fullName?.split(" ")[0] ?? "Alguém"`.
 
-Essas três funções são usadas por Task 6 (queries) e Task 7 (UI).
+`groupByDay` fica em `group-by-day.ts`; `NotificationType`, `hrefForType` e
+`firstName` ficam em `display.ts`. Usadas por Task 3 (schemas), Task 6
+(queries) e Task 7 (UI).
 
 - [ ] **Step 1: Escrever os testes de `groupByDay`**
 
@@ -216,7 +222,7 @@ git commit -m "feat(notificacoes): agrupamento por dia e helpers de exibição"
 - Create: `src/features/notifications/schemas.test.ts`
 
 **Interfaces:**
-- Consumes: `Database["public"]["Enums"]["notification_type"]` (Task 1).
+- Consumes: `NotificationType` de `src/features/notifications/display.ts` (Task 2) — só para o tipo de `NOTIFICATION_TYPE_LABEL`, não precisa importar de `Database` diretamente.
 - Produces:
   - `setNotificationPreferencesSchema = z.object({ shopping_item_added: z.boolean(), shopping_item_purchased: z.boolean(), maintenance_registered: z.boolean(), task_due_today: z.boolean() })`
     — campos nomeados, não `{type, enabled}` genérico: mesmo padrão de
@@ -336,6 +342,17 @@ git commit -m "feat(notificacoes): helper de emissão com consolidação por jan
 
 - [ ] **Step 1: `addItem` — emitir `shopping_item_added`**
 
+Antes de chamar `createNotification` (em ambos os steps 1 e 2), buscar o
+primeiro nome do autor com uma única query extra, mesmo padrão de
+`getHomeId` em `src/features/manutencao/actions.ts`:
+```typescript
+const { data: actorProfile } = await supabase
+  .from("profiles")
+  .select("full_name")
+  .eq("id", userId)
+  .maybeSingle();
+const actorName = firstName(actorProfile?.full_name ?? null);
+```
 Depois da linha `await trackEvent(userId, homeId, "shopping_item_added");` em
 `src/features/shopping/actions.ts`, chamar:
 ```typescript
@@ -343,7 +360,7 @@ await createNotification({
   supabase, homeId, actorId: userId,
   type: "shopping_item_added",
   entityId: /* id do item inserido — added.id, confirmar campo exato em addShoppingItem */,
-  title: `${firstName(/* nome do autor — buscar profiles.full_name de userId */)} adicionou um item à lista`,
+  title: `${actorName} adicionou um item à lista`,
   meta: parsed.data.name,
 });
 ```
@@ -354,10 +371,11 @@ adicionar um campo novo.
 - [ ] **Step 2: `togglePurchased` — emitir `shopping_item_purchased`**
 
 No mesmo bloco onde já chama
-`trackEvent(userId, homeId, "shopping_item_purchased")`, chamar
-`createNotification` com `type: "shopping_item_purchased"`, `entityId: parsed.data.id`,
-título `"${firstName(...)} concluiu uma compra"`, `meta` com o nome do item
-(buscar antes do update ou usar o que a query de update já retorna).
+`trackEvent(userId, homeId, "shopping_item_purchased")`, buscar `actorName`
+como no Step 1, e chamar `createNotification` com
+`type: "shopping_item_purchased"`, `entityId: parsed.data.id`, título
+`"${actorName} concluiu uma compra"`, `meta` com o nome do item (buscar
+antes do update ou usar o que a query de update já retorna).
 
 - [ ] **Step 3: `createMaintenanceItem` — emitir `maintenance_registered`**
 
@@ -386,7 +404,12 @@ git commit -m "feat(notificacoes): emitir notificação em addItem/togglePurchas
 - Create: `src/features/notifications/queries.ts`
 
 **Interfaces:**
-- Consumes: `groupByDay`, `hrefForType`, `firstName` (Task 2); `getTodayOccurrences`/`getOverdueOccurrences`-equivalente — ver Step 1 (Task 2 do tasks feature).
+- Consumes: `firstName` (Task 2, de `display.ts`); `NotificationType` (Task 2,
+  de `display.ts`); as queries `task_occurrences` com os mesmos filtros de
+  `getTodayOccurrences`/`getOverdueOccurrences` em
+  `src/features/tasks/queries.ts` (não precisa importar essas funções —
+  escreve a própria query com os mesmos critérios, ver Step 1).
+  `groupByDay`/`hrefForType` **não** são usados aqui — ficam para a Task 7 (UI).
 - Produces:
   ```typescript
   export type NotificationRow = {
@@ -395,21 +418,35 @@ git commit -m "feat(notificacoes): emitir notificação em addItem/togglePurchas
     actor_name: string | null;
   };
   export async function backfillDueTodayNotifications(supabase, homeId: string, today: string): Promise<void>;
+  export async function getLastReadAt(supabase, homeId: string, userId: string): Promise<string>;
   export async function getNotifications(supabase, homeId: string, userId: string): Promise<NotificationRow[]>;
   export async function getUnreadCount(supabase, homeId: string, userId: string): Promise<number>;
-  export async function markAllRead(supabase, userId: string, homeId: string): Promise<void>;
+  export async function markAllRead(supabase, homeId: string, userId: string): Promise<void>;
   ```
-  Consumida por Task 7 (`/notificacoes/page.tsx`) e Task 9 (`NotificationBell`).
+  Todas as funções que recebem `homeId` e `userId` usam essa ordem exata nos
+  dois parâmetros — não inverter em nenhuma delas.
+  `getLastReadAt` e `getNotifications` são consumidas por Task 7
+  (`/notificacoes/page.tsx`, para o indicador visual de não lida por linha);
+  `getUnreadCount` é consumida por Task 9 (badge do `NotificationBell`).
 
 - [ ] **Step 1: Implementar `backfillDueTodayNotifications`**
 
-`select id, task_id, scheduled_for, task:tasks(title) from task_occurrences where home_id=:homeId and status='pending' and scheduled_for <= :today`.
+`select id, task_id, scheduled_for, task:tasks(title) from task_occurrences where home_id=:homeId and status='pending' and scheduled_for <= :today`
+(mesmo filtro de status usado por `getTodayOccurrences`/`getOverdueOccurrences`
+em `src/features/tasks/queries.ts` — só `pending` conta; `completed`,
+`skipped` e `missed` nunca geram `task_due_today`).
 Para cada linha, `insert into notifications (home_id, actor_id, type, entity_id, title, occurs_on) values (:homeId, null, 'task_due_today', occ.id, :title, occ.scheduled_for) on conflict do nothing` —
 `:title` é `"${task.title} está atrasada"` se `scheduled_for < today`, senão
 `"${task.title} está programada para hoje"`. `target_user_id` fica `null`
 (casa toda vê).
 
-- [ ] **Step 2: Implementar `getNotifications` e `getUnreadCount`**
+- [ ] **Step 2: Implementar `getLastReadAt`**
+
+`select last_read_at from notification_reads where user_id=:userId and home_id=:homeId` (uma linha ou nenhuma). Sem linha = "nunca leu" → retornar
+`new Date(0).toISOString()`. Com linha → retornar `last_read_at` como veio
+do banco.
+
+- [ ] **Step 3: Implementar `getNotifications` e `getUnreadCount`**
 
 Ambas filtram: `home_id = :homeId`, `actor_id is distinct from :userId`
 (ou `is null`), e excluem tipos presentes em
@@ -419,21 +456,20 @@ notification_preferences where user_id=:userId and enabled=false)` —
 **este WHERE precisa ser idêntico nas duas funções** (ver Global Constraints).
 `getNotifications` adiciona `created_at > now() - interval '30 days'`, `order
 by created_at desc`, `limit 100`, join em `profiles` para `actor_name`
-(aplicar `firstName` no resultado). `getUnreadCount` adiciona
-`created_at > :lastReadAt` (buscar `last_read_at` de `notification_reads`
-antes; se não houver linha, considerar "nunca leu" = todas não lidas, ou seja
-`lastReadAt = new Date(0).toISOString()`).
+(aplicar `firstName` no resultado). `getUnreadCount` chama `getLastReadAt`
+primeiro e adiciona `created_at > :lastReadAt`.
 
-- [ ] **Step 3: Implementar `markAllRead`**
+- [ ] **Step 4: Implementar `markAllRead`**
 
-`upsert` em `notification_reads` com `user_id`, `home_id`, `last_read_at: now()`.
+`upsert` em `notification_reads` com `user_id`, `home_id`, `last_read_at: now()`
+— parâmetros na ordem `(supabase, homeId, userId)`, mesma ordem das demais.
 
-- [ ] **Step 4: Verificar TypeScript**
+- [ ] **Step 5: Verificar TypeScript**
 
 Run: `npx tsc --noEmit`
 Expected: sem erros.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/features/notifications/queries.ts
@@ -451,9 +487,10 @@ git commit -m "feat(notificacoes): queries de leitura, contagem e backfill de ta
 - Modify: `src/lib/supabase/proxy.ts` (adicionar `/notificacoes` a `PRIVATE_PREFIXES`)
 
 **Interfaces:**
-- Consumes: `getNotifications`, `getUnreadCount`, `markAllRead`,
-  `backfillDueTodayNotifications` (Task 6); `groupByDay`, `hrefForType`
-  (Task 2); `setNotificationPreferencesSchema` (Task 3).
+- Consumes: `getNotifications`, `getLastReadAt`, `markAllRead`,
+  `backfillDueTodayNotifications` (Task 6 — **não** `getUnreadCount`, que é
+  só para o sininho na Task 9); `groupByDay`, `hrefForType` (Task 2);
+  `setNotificationPreferencesSchema` (Task 3).
 - Produces: `markAllNotificationsRead(): Promise<void>` e
   `setNotificationPreferences(_: FormState, fd: FormData): Promise<FormState>`
   (plural — um formulário com os 4 checkboxes, um submit só, mesmo padrão de
@@ -468,7 +505,7 @@ Em `src/lib/supabase/proxy.ts`, adicionar `"/notificacoes"` ao array
 - [ ] **Step 2: Implementar as actions**
 
 `markAllNotificationsRead()`: `requireUser()` → resolve `homeId` →
-`markAllRead(supabase, userId, homeId)` → `revalidatePath("/notificacoes")`.
+`markAllRead(supabase, homeId, userId)` → `revalidatePath("/notificacoes")`.
 `setNotificationPreferences(_, fd)`: lê os 4 checkboxes do `FormData`
 (mesmo padrão `textField(fd, "shopping_item_added") === "true"` de
 `setMemberPermissions`), valida com o schema da Task 3; para cada um dos 4
@@ -482,17 +519,18 @@ tipos — se `true` (ligado, é o default), `delete` a linha em
 Server component: `requireUser()` → `getHomeWithRooms(user.id)` → se `null`,
 `redirect("/onboarding")` (mesmo padrão de outras páginas de `(app)`, cobre o
 Review Focus de usuário sem casa) → `getLocalDateString(home.timezone)` para
-`today` → `backfillDueTodayNotifications` → `Promise.all([getNotifications,
-getUnreadCount ou last_read_at bruto para o indicador visual])` →
-`groupByDay` → renderiza `NotificationsList`.
+`today` → `backfillDueTodayNotifications` → `Promise.all([getNotifications(supabase, homeId, userId), getLastReadAt(supabase, homeId, userId)])`
+→ `groupByDay` nos resultados de `getNotifications` → renderiza
+`NotificationsList` passando os grupos e o `lastReadAt` bruto (string ISO)
+como props.
 
 - [ ] **Step 4: Implementar `NotificationsList`**
 
 Client ou server component (preferir server, já que não há interatividade
 além de navegação): cabeçalho "Notificações" + botão "Marcar todas como
 lidas" (form com `markAllNotificationsRead`); grupos por dia com `<Link
-href={hrefForType(type)}>`; cada linha compara `created_at` contra
-`last_read_at` recebido como prop para decidir o indicador de não lida (ver
+href={hrefForType(type)}>`; cada linha compara `created_at > lastReadAt`
+(a prop ISO recebida da página) para decidir o indicador de não lida (ver
 spec, mockup da seção UI).
 
 - [ ] **Step 5: Verificar TypeScript**
@@ -582,12 +620,37 @@ test("desligar um tipo de notificação oculta da lista sem apagar o histórico"
 });
 ```
 
-- [ ] **Step 7: Rodar a suíte e2e nova**
+- [ ] **Step 7: Teste — usuário sem casa (onboarding incompleto) não quebra em `/notificacoes`**
+
+```typescript
+test("usuário que ainda não completou o onboarding é redirecionado ao acessar /notificacoes direto", async ({ page }) => {
+  const email = uniqueEmail("notif-7-sem-casa");
+  await ensureConfirmedUser(email, PASSWORD);
+  await signIn(page, email, PASSWORD);
+  // NÃO completa o onboarding — current_home_id ainda é null
+  await page.goto("/notificacoes");
+  await expect(page).not.toHaveURL(/\/notificacoes$/);
+  // não deve haver erro 500 — a página redireciona (para /onboarding, como as outras rotas de (app))
+});
+```
+
+- [ ] **Step 8: Teste — ocorrência concluída não gera `task_due_today`**
+
+```typescript
+test("tarefa concluída hoje não aparece como vencendo em /notificacoes", async ({ page }) => {
+  // user1 completa onboarding com uma rotina que gera ao menos 1 tarefa para hoje
+  // user1 conclui a tarefa em /rotina (status vira completed)
+  // user1 abre /notificacoes → não deve haver nenhum item do tipo "está programada para hoje"/"está atrasada" para essa tarefa
+  // (cobre o filtro status='pending' do backfill — uma ocorrência completed/skipped/missed nunca entra)
+});
+```
+
+- [ ] **Step 9: Rodar a suíte e2e nova**
 
 Run: `npx playwright test tests/e2e/notificacoes.spec.ts`
 Expected: todos os testes passam.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add tests/e2e/notificacoes.spec.ts

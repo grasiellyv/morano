@@ -9,6 +9,7 @@ const PRIVATE_PREFIXES = [
   "/casa",
   "/manutencao",
   "/compras",
+  "/notificacoes",
   "/configuracoes",
   "/onboarding",
 ];
