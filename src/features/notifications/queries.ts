@@ -63,7 +63,28 @@ export async function backfillDueTodayNotifications(
     task: { title: string } | null;
   }[];
 
-  for (const occ of occurrences) {
+  // Evita tentar INSERT em toda chamada para ocorrências que já têm
+  // notificação (o caso comum: esta função é chamada a cada carregamento de
+  // /inicio). Sem este filtro, cada visita repetia N INSERTs que falhavam com
+  // 23505 e eram descartados — N round-trips desperdiçados por acesso à
+  // página mais visitada do app. Com o filtro: 1 SELECT + INSERT só para
+  // ocorrências genuinamente novas. O catch de 23505 abaixo continua como
+  // rede de segurança para a corrida entre dois usuários carregando a página
+  // no mesmo instante, mas deixa de ser o caminho normal.
+  const { data: existing, error: existingError } = await supabase
+    .from("notifications")
+    .select("entity_id")
+    .eq("home_id", homeId)
+    .eq("type", "task_due_today");
+
+  if (existingError) {
+    console.error("[notifications:backfill]", existingError);
+  }
+
+  const existingEntityIds = new Set((existing ?? []).map((row) => row.entity_id));
+  const pendingOccurrences = occurrences.filter((occ) => !existingEntityIds.has(occ.id));
+
+  for (const occ of pendingOccurrences) {
     const taskTitle = occ.task?.title ?? "Tarefa";
     const title =
       occ.scheduled_for < today
