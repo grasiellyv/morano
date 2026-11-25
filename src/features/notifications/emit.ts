@@ -4,6 +4,8 @@ import type { Database } from "@/types/database";
 import type { NotificationType } from "@/features/notifications/display";
 
 const CONSOLIDATION_WINDOW_MS = 30 * 60 * 1000;
+/** Limite de nomes mantidos em `meta` ao consolidar — subtítulo de notificação, não recibo. */
+const MAX_CONSOLIDATED_ITEMS = 5;
 
 export type EmitArgs = {
   supabase: SupabaseClient<Database>;
@@ -30,7 +32,7 @@ export async function createNotification(args: EmitArgs): Promise<void> {
       const since = new Date(Date.now() - CONSOLIDATION_WINDOW_MS).toISOString();
       const { data: existing, error: selectError } = await supabase
         .from("notifications")
-        .select("id, created_at")
+        .select("id, created_at, meta")
         .eq("home_id", homeId)
         .eq("actor_id", actorId)
         .eq("type", "shopping_item_added")
@@ -42,9 +44,22 @@ export async function createNotification(args: EmitArgs): Promise<void> {
       if (selectError) throw selectError;
 
       if (existing) {
+        // Junta o item recém-adicionado à lista de nomes já acumulada em `meta`
+        // (ou começa uma lista com o primeiro item antigo + este, se `meta`
+        // ainda guardava um único nome da 1ª inserção). O título passa a
+        // refletir quantos itens essa linha já representa — nunca "1 item"
+        // escondendo os anteriores. Cap em MAX_CONSOLIDATED_ITEMS nomes: isso
+        // é o subtítulo da notificação, não um recibo exaustivo.
+        const existingNames = existing.meta ? existing.meta.split(", ") : [];
+        const newName = meta ?? "";
+        const allNames = newName ? [...existingNames, newName] : existingNames;
+        const itemCount = allNames.length;
+        const newMeta = allNames.slice(0, MAX_CONSOLIDATED_ITEMS).join(", ");
+        const newTitle = itemCount > 1 ? `adicionou ${itemCount} itens à lista` : title;
+
         const { data: updated, error: updateError } = await supabase
           .from("notifications")
-          .update({ title, meta: meta ?? null, created_at: new Date().toISOString() })
+          .update({ title: newTitle, meta: newMeta || null, created_at: new Date().toISOString() })
           .eq("id", existing.id)
           .select("id");
         if (updateError) throw updateError;

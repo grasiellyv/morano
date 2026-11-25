@@ -194,12 +194,21 @@ export async function getUnreadCount(
   const lastReadAt = await getLastReadAt(supabase, homeId, userId);
   const disabledTypes = await getDisabledTypes(supabase, userId);
 
+  // Mesmo piso de 30 dias de `getNotifications`: sem ele, um membro novo (cujo
+  // cursor de leitura começa em "nunca leu" = epoch 0) veria no badge uma
+  // contagem do histórico INTEIRO da casa, embora a lista em si nunca mostre
+  // nada além dos últimos 30 dias — o badge superestimaria o que é
+  // efetivamente visível. O filtro mais recente entre os dois (30 dias OU
+  // cursor de leitura) prevalece, já que ambas as condições (`and` implícito
+  // de dois `.gt()` encadeados) precisam valer.
+  const since = new Date(Date.now() - READ_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
   const baseQuery = supabase
     .from("notifications")
     .select("id", { count: "exact", head: true });
   const query = applyVisibilityFilter(baseQuery, homeId, userId, disabledTypes);
 
-  const { count, error } = await query.gt("created_at", lastReadAt);
+  const { count, error } = await query.gt("created_at", lastReadAt).gt("created_at", since);
 
   if (error || count === null) return 0;
   return count;

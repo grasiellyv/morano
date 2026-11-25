@@ -35,7 +35,7 @@ import { getShoppingItems } from "@/features/shopping/queries";
 import { getReorderSuggestions } from "@/features/shopping/queries-lists";
 import { MISSION_LABELS } from "@/features/shopping/schemas";
 import { getMaintenanceItems } from "@/features/manutencao/queries";
-import { getUnreadCount } from "@/features/notifications/queries";
+import { backfillDueTodayNotifications, getUnreadCount } from "@/features/notifications/queries";
 import { getHomeMembers } from "@/features/members/queries";
 import { AVATAR_PALETTE, getInitial } from "@/features/members/avatar-palette";
 
@@ -170,6 +170,13 @@ export default async function Page() {
       ]);
     },
   });
+
+  // Garante que ocorrências vencendo/atrasadas já tenham sua notificação
+  // `task_due_today` ANTES de contar não-lidas: sem isso, o badge do sininho
+  // só refletiria tarefas recém-atrasadas depois que alguém visitasse
+  // /notificacoes (único outro call site do backfill) — regressão de UX vs.
+  // o sininho antigo, calculado no cliente, que sempre refletia atrasos.
+  await backfillDueTodayNotifications(supabase, home.id, today);
 
   const [todayOcc, overdueOcc, shopping, maintenance, reorderSuggestions, homeMembers, profileResult, unreadCount] =
     await Promise.all([
